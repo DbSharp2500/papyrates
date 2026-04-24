@@ -258,7 +258,7 @@ function renderList(){
   return `
   <div class="header">
     <h1>🏴‍☠️ Papyrates Database</h1>
-    <span class="count">${state.totalCount>0?state.totalCount.toLocaleString():"..."} letters total</span>
+  <span class="count">${state.filteredCount>0?state.filteredCount.toLocaleString():state.totalCount>0?state.totalCount.toLocaleString():"..."} letters</span>
   </div>
   <div class="filters">
     <div class="filter-row">
