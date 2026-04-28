@@ -106,7 +106,7 @@ var allAuthorOpts=[];
 var allRecipOpts=[];
 var state={view:"list",authorId:"",recipientId:"",authorText:"",recipientText:"",dateFrom:"",dateTo:"",language:"",descSearch:"",textSearch:"",letters:[],totalCount:0,filteredCount:0,page:0,pageSize:50,loading:true,selected:null,showFT:false};
 function sq(path){return fetch(SURL+"/"+path,{headers:SH}).then(function(r){return r.ok?r.json():[];}).catch(function(){return[];});}
-function sqCount(path){return fetch(SURL+"/"+path,{headers:Object.assign({},SH,{"Prefer":"count=exact"})}).then(function(r){var ct=r.headers.get("content-range");if(ct){var m=ct.match(/\/(\d+)/);if(m)return parseInt(m[1]);}return 0;}).catch(function(){return 0;});}
+function sqCount(path){return fetch(SURL+"/"+path,{headers:{"apikey":SKEY,"Authorization":"Bearer "+SKEY,"Prefer":"count=exact"}}).then(function(r){var ct=r.headers.get("content-range");if(ct){var m=ct.match(/\/(\d+)/);if(m)return parseInt(m[1]);}return 0;}).catch(function(){return 0;});}
 function pname(id){if(!id)return"";var p=people[String(id)];if(!p)return"";var l=(p.last_name||"").trim();var f=(p.first_name||"").trim();if(!l&&!f)return"Unknown";if(!l)return f;if(!f)return l;return l+", "+f;}
 function fdate(d){if(!d)return"";var p=d.split("-");if(p.length!==3)return d;return parseInt(p[1])+"/"+parseInt(p[2])+"/"+p[0];}
 function loadPeople(){
