@@ -64,6 +64,7 @@ body{font-family:Arial,sans-serif;background:#f0f3fa;min-height:100vh}
 .page-btn:disabled{opacity:0.4;cursor:default}
 .page-btn:not(:disabled):hover{background:#e8ecf5}
 .page-info{font-size:13px;color:#666}
+.tag{display:inline-block;background:#e8ecf5;color:#2d4a8a;padding:3px 8px;border-radius:4px;font-size:12px;margin:2px}
 .login-screen{max-width:360px;margin:80px auto;background:white;border-radius:12px;padding:32px;box-shadow:0 2px 20px rgba(0,0,0,0.1);text-align:center}
 .login-screen h1{color:#2d4a8a;font-size:22px;margin-bottom:8px}
 .login-screen p{color:#666;font-size:14px;margin-bottom:24px}
@@ -102,18 +103,27 @@ var SURL="https://vzfwobsnfqnnqvnsfksq.supabase.co/rest/v1";
 var SKEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ6ZndvYnNuZnFubnF2bnNma3NxIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3Njg4ODA3MCwiZXhwIjoyMDkyNDY0MDcwfQ.J_TE4qWj9r6TIvGeptM58r2WtI6ytOe9zg7BBe29wHI";
 var SH={"apikey":SKEY,"Authorization":"Bearer "+SKEY};
 var people={};
+var manuscripts={};
 var allAuthorOpts=[];
 var allRecipOpts=[];
 var state={view:"list",authorId:"",recipientId:"",authorText:"",recipientText:"",dateFrom:"",dateTo:"",language:"",descSearch:"",textSearch:"",letters:[],totalCount:0,filteredCount:0,page:0,pageSize:50,loading:true,selected:null,showFT:false};
+
 function sq(path){return fetch(SURL+"/"+path,{headers:SH}).then(function(r){return r.ok?r.json():[];}).catch(function(){return[];});}
 function sqCount(path){return fetch(SURL+"/"+path,{headers:{"apikey":SKEY,"Authorization":"Bearer "+SKEY,"Prefer":"count=exact"}}).then(function(r){var ct=r.headers.get("content-range");if(ct){var m=ct.match(/\/(\d+)/);if(m)return parseInt(m[1]);}return 0;}).catch(function(){return 0;});}
+
 function pname(id){if(!id)return"";var p=people[String(id)];if(!p)return"";var l=(p.last_name||"").trim();var f=(p.first_name||"").trim();if(!l&&!f)return"Unknown";if(!l)return f;if(!f)return l;return l+", "+f;}
 function fdate(d){if(!d)return"";var p=d.split("-");if(p.length!==3)return d;return parseInt(p[1])+"/"+parseInt(p[2])+"/"+p[0];}
+
 function loadPeople(){
   var all=[],offset=0;
   function fetchBatch(){return sq("people?select=id,first_name,last_name&order=last_name.asc&limit=1000&offset="+offset).then(function(batch){if(!Array.isArray(batch)||batch.length===0)return;all=all.concat(batch);if(batch.length<1000){all.forEach(function(p){people[String(p.id)]=p;});return;}offset+=1000;return fetchBatch();});}
   return fetchBatch();
 }
+
+function loadManuscripts(){
+  return sq("manuscripts?select=id,name&limit=2000").then(function(rows){if(Array.isArray(rows))rows.forEach(function(m){manuscripts[String(m.id)]=m;});});
+}
+
 function buildAuthorOpts(){
   var p=state.recipientId?sq("letters?recipient_id=eq."+state.recipientId+"&select=author_id&limit=5000"):sq("letters?select=author_id&limit=5000");
   return p.then(function(rows){var ids=[...new Set((rows||[]).map(function(r){return String(r.author_id);}).filter(Boolean))];allAuthorOpts=ids.map(function(id){return{id:id,name:pname(id)};}).filter(function(x){return x.name;}).sort(function(a,b){return a.name.localeCompare(b.name);});});
@@ -124,8 +134,9 @@ function buildRecipOpts(){
 }
 function filteredAuthorOpts(){if(!state.authorText)return allAuthorOpts;var t=state.authorText.toLowerCase();return allAuthorOpts.filter(function(o){return o.name.toLowerCase().indexOf(t)>=0;});}
 function filteredRecipOpts(){if(!state.recipientText)return allRecipOpts;var t=state.recipientText.toLowerCase();return allRecipOpts.filter(function(o){return o.name.toLowerCase().indexOf(t)>=0;});}
+
 function buildQ(){
-  var q="letters?select=id,author_id,recipient_id,date_of_letter,description,translation,language,full_text,sharing_link,title";
+  var q="letters?select=id,author_id,recipient_id,date_of_letter,description,translation,language,full_text,sharing_link,title,papyri_id";
   var f=[];
   if(state.authorId)f.push("author_id=eq."+state.authorId);
   if(state.recipientId)f.push("recipient_id=eq."+state.recipientId);
@@ -151,6 +162,7 @@ function buildCountQ(){
   if(f.length)q+="&"+f.join("&");
   return q;
 }
+
 function loadLetters(){
   state.loading=true;render();
   return Promise.all([sq(buildQ()),sqCount(buildCountQ())]).then(function(res){
@@ -159,16 +171,16 @@ function loadLetters(){
     state.loading=false;render();
   });
 }
+
 function init(){
-  loadPeople().then(function(){
+  Promise.all([loadPeople(),loadManuscripts()]).then(function(){
     return sqCount("letters?select=id");
   }).then(function(count){
     state.totalCount=count;state.filteredCount=count;render();
     return Promise.all([buildAuthorOpts(),buildRecipOpts()]);
-  }).then(function(){
-    return loadLetters();
-  });
+  }).then(function(){return loadLetters();});
 }
+
 function selectAuthor(id,name){state.authorId=id;state.authorText=name;state.page=0;var dd=document.getElementById("author-drop");if(dd)dd.classList.remove("open");buildRecipOpts().then(function(){render();loadLetters();});}
 function selectRecip(id,name){state.recipientId=id;state.recipientText=name;state.page=0;var dd=document.getElementById("recip-drop");if(dd)dd.classList.remove("open");buildAuthorOpts().then(function(){render();loadLetters();});}
 function clearAuthor(){state.authorId="";state.authorText="";state.page=0;buildRecipOpts().then(function(){render();loadLetters();});}
@@ -177,10 +189,27 @@ function doSwap(){var aId=state.authorId,aName=state.authorText,rId=state.recipi
 function doClear(){state.authorId="";state.authorText="";state.recipientId="";state.recipientText="";state.dateFrom="";state.dateTo="";state.language="";state.descSearch="";state.textSearch="";state.page=0;Promise.all([buildAuthorOpts(),buildRecipOpts()]).then(function(){loadLetters();});}
 function onFilter(k,v){state[k]=v;state.page=0;loadLetters();}
 var st;function onSearch(k,v){state[k]=v;clearTimeout(st);st=setTimeout(function(){state.page=0;loadLetters();},600);}
-function openLetter(idx){state.selected=state.letters[idx];state.showFT=false;state.view="detail";render();}
+function openLetter(idx){
+  state.selected=state.letters[idx];
+  state.showFT=false;
+  state.selectedPeople=[];
+  state.selectedManuscripts=[];
+  state.view="detail";
+  render();
+  var lid=state.selected.id;
+  Promise.all([
+    sq("letter_people?letter_id=eq."+lid+"&select=person_id"),
+    sq("letter_manuscripts?letter_id=eq."+lid+"&select=manuscript_id")
+  ]).then(function(res){
+    state.selectedPeople=(res[0]||[]).map(function(r){return pname(r.person_id);}).filter(Boolean);
+    state.selectedManuscripts=(res[1]||[]).map(function(r){var m=manuscripts[String(r.manuscript_id)];return m?m.name:"";}).filter(Boolean);
+    render();
+  });
+}
 function goBack(){state.view="list";render();}
 function toggleFT(){state.showFT=!state.showFT;render();}
 function changePage(d){state.page+=d;loadLetters();}
+
 function onAuthorInput(v){
   state.authorText=v;if(!v)state.authorId="";
   var dd=document.getElementById("author-drop");if(!dd)return;
@@ -198,7 +227,9 @@ function onRecipInput(v){
 function onAuthorKey(e){if(e.key==="Escape"){var dd=document.getElementById("author-drop");if(dd)dd.classList.remove("open");}if(e.key==="Enter"){var opts=filteredAuthorOpts();if(opts.length>0)selectAuthor(opts[0].id,opts[0].name);}}
 function onRecipKey(e){if(e.key==="Escape"){var dd=document.getElementById("recip-drop");if(dd)dd.classList.remove("open");}if(e.key==="Enter"){var opts=filteredRecipOpts();if(opts.length>0)selectRecip(opts[0].id,opts[0].name);}}
 document.addEventListener("click",function(e){if(!e.target.closest(".ac-wrap")){var ad=document.getElementById("author-drop");var rd=document.getElementById("recip-drop");if(ad)ad.classList.remove("open");if(rd)rd.classList.remove("open");}});
+
 var LANGS=["English","French","German","Latin","Italian","Spanish","Coptic","Greek","Arabic","Dutch","Hebrew"];
+
 function renderList(){
   var hasFilter=state.authorId||state.recipientId||state.dateFrom||state.dateTo||state.language||state.descSearch||state.textSearch;
   var displayCount=hasFilter?state.filteredCount.toLocaleString():state.totalCount.toLocaleString();
@@ -227,6 +258,7 @@ function renderList(){
   html+=state.loading?'<div class="loading">Loading...</div>':renderRows();
   return html;
 }
+
 function renderRows(){
   if(!state.letters.length)return'<div class="no-results">No letters found.</div>';
   var totalPages=Math.ceil(state.filteredCount/state.pageSize)||1;
@@ -235,11 +267,12 @@ function renderRows(){
   html+='<div class="pagination">';
   html+='<button class="page-btn" onclick="changePage(-1)"'+(state.page===0?' disabled':'')+'>&#8592; Prev</button>';
   html+='<span class="page-info">Page '+(state.page+1)+' of '+totalPages+'</span>';
-  var nextDisabled=(state.page+1)*state.pageSize>=state.filteredCount?' disabled':'';
-  html+='<button class="page-btn" onclick="changePage(1)"'+nextDisabled+'>Next &#8594;</button>';
+  var nd=(state.page+1)*state.pageSize>=state.filteredCount?' disabled':'';
+  html+='<button class="page-btn" onclick="changePage(1)"'+nd+'>Next &#8594;</button>';
   html+='</div>';
   return html;
 }
+
 function renderDetail(){
   var l=state.selected;if(!l)return"";
   var hasPdf=l.sharing_link&&l.sharing_link.trim();
@@ -249,17 +282,33 @@ function renderDetail(){
   html+='<div class="field-label">Recipient</div><div class="field-value">'+(pname(l.recipient_id)||"<span class=\"field-empty\">Unknown</span>")+'</div>';
   html+='<div class="field-label">Date of Letter</div><div class="field-value">'+(fdate(l.date_of_letter)||"<span class=\"field-empty\">Unknown</span>")+'</div>';
   html+='<div class="divider"></div>';
-  html+='<div class="field-label">Description</div><div class="field-value">'+(l.description||"<span class=\"field-empty\">No description available</span>")+'</div>';
+  if(l.description)html+='<div class="field-label">Description</div><div class="field-value">'+l.description+'</div>';
   if(l.translation)html+='<div class="field-label">Translation</div><div class="field-value">'+l.translation+'</div>';
   if(l.language)html+='<div class="field-label">Language</div><div class="field-value">'+l.language+'</div>';
+  if(state.selectedPeople&&state.selectedPeople.length>0){
+    html+='<div class="field-label">People Mentioned</div><div class="field-value">';
+    html+=state.selectedPeople.map(function(n){return'<span class="tag">'+n+'</span>';}).join("");
+    html+='</div>';
+  }
+  if(state.selectedManuscripts&&state.selectedManuscripts.length>0){
+    html+='<div class="field-label">Papyri Mentioned</div><div class="field-value">';
+    html+=state.selectedManuscripts.map(function(n){return'<span class="tag">'+n+'</span>';}).join("");
+    html+='</div>';
+  }
+  if(l.papyri_id)html+='<div class="field-label">Papyri ID</div><div class="field-value">'+l.papyri_id+'</div>';
   html+='<div class="divider"></div>';
   html+='<div class="field-label">Original Document</div><div class="field-value">';
   html+=hasPdf?'<a class="pdf-btn" href="'+l.sharing_link+'" target="_blank">&#128196; View Original PDF</a>':'<span class="no-pdf">&#128196; No PDF available</span>';
   html+='</div>';
-  if(l.full_text){html+='<div class="divider"></div><div class="field-label">OCR Full Text</div><button class="fulltext-toggle" onclick="toggleFT()">'+(state.showFT?"Hide text":"Show OCR text")+'</button>';if(state.showFT)html+='<div class="fulltext-content">'+l.full_text.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")+'</div>';}
+  if(l.full_text){
+    html+='<div class="divider"></div><div class="field-label">OCR Full Text</div>';
+    html+='<button class="fulltext-toggle" onclick="toggleFT()">'+(state.showFT?"Hide text":"Show OCR text")+'</button>';
+    if(state.showFT)html+='<div class="fulltext-content">'+l.full_text.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")+'</div>';
+  }
   html+='</div>';
   return html;
 }
+
 function render(){var app=document.getElementById("app");if(!app)return;app.innerHTML=state.view==="detail"?renderDetail():renderList();}
 render();
 </script>
