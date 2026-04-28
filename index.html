@@ -1,370 +1,104 @@
-import os
-import re
-import base64
-import requests
-from pdf2image import convert_from_path
-from datetime import date, timedelta
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Papyrates Database</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Arial,sans-serif;background:#f0f3fa;min-height:100vh}
+.app{max-width:700px;margin:0 auto;padding:0 0 2rem}
+.header{background:#2d4a8a;color:white;padding:14px 16px;display:flex;align-items:center;justify-content:space-between}
+.header h1{font-size:18px;font-weight:500}
+.header .count{font-size:13px;opacity:0.85}
+.filters{background:#3a5ba0;padding:12px 16px;display:flex;flex-direction:column;gap:8px}
+.filter-row{display:flex;gap:8px;align-items:center}
+.filter-label{color:rgba(255,255,255,0.9);font-size:13px;min-width:80px;flex-shrink:0}
+.ac-wrap{flex:1;position:relative}
+.ac-input{width:100%;padding:7px 10px;border-radius:6px;border:1px solid rgba(255,255,255,0.3);background:rgba(255,255,255,0.15);color:white;font-size:13px}
+.ac-input::placeholder{color:rgba(255,255,255,0.6)}
+.ac-input:focus{outline:none;border-color:rgba(255,255,255,0.7);background:rgba(255,255,255,0.25)}
+.ac-dropdown{position:absolute;top:100%;left:0;right:0;background:white;border-radius:0 0 6px 6px;box-shadow:0 4px 12px rgba(0,0,0,0.2);max-height:220px;overflow-y:auto;z-index:100;display:none}
+.ac-dropdown.open{display:block}
+.ac-item{padding:8px 10px;font-size:13px;color:#222;cursor:pointer;border-bottom:0.5px solid #eee}
+.ac-item:hover{background:#e8ecf5;color:#2d4a8a}
+.ac-item.selected-item{background:#d0d8ec;font-weight:bold}
+.ac-clear{position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;color:rgba(255,255,255,0.7);cursor:pointer;font-size:16px;padding:0 2px;line-height:1}
+.ac-clear:hover{color:white}
+.filter-select{flex:1;padding:7px 10px;border-radius:6px;border:1px solid rgba(255,255,255,0.3);background:rgba(255,255,255,0.15);color:white;font-size:13px;cursor:pointer}
+.filter-select option{background:#2d4a8a;color:white}
+.filter-input{flex:1;padding:7px 10px;border-radius:6px;border:1px solid rgba(255,255,255,0.3);background:rgba(255,255,255,0.15);color:white;font-size:13px}
+.filter-input::placeholder{color:rgba(255,255,255,0.6)}
+.swap-btn{background:rgba(255,255,255,0.2);color:white;border:1px solid rgba(255,255,255,0.4);padding:7px 12px;border-radius:6px;cursor:pointer;font-size:12px;white-space:nowrap}
+.swap-btn:hover{background:rgba(255,255,255,0.3)}
+.date-input{flex:1;padding:7px 10px;border-radius:6px;border:1px solid rgba(255,255,255,0.3);background:rgba(255,255,255,0.15);color:white;font-size:13px}
+.date-input::-webkit-calendar-picker-indicator{filter:invert(1)}
+.clear-btn{background:rgba(255,100,100,0.3);color:white;border:1px solid rgba(255,100,100,0.5);padding:7px 12px;border-radius:6px;cursor:pointer;font-size:12px}
+.clear-btn:hover{background:rgba(255,100,100,0.4)}
+.results-header{background:#e8ecf5;padding:10px 16px;border-bottom:1px solid #d0d8ec}
+.results-count{font-size:13px;color:#3a5ba0;font-weight:500}
+.col-headers{display:grid;grid-template-columns:1fr 1fr 100px 24px;padding:8px 16px;background:#f0f3fa;border-bottom:1px solid #d0d8ec;font-size:12px;color:#3a5ba0;font-weight:bold}
+.letter-row{display:grid;grid-template-columns:1fr 1fr 100px 24px;padding:12px 16px;border-bottom:1px solid #e8e8e8;cursor:pointer;align-items:center;background:white}
+.letter-row:hover{background:#f5f7fc}
+.letter-name{font-size:13px;color:#222;line-height:1.3}
+.letter-date{font-size:12px;color:#666}
+.arrow{color:#3a5ba0;font-size:16px;text-align:right}
+.loading{padding:2rem;text-align:center;color:#666;font-size:14px;background:white}
+.no-results{padding:2rem;text-align:center;color:#666;font-size:14px;background:white}
+.detail-header{background:#2d4a8a;color:white;padding:14px 16px;display:flex;align-items:center;gap:12px}
+.back-btn{background:rgba(255,255,255,0.2);border:1px solid rgba(255,255,255,0.4);color:white;padding:5px 12px;border-radius:6px;cursor:pointer;font-size:13px}
+.back-btn:hover{background:rgba(255,255,255,0.3)}
+.detail-body{padding:16px;background:white}
+.field-label{font-size:11px;color:#3a5ba0;font-weight:bold;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px}
+.field-value{font-size:14px;color:#222;line-height:1.6;margin-bottom:14px}
+.field-empty{color:#999;font-style:italic}
+.divider{height:1px;background:#e8e8e8;margin:12px 0}
+.pdf-btn{display:inline-flex;align-items:center;gap:6px;background:#3a5ba0;color:white;padding:8px 14px;border-radius:6px;text-decoration:none;font-size:13px}
+.pdf-btn:hover{background:#2d4a8a}
+.no-pdf{display:inline-flex;align-items:center;gap:6px;background:#f0f0f0;color:#888;padding:8px 14px;border-radius:6px;font-size:13px}
+.fulltext-toggle{background:none;border:1px solid #3a5ba0;color:#3a5ba0;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:12px;margin-bottom:8px}
+.fulltext-toggle:hover{background:#e8ecf5}
+.fulltext-content{font-size:12px;color:#555;line-height:1.7;background:#f8f8f8;padding:12px;border-radius:6px;border:1px solid #e0e0e0;white-space:pre-wrap;max-height:300px;overflow-y:auto}
+.pagination{display:flex;align-items:center;justify-content:center;gap:12px;padding:12px 16px;border-top:1px solid #e0e0e0;background:white}
+.page-btn{background:none;border:1px solid #3a5ba0;color:#3a5ba0;padding:6px 14px;border-radius:6px;cursor:pointer;font-size:13px}
+.page-btn:disabled{opacity:0.4;cursor:default}
+.page-btn:not(:disabled):hover{background:#e8ecf5}
+.page-info{font-size:13px;color:#666}
+.login-screen{max-width:360px;margin:80px auto;background:white;border-radius:12px;padding:32px;box-shadow:0 2px 20px rgba(0,0,0,0.1);text-align:center}
+.login-screen h1{color:#2d4a8a;font-size:22px;margin-bottom:8px}
+.login-screen p{color:#666;font-size:14px;margin-bottom:24px}
+.login-input{width:100%;padding:10px 14px;border:1px solid #d0d8ec;border-radius:6px;font-size:14px;margin-bottom:12px}
+.login-btn{width:100%;padding:10px;background:#2d4a8a;color:white;border:none;border-radius:6px;font-size:15px;cursor:pointer}
+.login-btn:hover{background:#3a5ba0}
+.login-error{color:#c0392b;font-size:13px;margin-top:8px}
+</style>
+</head>
+<body>
 
-VISION_KEY = "AIzaSyAXmMLO9NRHGexXU-ICS67itz8Gf1jNzBw"
-SUPABASE_URL = "https://vzfwobsnfqnnqvnsfksq.supabase.co"
-SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ6ZndvYnNuZnFubnF2bnNma3NxIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3Njg4ODA3MCwiZXhwIjoyMDkyNDY0MDcwfQ.J_TE4qWj9r6TIvGeptM58r2WtI6ytOe9zg7BBe29wHI"
-POPPLER_PATH = r"C:\Users\dbs\Desktop\For Claude Help\poppler-25.12.0\Library\bin"
-LETTERS_FOLDER = r"C:\Users\dbs\Desktop\Research Specialist Bodmer\Letters"
-LOG_FILE = r"C:\Users\dbs\Desktop\ocr_log3.txt"
+<div id="login-screen" class="login-screen">
+  <h1>🏴‍☠️ Papyrates</h1>
+  <p>Enter the password to access the database</p>
+  <input type="password" class="login-input" id="pwd-input" placeholder="Password" onkeydown="if(event.key==='Enter')doLogin()">
+  <button class="login-btn" onclick="doLogin()">Enter</button>
+  <div class="login-error" id="login-error"></div>
+</div>
 
-MONTH_MAP = {
-    "jan":1,"feb":2,"mar":3,"apr":4,"may":5,"jun":6,
-    "jul":7,"aug":8,"sep":9,"oct":10,"nov":11,"dec":12,
-    "january":1,"february":2,"march":3,"april":4,"june":6,
-    "july":7,"august":8,"september":9,"october":10,"november":11,"december":12,
-    "janv":1,"fev":2,"fevr":2,"mars":3,"avr":4,"avril":4,
-    "mai":5,"juin":6,"juil":7,"juill":7,"aout":8,
-    "sept":9,"oct":10,"nov":11,"dec":12,
+<div id="main-app" style="display:none">
+  <div class="app" id="app"></div>
+</div>
+
+<script>
+const APP_PASSWORD = "papyrates2024";
+function doLogin(){
+  if(document.getElementById("pwd-input").value===APP_PASSWORD){
+    document.getElementById("login-screen").style.display="none";
+    document.getElementById("main-app").style.display="block";
+    init();
+  } else {
+    document.getElementById("login-error").textContent="Incorrect password. Please try again.";
+  }
 }
 
-# Disambiguation: last_name_lower -> id
-# For Robinson, context (other person) determines which Robinson
-DISAMBIGUATION = {
-    "robinson": {"willis": 110, "default": 258},
-    "willis": 259,
-    "kasser": 237,
-    "tano": 254,
-    "turner": 215,
-    "bodmer": 255,
-    "pietersma": 952,
-    "puech": 890,
-    "bell": 218,
-    "semans": 85,
-}
-
-def resolve_id(last_name, other_last_name):
-    last = last_name.lower()
-    other = other_last_name.lower()
-    if last == "robinson":
-        return DISAMBIGUATION["robinson"]["willis"] if other == "willis" else DISAMBIGUATION["robinson"]["default"]
-    if last in DISAMBIGUATION:
-        val = DISAMBIGUATION[last]
-        if isinstance(val, int):
-            return val
-    return None
-
-MISSING_FILES = {
-    "Acheroff to Bodmer jul 23 1962",
-    "barns to bongard jun 17 1961",
-    "bodmer to mitte aug 12 1962",
-    "Braun to Pietersma Jul 7 1977",
-    "Braun to Pietersma oct 20 1975",
-    "Doutreleau to Bodmer jul 12 1969",
-    "kilpatrick to Bodmer aug 11 1959",
-    "kilpatrick to bodmer nov 15 1960",
-    "Kilpatrick to Bongard jul 25 1963",
-    "kroll to Bodmer jul 12 1962",
-    "matossian to Bongard nov 11 1959",
-    "Pietersma to Braun apr 16 1975",
-    "Pietersma to Braun jun 19 1977",
-    "robinson to Bodmer jun 6 1948",
-    "wahab to Bongard jul 23 1961",
-    "Preaux to Bodmer Jan 6 1955",
-    "Puech to Bodmer sep 1 1957",
-    "doutreleau to Bodmer mar 28 1966",
-    "Doutreleau to Bodmer may 11 1959",
-    "koenen to Bodmer aug 6 1966",
-    "Bibawi to Robinson jul 25 1981",
-    "robinson to Roemer Aug 4 1984",
-    "Robinson to Roemer Jan 4 1985",
-    "Robinson to Roemer nov 12 1984",
-    "Robinson to Shanks Feb 12 1980",
-    "Robinson to Shanks Feb 25 1980",
-    "Robinson to Turner Apr 26 1974",
-    "Robinson to Turner Aug 1 1973",
-    "Robinson to Turner Jan 26 1977",
-    "robinson to Turner Jul 7 1978",
-    "Robinson to Turner Mar 4 1977",
-    "Robinson to Turner Mar 5 1974",
-    "Robinson to Turner Oct 26 1973",
-    "Robinson to Turner Oct 30 1972",
-    "Robinson to Urio Mar 21 1980",
-    "Turner to Robinson Apr 4 1977",
-    "Turner to Robinson April 20 1979",
-    "Turner to Robinson Aug 1 1973",
-    "Turner to Robinson Aug 23 1978",
-    "Turner to Robinson Jan 28 1974",
-    "Turner to Robinson Jan 31 1974",
-    "Turner to Robinson Jan 31 1977",
-    "Turner to Robinson Mar 12 1974",
-    "Turner to Robinson Mar 23 1971",
-    "Turner to Robinson may 5 1981",
-    "Turner to Robinson Nov 17 1972",
-    "Beatty to Acheroff Apr 19 1957",
-    "Rosenthal to Willis Dec 14 1973",
-    "Willis to Semans Dec 21 1983",
-    "Keimer to Mohasseb Jul 20 1949",
-    "Kasser to Bongard Mar 1 1956",
-    "Dickerson to Schiffman Apr 28 2009",
-    "Beatty to Bodmer Jan 3 1957",
-    "Beatty to Bongard Jan 10 1958",
-    "Beatty to Bongard Jan 3 1957",
-    "Bongard to Shore Oct 10 1960",
-    "Turner to Martin Nov 9 1951",
-    "Coulter to Willis May 22 1948",
-    "Robinson to Willis jun 1 1949",
-    "Robinson to Willis Jun 28 1948",
-    "Robinson to Willis Jun 28 1949",
-    "Robinson to Willis Jun 8 1948",
-    "Robinson to Willis mar 12 1948",
-    "Robinson to Willis mar 31 1948",
-    "Robinson to Willis May 14 1948",
-    "Robinson to Willis May 20 1948",
-    "Robinson to Willis May 26 1948",
-    "Robinson to Willis May 5 1948",
-    "Robinson to Willis May 6 1948",
-    "Robinson to Willis Sep 7 1948",
-    "Willis to McCarter may 7 1948",
-    "Willis to Robinson aug 16 1948",
-    "Willis to Robinson Aug 21 1948",
-    "Willis to Robinson Aug 26 1949",
-    "Willis to Robinson Jan 15 1948",
-    "Willis to Robinson jul 1 1949",
-    "Willis to Robinson jul 2 1948",
-    "Willis to Robinson Jul 27 1948",
-    "Willis to Robinson jun 20 1949",
-    "Willis to Robinson jun 24 1949",
-    "Willis to Robinson Jun 5 1948",
-    "Willis to Robinson mar 25 1948",
-    "Willis to Robinson May 18 1948",
-    "Willis to Robinson may 27 1948",
-    "Willis to Robinson may 3 1948",
-    "Willis to Williams Jun 7 1948",
-    "Robinson to Allison jan 27 1954",
-    "Giblin to Willis Aug 11 1955",
-    "Schøyen to Ferrini Dec 13 2000",
-    "Schøyen to Ferrini Dec 17 2000",
-    "Cango to Roca-Puig Feb 18 1956",
-    "Harrington to Roca-Puig Oct 29 1954",
-    "P. Remiro to Roca-Puig July 20 1955",
-    "Pastor to Roca-Puig Feb 10 1956",
-    "Mele to Sharp Oct 21 2025",
-    "Schøyen to Sharp jul 26 2025",
-    "Stimer to Sharp Oct 22 2025",
-    "Cockle to Schøyen jun 15 1990",
-    "Cockle to Schøyen jun 20 1989",
-    "Hammond to Linenthal apr 24 1990",
-    "Hammond to Linenthal Feb 7 1991",
-    "Hammond to Schøyen mar 14 1991",
-    "Linenthal to Schøyen mar 26 2007",
-    "linenthal to Schøyen Oct 21 1988",
-    "pietersma to Schøyen Feb 19 2011",
-    "Pietersma to Schøyen Feb 22 2011",
-    "Robinson to Schøyen apr 13 1989",
-    "Robinson to Schøyen Feb 19 1989",
-    "Robinson to Schøyen Jan 4 1991",
-    "Schøyen to Cockle may 2 1990",
-    "Schøyen to Linenthal mar 23 2007",
-    "schøyen to Pietersma Feb 21 2011",
-    "Schøyen to Pietersma Feb 22 2011",
-    "Schøyen to Robinson may 10 1989",
-    "Tait to Linenthal July 1 1986",
-    "mele to Robinson Oct 30 1998",
-    "Schenke to Schøyen dec 13 1988",
-    "Trever to Schøyen apr 19 1995",
-    "Mele to Robinson Oct 8 1998",
-    "Robinson to Schøyen Oct 20 1999",
-    "Schøyen to Robinson Aug 12 1998",
-    "Schøyen to Ferrini Dec 12 2000",
-    "Schøyen to Ferrini Jan 17 2000",
-    "Schøyen to Robinson Jan 31 2001",
-    "Doutreleau to Bodmer Dec 12 1966",
-    "Doutreleau to Keimer oct 11 1956",
-    "Doutreleau to Nautin mar 10 1952",
-    "Aland to Turner Oct 22 1959",
-    "Bell to Turner Nov 14 1955",
-    "Bell to Turner Nov 7 1955",
-    "Cavallo to Turner May 22 1971",
-    "Cavallo to Turner Oct 15 1969",
-    "Layton to Turner Feb 3 1977",
-    "Martin to Turner Aug 26 1959",
-    "Martin to Turner Dec 24 1955",
-    "Martin to Turner May 14 1959",
-    "Roberts to Turner Feb 3 1960",
-    "Roberts to Turner Jan 28 1960",
-    "Roberts to Turner Oct 12 1946",
-    "Roca-Puig to Turner Oct 10 1977",
-    "Skeat to Turner Jan 23 1977",
-    "Skeat to Turner Nov 15 1955",
-    "Testuz to Turner Feb 11 1960",
-    "Turner to Cavallo Oct 1 1969",
-    "Turner to Roca-Puig Oct 26 1977",
-    "Turner to Testuz Jan 25 1960",
-    "Turner to Wouters June 1 1973",
-    "Voigt to Turner Aug 2 1978",
-    "Voigt to Turner aug 25 1973",
-    "Voigt to Turner Dec 12 1975",
-    "Voigt to Turner Oct 27 1975",
-    "robinson to Wouters Apr 15 1981",
-}
-
-def parse_filename(filename):
-    name = os.path.splitext(filename)[0]
-    name = re.sub(r'^\d+[-_]', '', name).strip()
-    m = re.match(r'^(.+?)\s+to\s+(.+?)\s+([A-Za-z]+)\.?\s+(\d{1,2}),?\s+(\d{4})$', name, re.IGNORECASE)
-    if m:
-        sender = m.group(1).strip().split()[-1]
-        recipient = m.group(2).strip().split()[-1]
-        month = MONTH_MAP.get(m.group(3).lower().rstrip('.'))
-        day = int(m.group(4))
-        year = int(m.group(5))
-        if month:
-            try: return sender, recipient, date(year, month, day)
-            except: pass
-    m = re.match(r'^(.+?)\s+to\s+(.+?)\s+([A-Za-z]+)\.?\s+(\d{1,2})\s+(\d{4})$', name, re.IGNORECASE)
-    if m:
-        sender = m.group(1).strip().split()[-1]
-        recipient = m.group(2).strip().split()[-1]
-        month = MONTH_MAP.get(m.group(3).lower().rstrip('.'))
-        day = int(m.group(4))
-        year = int(m.group(5))
-        if month:
-            try: return sender, recipient, date(year, month, day)
-            except: pass
-    return None, None, None
-
-def get_person_ids(last_name):
-    r = requests.get(
-        f"{SUPABASE_URL}/rest/v1/people?last_name=ilike.{last_name}&select=id,first_name,last_name",
-        headers={"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}"}
-    )
-    resp = r.json()
-    return resp if isinstance(resp, list) else []
-
-def get_ids(sender_last, recipient_last):
-    author_id = resolve_id(sender_last, recipient_last)
-    if author_id is None:
-        senders = get_person_ids(sender_last)
-        if len(senders) == 0: return None, None, f"sender not found ({sender_last})"
-        if len(senders) > 1:
-            names = [f"{p['first_name']} {p['last_name']} (id={p['id']})" for p in senders]
-            return None, None, f"ambiguous sender ({sender_last}): {names}"
-        author_id = senders[0]['id']
-
-    recipient_id = resolve_id(recipient_last, sender_last)
-    if recipient_id is None:
-        recipients = get_person_ids(recipient_last)
-        if len(recipients) == 0: return None, None, f"recipient not found ({recipient_last})"
-        if len(recipients) > 1:
-            names = [f"{p['first_name']} {p['last_name']} (id={p['id']})" for p in recipients]
-            return None, None, f"ambiguous recipient ({recipient_last}): {names}"
-        recipient_id = recipients[0]['id']
-
-    return author_id, recipient_id, None
-
-def letter_exists(author_id, recipient_id, letter_date):
-    for try_date in [letter_date, letter_date + timedelta(days=1), letter_date - timedelta(days=1)]:
-        r = requests.get(
-            f"{SUPABASE_URL}/rest/v1/letters?author_id=eq.{author_id}&recipient_id=eq.{recipient_id}&date_of_letter=eq.{try_date}&select=id",
-            headers={"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}"}
-        )
-        resp = r.json()
-        if isinstance(resp, list) and len(resp) > 0:
-            return True, resp[0]['id']
-    return False, None
-
-def insert_letter(author_id, recipient_id, letter_date, title):
-    r = requests.post(
-        f"{SUPABASE_URL}/rest/v1/letters",
-        headers={"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}", "Content-Type": "application/json", "Prefer": "return=representation"},
-        json={"author_id": int(author_id), "recipient_id": int(recipient_id), "date_of_letter": str(letter_date), "title": title, "language": "English"}
-    )
-    resp = r.json()
-    if isinstance(resp, list) and len(resp) > 0:
-        return resp[0]['id']
-    return None
-
-def ocr_pdf(pdf_path):
-    try:
-        pages = convert_from_path(pdf_path, first_page=1, last_page=1, poppler_path=POPPLER_PATH)
-        img_path = pdf_path.replace(".pdf", "_page1.jpg")
-        pages[0].save(img_path, "JPEG")
-        with open(img_path, "rb") as f:
-            content = base64.b64encode(f.read()).decode("utf-8")
-        os.remove(img_path)
-        response = requests.post(
-            f"https://vision.googleapis.com/v1/images:annotate?key={VISION_KEY}",
-            json={"requests": [{"image": {"content": content}, "features": [{"type": "DOCUMENT_TEXT_DETECTION"}]}]}
-        )
-        return response.json()["responses"][0]["fullTextAnnotation"]["text"]
-    except:
-        return None
-
-def update_full_text(letter_id, text):
-    r = requests.patch(
-        f"{SUPABASE_URL}/rest/v1/letters?id=eq.{letter_id}",
-        headers={"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}", "Content-Type": "application/json"},
-        json={"full_text": text}
-    )
-    return r.status_code == 204
-
-def log(message):
-    print(message)
-    with open(LOG_FILE, "a", encoding="utf-8") as f:
-        f.write(message + "\n")
-
-processed = skipped = errors = 0
-
-for root, dirs, files in os.walk(LETTERS_FOLDER):
-    for filename in files:
-        if not filename.lower().endswith(".pdf"):
-            continue
-        name_no_ext = os.path.splitext(filename)[0]
-        if name_no_ext not in MISSING_FILES:
-            continue
-        pdf_path = os.path.join(root, filename)
-        sender_last, recipient_last, letter_date = parse_filename(filename)
-        if not sender_last or not recipient_last or not letter_date:
-            log(f"SKIP (unparseable): {filename}")
-            skipped += 1
-            continue
-        author_id, recipient_id, error = get_ids(sender_last, recipient_last)
-        if error:
-            log(f"SKIP ({error}): {filename}")
-            skipped += 1
-            continue
-        exists, existing_id = letter_exists(author_id, recipient_id, letter_date)
-        if exists:
-            # Check if it already has text
-            r = requests.get(
-                f"{SUPABASE_URL}/rest/v1/letters?id=eq.{existing_id}&select=full_text",
-                headers={"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}"}
-            )
-            resp = r.json()
-            if isinstance(resp, list) and resp and resp[0].get('full_text'):
-                log(f"SKIP (already done id={existing_id}): {filename}")
-                skipped += 1
-                continue
-            # Exists but no text - just OCR it
-            text = ocr_pdf(pdf_path)
-            if text and update_full_text(existing_id, text):
-                log(f"OK (updated existing id={existing_id}): {filename}")
-                processed += 1
-            else:
-                log(f"ERROR (ocr failed for id={existing_id}): {filename}")
-                errors += 1
-            continue
-        title = f"{sender_last.title()} to {recipient_last.title()} {letter_date}"
-        new_id = insert_letter(author_id, recipient_id, letter_date, title)
-        if not new_id:
-            log(f"ERROR (insert failed): {filename}")
-            errors += 1
-            continue
-        text = ocr_pdf(pdf_path)
-        if not text:
-            log(f"ERROR (ocr failed - record created as id={new_id}): {filename}")
-            errors += 1
-            continue
-        if update_full_text(new_id, text):
-            log(f"OK (new id={new_id}): {filename}")
-            processed += 1
-        else:
-            log(f"ERROR (text update failed id={new_id}): {filename}")
-            errors += 1
-
-log(f"\nDONE: {processed} processed, {skipped} skipped, {errors} errors")
+const SURL="https://vzfwobsnfqnnqvnsfksq.supabase.co/rest/v1";
+const SKEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ6ZndvYnNuZnFubnF2bnNma3NxIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3Njg4ODA3MCwiZXhwIjoyMDkyNDY0MDcwfQ.J_TE4qWj9r6TIvGeptM58r2WtI6ytOe9zg7BBe29wHI";
+c
