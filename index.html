@@ -51,7 +51,6 @@ body{font-family:Arial,sans-serif;background:#f0f3fa;min-height:100vh}
 .detail-body{padding:16px;background:white}
 .field-label{font-size:11px;color:#3a5ba0;font-weight:bold;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px}
 .field-value{font-size:14px;color:#222;line-height:1.6;margin-bottom:14px}
-.field-empty{color:#999;font-style:italic}
 .divider{height:1px;background:#e8e8e8;margin:12px 0}
 .pdf-btn{display:inline-flex;align-items:center;gap:6px;background:#3a5ba0;color:white;padding:8px 14px;border-radius:6px;text-decoration:none;font-size:13px}
 .pdf-btn:hover{background:#2d4a8a}
@@ -64,7 +63,13 @@ body{font-family:Arial,sans-serif;background:#f0f3fa;min-height:100vh}
 .page-btn:disabled{opacity:0.4;cursor:default}
 .page-btn:not(:disabled):hover{background:#e8ecf5}
 .page-info{font-size:13px;color:#666}
-.tag{display:inline-block;background:#e8ecf5;color:#2d4a8a;padding:3px 8px;border-radius:4px;font-size:12px;margin:2px}
+.tag{display:inline-block;background:#e8ecf5;color:#2d4a8a;padding:3px 8px;border-radius:4px;font-size:12px;margin:2px;cursor:pointer;text-decoration:underline}
+.tag:hover{background:#d0d8ec}
+.section-title{font-size:13px;font-weight:bold;color:#2d4a8a;margin:16px 0 8px;border-bottom:1px solid #e8e8e8;padding-bottom:4px}
+.mini-letter{padding:8px 0;border-bottom:0.5px solid #eee;cursor:pointer}
+.mini-letter:hover{background:#f5f7fc}
+.mini-letter-info{font-size:13px;color:#222}
+.mini-letter-date{font-size:11px;color:#888;margin-top:2px}
 .login-screen{max-width:360px;margin:80px auto;background:white;border-radius:12px;padding:32px;box-shadow:0 2px 20px rgba(0,0,0,0.1);text-align:center}
 .login-screen h1{color:#2d4a8a;font-size:22px;margin-bottom:8px}
 .login-screen p{color:#666;font-size:14px;margin-bottom:24px}
@@ -104,9 +109,11 @@ var SKEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6I
 var SH={"apikey":SKEY,"Authorization":"Bearer "+SKEY};
 var people={};
 var manuscripts={};
+var institutions={};
 var allAuthorOpts=[];
 var allRecipOpts=[];
-var state={view:"list",authorId:"",recipientId:"",authorText:"",recipientText:"",dateFrom:"",dateTo:"",language:"",descSearch:"",textSearch:"",letters:[],totalCount:0,filteredCount:0,page:0,pageSize:50,loading:true,selected:null,showFT:false};
+var viewStack=[];
+var state={view:"list",authorId:"",recipientId:"",authorText:"",recipientText:"",dateFrom:"",dateTo:"",language:"",descSearch:"",textSearch:"",letters:[],totalCount:0,filteredCount:0,page:0,pageSize:50,loading:true,selected:null,showFT:false,selectedPeople:[],selectedManuscripts:[],personView:null,manuscriptView:null};
 
 function sq(path){return fetch(SURL+"/"+path,{headers:SH}).then(function(r){return r.ok?r.json():[];}).catch(function(){return[];});}
 function sqCount(path){return fetch(SURL+"/"+path,{headers:{"apikey":SKEY,"Authorization":"Bearer "+SKEY,"Prefer":"count=exact"}}).then(function(r){var ct=r.headers.get("content-range");if(ct){var m=ct.match(/\/(\d+)/);if(m)return parseInt(m[1]);}return 0;}).catch(function(){return 0;});}
@@ -116,12 +123,14 @@ function fdate(d){if(!d)return"";var p=d.split("-");if(p.length!==3)return d;ret
 
 function loadPeople(){
   var all=[],offset=0;
-  function fetchBatch(){return sq("people?select=id,first_name,last_name&order=last_name.asc&limit=1000&offset="+offset).then(function(batch){if(!Array.isArray(batch)||batch.length===0)return;all=all.concat(batch);if(batch.length<1000){all.forEach(function(p){people[String(p.id)]=p;});return;}offset+=1000;return fetchBatch();});}
+  function fetchBatch(){return sq("people?select=id,first_name,last_name,description&order=last_name.asc&limit=1000&offset="+offset).then(function(batch){if(!Array.isArray(batch)||batch.length===0)return;all=all.concat(batch);if(batch.length<1000){all.forEach(function(p){people[String(p.id)]=p;});return;}offset+=1000;return fetchBatch();});}
   return fetchBatch();
 }
-
 function loadManuscripts(){
-  return sq("manuscripts?select=id,name&limit=2000").then(function(rows){if(Array.isArray(rows))rows.forEach(function(m){manuscripts[String(m.id)]=m;});});
+  return sq("manuscripts?select=id,name,description&limit=2000").then(function(rows){if(Array.isArray(rows))rows.forEach(function(m){manuscripts[String(m.id)]=m;});});
+}
+function loadInstitutions(){
+  return sq("institutions?select=id,name,location,notes&limit=2000").then(function(rows){if(Array.isArray(rows))rows.forEach(function(i){institutions[String(i.id)]=i;});});
 }
 
 function buildAuthorOpts(){
@@ -136,7 +145,7 @@ function filteredAuthorOpts(){if(!state.authorText)return allAuthorOpts;var t=st
 function filteredRecipOpts(){if(!state.recipientText)return allRecipOpts;var t=state.recipientText.toLowerCase();return allRecipOpts.filter(function(o){return o.name.toLowerCase().indexOf(t)>=0;});}
 
 function buildQ(){
-  var q="letters?select=id,author_id,recipient_id,date_of_letter,description,translation,language,full_text,sharing_link,title,papyri_id";
+  var q="letters?select=id,author_id,recipient_id,date_of_letter,description,translation,language,full_text,sharing_link,title";
   var f=[];
   if(state.authorId)f.push("author_id=eq."+state.authorId);
   if(state.recipientId)f.push("recipient_id=eq."+state.recipientId);
@@ -162,7 +171,6 @@ function buildCountQ(){
   if(f.length)q+="&"+f.join("&");
   return q;
 }
-
 function loadLetters(){
   state.loading=true;render();
   return Promise.all([sq(buildQ()),sqCount(buildCountQ())]).then(function(res){
@@ -171,9 +179,8 @@ function loadLetters(){
     state.loading=false;render();
   });
 }
-
 function init(){
-  Promise.all([loadPeople(),loadManuscripts()]).then(function(){
+  Promise.all([loadPeople(),loadManuscripts(),loadInstitutions()]).then(function(){
     return sqCount("letters?select=id");
   }).then(function(count){
     state.totalCount=count;state.filteredCount=count;render();
@@ -189,11 +196,13 @@ function doSwap(){var aId=state.authorId,aName=state.authorText,rId=state.recipi
 function doClear(){state.authorId="";state.authorText="";state.recipientId="";state.recipientText="";state.dateFrom="";state.dateTo="";state.language="";state.descSearch="";state.textSearch="";state.page=0;Promise.all([buildAuthorOpts(),buildRecipOpts()]).then(function(){loadLetters();});}
 function onFilter(k,v){state[k]=v;state.page=0;loadLetters();}
 var st;function onSearch(k,v){state[k]=v;clearTimeout(st);st=setTimeout(function(){state.page=0;loadLetters();},600);}
+
 function openLetter(idx){
   state.selected=state.letters[idx];
   state.showFT=false;
   state.selectedPeople=[];
   state.selectedManuscripts=[];
+  viewStack.push(state.view);
   state.view="detail";
   render();
   var lid=state.selected.id;
@@ -201,12 +210,67 @@ function openLetter(idx){
     sq("letter_people?letter_id=eq."+lid+"&select=person_id"),
     sq("letter_manuscripts?letter_id=eq."+lid+"&select=manuscript_id")
   ]).then(function(res){
-    state.selectedPeople=(res[0]||[]).map(function(r){return pname(r.person_id);}).filter(Boolean);
-    state.selectedManuscripts=(res[1]||[]).map(function(r){var m=manuscripts[String(r.manuscript_id)];return m?m.name:"";}).filter(Boolean);
+    state.selectedPeople=(res[0]||[]).map(function(r){return{id:r.person_id,name:pname(r.person_id)};}).filter(function(x){return x.name;});
+    state.selectedManuscripts=(res[1]||[]).map(function(r){var m=manuscripts[String(r.manuscript_id)];return m?{id:r.manuscript_id,name:m.name}:{};}).filter(function(x){return x.name;});
     render();
   });
 }
-function goBack(){state.view="list";render();}
+
+function openPerson(personId){
+  var p=people[String(personId)];
+  if(!p)return;
+  state.personView={id:personId,data:p,authored:[],received:[],mentioned:[],loading:true};
+  viewStack.push(state.view);
+  state.view="person";
+  render();
+  Promise.all([
+    sq("letters?author_id=eq."+personId+"&select=id,recipient_id,date_of_letter,description&order=date_of_letter.asc&limit=200"),
+    sq("letters?recipient_id=eq."+personId+"&select=id,author_id,date_of_letter,description&order=date_of_letter.asc&limit=200"),
+    sq("letter_people?person_id=eq."+personId+"&select=letter_id&limit=200")
+  ]).then(function(res){
+    state.personView.authored=Array.isArray(res[0])?res[0]:[];
+    state.personView.received=Array.isArray(res[1])?res[1]:[];
+    var mentionedIds=(res[2]||[]).map(function(r){return r.letter_id;});
+    if(mentionedIds.length>0){
+      return sq("letters?id=in.("+mentionedIds.join(",")+")&select=id,author_id,recipient_id,date_of_letter,description&order=date_of_letter.asc&limit=200");
+    }
+    return [];
+  }).then(function(mentioned){
+    state.personView.mentioned=Array.isArray(mentioned)?mentioned:[];
+    state.personView.loading=false;
+    render();
+  });
+}
+
+function openManuscript(manuscriptId){
+  var m=manuscripts[String(manuscriptId)];
+  if(!m)return;
+  state.manuscriptView={id:manuscriptId,data:m,institutions:[],letters:[],loading:true};
+  viewStack.push(state.view);
+  state.view="manuscript";
+  render();
+  Promise.all([
+    sq("manuscript_institutions?manuscript_id=eq."+manuscriptId+"&select=institution_id,notes&limit=50"),
+    sq("letter_manuscripts?manuscript_id=eq."+manuscriptId+"&select=letter_id&limit=200")
+  ]).then(function(res){
+    state.manuscriptView.institutions=(res[0]||[]).map(function(r){var i=institutions[String(r.institution_id)];return i?{name:i.name,location:i.location,notes:r.notes}:{};}).filter(function(x){return x.name;});
+    var letterIds=(res[1]||[]).map(function(r){return r.letter_id;});
+    if(letterIds.length>0){
+      return sq("letters?id=in.("+letterIds.join(",")+")&select=id,author_id,recipient_id,date_of_letter,description&order=date_of_letter.asc&limit=200");
+    }
+    return [];
+  }).then(function(letters){
+    state.manuscriptView.letters=Array.isArray(letters)?letters:[];
+    state.manuscriptView.loading=false;
+    render();
+  });
+}
+
+function goBack(){
+  var prev=viewStack.pop();
+  state.view=prev||"list";
+  render();
+}
 function toggleFT(){state.showFT=!state.showFT;render();}
 function changePage(d){state.page+=d;loadLetters();}
 
@@ -230,6 +294,38 @@ document.addEventListener("click",function(e){if(!e.target.closest(".ac-wrap")){
 
 var LANGS=["English","French","German","Latin","Italian","Spanish","Coptic","Greek","Arabic","Dutch","Hebrew"];
 
+function miniLetterRow(l,showAuthor){
+  var who=showAuthor?pname(l.author_id):pname(l.recipient_id);
+  var label=showAuthor?"From: ":"To: ";
+  return'<div class="mini-letter" onclick="openLetterById('+l.id+')">'
+    +'<div class="mini-letter-info">'+label+(who||"Unknown")+(l.description?' &mdash; '+l.description.substring(0,80)+(l.description.length>80?"...":""):"")+'</div>'
+    +'<div class="mini-letter-date">'+fdate(l.date_of_letter)+'</div>'
+    +'</div>';
+}
+
+function openLetterById(id){
+  sq("letters?id=eq."+id+"&select=id,author_id,recipient_id,date_of_letter,description,translation,language,full_text,sharing_link,title").then(function(res){
+    if(res&&res.length>0){
+      state.letters=[res[0]];
+      state.selected=res[0];
+      state.showFT=false;
+      state.selectedPeople=[];
+      state.selectedManuscripts=[];
+      viewStack.push(state.view);
+      state.view="detail";
+      render();
+      Promise.all([
+        sq("letter_people?letter_id=eq."+id+"&select=person_id"),
+        sq("letter_manuscripts?letter_id=eq."+id+"&select=manuscript_id")
+      ]).then(function(r){
+        state.selectedPeople=(r[0]||[]).map(function(x){return{id:x.person_id,name:pname(x.person_id)};}).filter(function(x){return x.name;});
+        state.selectedManuscripts=(r[1]||[]).map(function(x){var m=manuscripts[String(x.manuscript_id)];return m?{id:x.manuscript_id,name:m.name}:{};}).filter(function(x){return x.name;});
+        render();
+      });
+    }
+  });
+}
+
 function renderList(){
   var hasFilter=state.authorId||state.recipientId||state.dateFrom||state.dateTo||state.language||state.descSearch||state.textSearch;
   var displayCount=hasFilter?state.filteredCount.toLocaleString():state.totalCount.toLocaleString();
@@ -241,13 +337,13 @@ function renderList(){
   html+='<div class="ac-wrap"><input class="ac-input" id="author-inp" type="text" placeholder="Type to search..." value="'+state.authorText.replace(/"/g,"&quot;")+'" oninput="onAuthorInput(this.value)" onfocus="document.getElementById(\'author-drop\').classList.add(\'open\')" onkeydown="onAuthorKey(event)" autocomplete="off">';
   if(state.authorText)html+='<button class="ac-clear" onclick="clearAuthor()">x</button>';
   html+='<div class="ac-dropdown" id="author-drop">';
-  html+=aOpts.length===0?'<div class="ac-item" style="color:#999;font-style:italic">Type to search...</div>':aOpts.map(function(o){return'<div class="ac-item'+(o.id==state.authorId?" selected-item":"")+'" onmousedown="event.preventDefault();selectAuthor(\''+o.id+'\',\''+o.name.replace(/\\/g,"\\\\").replace(/'/g,"\\'")+'\')">'+o.name+'</div>';}).join("");
+  html+=aOpts.length===0?'<div class="ac-item" style="color:#999">Type to search...</div>':aOpts.map(function(o){return'<div class="ac-item'+(o.id==state.authorId?" selected-item":"")+'" onmousedown="event.preventDefault();selectAuthor(\''+o.id+'\',\''+o.name.replace(/\\/g,"\\\\").replace(/'/g,"\\'")+'\')">'+o.name+'</div>';}).join("");
   html+='</div></div><button class="swap-btn" onclick="doSwap()">Swap</button></div>';
   html+='<div class="filter-row"><span class="filter-label">Recipient:</span>';
   html+='<div class="ac-wrap"><input class="ac-input" id="recip-inp" type="text" placeholder="Type to search..." value="'+state.recipientText.replace(/"/g,"&quot;")+'" oninput="onRecipInput(this.value)" onfocus="document.getElementById(\'recip-drop\').classList.add(\'open\')" onkeydown="onRecipKey(event)" autocomplete="off">';
   if(state.recipientText)html+='<button class="ac-clear" onclick="clearRecip()">x</button>';
   html+='<div class="ac-dropdown" id="recip-drop">';
-  html+=rOpts.length===0?'<div class="ac-item" style="color:#999;font-style:italic">Type to search...</div>':rOpts.map(function(o){return'<div class="ac-item'+(o.id==state.recipientId?" selected-item":"")+'" onmousedown="event.preventDefault();selectRecip(\''+o.id+'\',\''+o.name.replace(/\\/g,"\\\\").replace(/'/g,"\\'")+'\')">'+o.name+'</div>';}).join("");
+  html+=rOpts.length===0?'<div class="ac-item" style="color:#999">Type to search...</div>':rOpts.map(function(o){return'<div class="ac-item'+(o.id==state.recipientId?" selected-item":"")+'" onmousedown="event.preventDefault();selectRecip(\''+o.id+'\',\''+o.name.replace(/\\/g,"\\\\").replace(/'/g,"\\'")+'\')">'+o.name+'</div>';}).join("");
   html+='</div></div></div>';
   html+='<div class="filter-row"><span class="filter-label">Language:</span><select class="filter-select" onchange="onFilter(\'language\',this.value)"><option value="">Any</option>'+LANGS.map(function(l){return'<option value="'+l+'"'+(state.language===l?" selected":"")+'>'+l+'</option>';}).join("")+'</select></div>';
   html+='<div class="filter-row"><span class="filter-label">Date from:</span><input type="date" class="date-input" value="'+state.dateFrom+'" onchange="onFilter(\'dateFrom\',this.value)"><span style="color:rgba(255,255,255,0.7);font-size:12px;flex-shrink:0">to</span><input type="date" class="date-input" value="'+state.dateTo+'" onchange="onFilter(\'dateTo\',this.value)"></div>';
@@ -278,24 +374,23 @@ function renderDetail(){
   var hasPdf=l.sharing_link&&l.sharing_link.trim();
   var html='<div class="detail-header"><button class="back-btn" onclick="goBack()">&#8592; Back</button><span style="font-size:16px;font-weight:500">Letter Detail</span></div>';
   html+='<div class="detail-body">';
-  html+='<div class="field-label">Author</div><div class="field-value">'+(pname(l.author_id)||l.title||"Unknown")+'</div>';
-  html+='<div class="field-label">Recipient</div><div class="field-value">'+(pname(l.recipient_id)||"<span class=\"field-empty\">Unknown</span>")+'</div>';
-  html+='<div class="field-label">Date of Letter</div><div class="field-value">'+(fdate(l.date_of_letter)||"<span class=\"field-empty\">Unknown</span>")+'</div>';
+  html+='<div class="field-label">Author</div><div class="field-value"><span class="tag" onclick="openPerson('+l.author_id+')">'+(pname(l.author_id)||l.title||"Unknown")+'</span></div>';
+  html+='<div class="field-label">Recipient</div><div class="field-value"><span class="tag" onclick="openPerson('+l.recipient_id+')">'+(pname(l.recipient_id)||"Unknown")+'</span></div>';
+  html+='<div class="field-label">Date of Letter</div><div class="field-value">'+(fdate(l.date_of_letter)||"Unknown")+'</div>';
   html+='<div class="divider"></div>';
   if(l.description)html+='<div class="field-label">Description</div><div class="field-value">'+l.description+'</div>';
   if(l.translation)html+='<div class="field-label">Translation</div><div class="field-value">'+l.translation+'</div>';
   if(l.language)html+='<div class="field-label">Language</div><div class="field-value">'+l.language+'</div>';
   if(state.selectedPeople&&state.selectedPeople.length>0){
     html+='<div class="field-label">People Mentioned</div><div class="field-value">';
-    html+=state.selectedPeople.map(function(n){return'<span class="tag">'+n+'</span>';}).join("");
+    html+=state.selectedPeople.map(function(p){return'<span class="tag" onclick="openPerson('+p.id+')">'+p.name+'</span>';}).join("");
     html+='</div>';
   }
   if(state.selectedManuscripts&&state.selectedManuscripts.length>0){
     html+='<div class="field-label">Papyri Mentioned</div><div class="field-value">';
-    html+=state.selectedManuscripts.map(function(n){return'<span class="tag">'+n+'</span>';}).join("");
+    html+=state.selectedManuscripts.map(function(m){return'<span class="tag" onclick="openManuscript('+m.id+')">'+m.name+'</span>';}).join("");
     html+='</div>';
   }
-  if(l.papyri_id)html+='<div class="field-label">Papyri ID</div><div class="field-value">'+l.papyri_id+'</div>';
   html+='<div class="divider"></div>';
   html+='<div class="field-label">Original Document</div><div class="field-value">';
   html+=hasPdf?'<a class="pdf-btn" href="'+l.sharing_link+'" target="_blank">&#128196; View Original PDF</a>':'<span class="no-pdf">&#128196; No PDF available</span>';
@@ -309,7 +404,71 @@ function renderDetail(){
   return html;
 }
 
-function render(){var app=document.getElementById("app");if(!app)return;app.innerHTML=state.view==="detail"?renderDetail():renderList();}
+function renderPerson(){
+  var pv=state.personView;if(!pv)return"";
+  var p=pv.data;
+  var fullName=(p.first_name||"")+" "+(p.last_name||"");
+  var html='<div class="detail-header"><button class="back-btn" onclick="goBack()">&#8592; Back</button><span style="font-size:16px;font-weight:500">'+fullName.trim()+'</span></div>';
+  html+='<div class="detail-body">';
+  if(p.description)html+='<div class="field-label">About</div><div class="field-value">'+p.description+'</div>';
+  if(pv.loading){html+='<div class="loading">Loading correspondence...</div></div>';return html;}
+  if(pv.authored.length>0){
+    html+='<div class="section-title">Letters Authored ('+pv.authored.length+')</div>';
+    html+=pv.authored.map(function(l){return miniLetterRow(l,false);}).join("");
+  }
+  if(pv.received.length>0){
+    html+='<div class="section-title">Letters Received ('+pv.received.length+')</div>';
+    html+=pv.received.map(function(l){return miniLetterRow(l,true);}).join("");
+  }
+  if(pv.mentioned.length>0){
+    html+='<div class="section-title">Also Mentioned In ('+pv.mentioned.length+')</div>';
+    html+=pv.mentioned.map(function(l){
+      return'<div class="mini-letter" onclick="openLetterById('+l.id+')">'
+        +'<div class="mini-letter-info">'+(pname(l.author_id)||"?")+" to "+(pname(l.recipient_id)||"?")+(l.description?' &mdash; '+l.description.substring(0,60)+"...":"")+'</div>'
+        +'<div class="mini-letter-date">'+fdate(l.date_of_letter)+'</div>'
+        +'</div>';
+    }).join("");
+  }
+  html+='</div>';
+  return html;
+}
+
+function renderManuscript(){
+  var mv=state.manuscriptView;if(!mv)return"";
+  var m=mv.data;
+  var html='<div class="detail-header"><button class="back-btn" onclick="goBack()">&#8592; Back</button><span style="font-size:16px;font-weight:500">'+m.name+'</span></div>';
+  html+='<div class="detail-body">';
+  if(m.description)html+='<div class="field-label">Description</div><div class="field-value">'+m.description+'</div>';
+  if(mv.loading){html+='<div class="loading">Loading...</div></div>';return html;}
+  if(mv.institutions.length>0){
+    html+='<div class="section-title">Holding Institutions</div>';
+    mv.institutions.forEach(function(i){
+      html+='<div style="margin-bottom:8px"><div class="field-value"><strong>'+i.name+'</strong>';
+      if(i.location)html+=' &mdash; '+i.location;
+      if(i.notes)html+='<br><span style="font-size:12px;color:#666">'+i.notes+'</span>';
+      html+='</div></div>';
+    });
+  }
+  if(mv.letters.length>0){
+    html+='<div class="section-title">Mentioned In Letters ('+mv.letters.length+')</div>';
+    html+=mv.letters.map(function(l){
+      return'<div class="mini-letter" onclick="openLetterById('+l.id+')">'
+        +'<div class="mini-letter-info">'+(pname(l.author_id)||"?")+" to "+(pname(l.recipient_id)||"?")+(l.description?' &mdash; '+l.description.substring(0,60)+"...":"")+'</div>'
+        +'<div class="mini-letter-date">'+fdate(l.date_of_letter)+'</div>'
+        +'</div>';
+    }).join("");
+  }
+  html+='</div>';
+  return html;
+}
+
+function render(){
+  var app=document.getElementById("app");if(!app)return;
+  if(state.view==="detail")app.innerHTML=renderDetail();
+  else if(state.view==="person")app.innerHTML=renderPerson();
+  else if(state.view==="manuscript")app.innerHTML=renderManuscript();
+  else app.innerHTML=renderList();
+}
 render();
 </script>
 </body>
