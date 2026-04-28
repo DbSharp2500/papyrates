@@ -65,7 +65,7 @@ var SH={"apikey":SUPABASE_KEY,"Authorization":"Bearer "+SUPABASE_KEY};
 
 var DSS_TRIGGERS=["dead sea","dss","qumran","cave 4","cave 11","judean desert","wadi murabba","nahal hever","museum of the bible","motb","green collection","hobby lobby","post-2002","post 2002","unprovenanced","forgery","forgeries","kando","ferrini","schoyen","fragment"];
 
-var ALL_DSS_TERMS=["dead sea","scroll","qumran","fragment","kando","william kando","ferrini","schøyen","schoyen","museum of the bible","hobby lobby","green collection","azusa pacific","lanier","cave 4","cave 11","wadi","judean desert","nahal hever","ketef jericho","israel antiquities","paleo-leviticus","paleo leviticus","genesis apocryphon","isaiah scroll","psalms scroll","enoch","jubilees","community rule","war scroll","damascus document","temple scroll","hodayot","pesher","mmt","tefillin","phylactery","mezuzah","unprovenanced","provenance","forgery","forged","looted","smuggled","authentication","radiocarbon","ink analysis","repatriation","hobby lobby settlement","national stolen property","southwest radio","scott carroll","jerry pattengale","brill collection","southwestern baptist","liberty university","shroud","biblical manuscript","hebrew manuscript","aramaic manuscript","copper scroll","dead sea scrolls foundation","william hahn","4q","11q","1q","testament","apocryphon","pseudepigrapha","apocrypha","sectarian","schiffman","charlesworth","elgvin","justnes","rollston","tov"];
+var ALL_DSS_TERMS=["dead sea","scroll","qumran","fragment","kando","william kando","ferrini","schøyen","schoyen","museum of the bible","hobby lobby","green collection","azusa pacific","lanier","cave 4","cave 11","wadi","judean desert","nahal hever","ketef jericho","israel antiquities","paleo-leviticus","paleo leviticus","genesis apocryphon","isaiah scroll","psalms scroll","enoch","jubilees","community rule","war scroll","damascus document","temple scroll","hodayot","pesher","mmt","tefillin","phylactery","mezuzah","unprovenanced","provenance","forgery","forged","looted","smuggled","authentication","radiocarbon","ink analysis","repatriation","hobby lobby settlement","national stolen property","southwest radio","scott carroll","jerry pattengale","brill collection","southwestern baptist","liberty university","4q","11q","1q","testament","apocryphon","sectarian","schiffman","charlesworth","elgvin","justnes","rollston","tov"];
 
 var DSS_SYSTEM_KNOWLEDGE="SPECIALIZED KNOWLEDGE - DEAD SEA SCROLLS:\n\nYou have expert knowledge of Dead Sea Scroll manuscripts. When letters mention the following, recognize them as DSS-related even without explicit mention:\n\nMANUSCRIPT NAMES: Paleo-Leviticus (4QpaleoLev), Genesis Apocryphon, Isaiah Scroll (1QIsa), Psalms Scroll (11QPsa), 1 Enoch (4QEn), Jubilees (4QJub), Community Rule (1QS), War Scroll (1QM), Damascus Document, Temple Scroll (11QT), Hodayot (1QH), Pesharim, Songs of the Sabbath Sacrifice, MMT (4QMMT), New Jerusalem, Visions of Amram, Aramaic Levi, 4Q542-548, Tefillin, Mezuzot\n\nKEY DEALERS: Kando family (Khalil Eskander Shahin, William Kando), anonymous Swiss/Norwegian dealers, Bethlehem/Jerusalem antiquities market\n\nKEY INSTITUTIONS (post-2002): Museum of the Bible (MOTB), Hobby Lobby, Green Collection, Azusa Pacific University, Southwestern Baptist Theological Seminary, Liberty University, Lanier Theological Library, Green Scholars Initiative\n\nKEY SCHOLARS: Emanuel Tov, Lawrence Schiffman, James Charlesworth, Torleif Elgvin, Kipp Davis, Arstein Justnes, Christopher Rollston, Michael Langlois, Craig Evans, Scott Carroll, Jerry Pattengale\n\nPROVENANCE: Most post-2002 fragments lack pre-2002 documentation. 16+ MOTB fragments proven as forgeries (2016-2020). Hobby Lobby paid $3M fine, returned artifacts to Iraq (2017-2018). The 2002 flood of new fragments is widely considered suspicious.\n\nCONTEXT: References to 'the fragments', 'the material', 'the scrolls', 'the texts' in negotiations with Kando, Ferrini, Schøyen, or other known dealers likely refer to DSS fragments.\n";
 
@@ -108,9 +108,7 @@ function hideThinking(){var t=document.getElementById("thinking");if(t)t.remove(
 function getSearchTerms(question){
   var q=question.toLowerCase();
   var terms=[];
-  if(isDSSQuery(question)){
-    terms=terms.concat(ALL_DSS_TERMS.slice(0,30));
-  }
+  if(isDSSQuery(question)){terms=terms.concat(ALL_DSS_TERMS.slice(0,30));}
   var stopwords=["the","a","an","and","or","but","in","on","at","to","for","of","with","by","from","is","are","was","were","be","been","have","has","had","do","does","did","will","would","could","should","may","might","what","which","who","when","where","how","why","that","this","these","those","i","we","you","they","he","she","it","all","any","some","about","into","through","during","before","after","searching","internet","articles","websites","information","found","primary","sources","letters","faxes","court","documents","database","contradicts","challenges","scholarly","consensus","post"];
   var words=q.replace(/[^\w\s]/g," ").split(/\s+/).filter(function(w){return w.length>3&&stopwords.indexOf(w)===-1;});
   terms=terms.concat(words);
@@ -121,21 +119,19 @@ async function searchDatabase(question){
   var terms=getSearchTerms(question);
   var allLetters=[];
   var seen=new Set();
-
   for(var i=0;i<Math.min(terms.length,20);i++){
     var kw=encodeURIComponent(terms[i]);
     try{
-      var r1=await fetch(SUPABASE_URL+"/letters?select=id,author_id,recipient_id,date_of_letter,description,full_text&full_text=ilike.*"+kw+"*&limit=30",{headers:SH});
+      var r1=await fetch(SUPABASE_URL+"/letters?select=id,author_id,recipient_id,date_of_letter,description,full_text,title&full_text=ilike.*"+kw+"*&limit=30",{headers:SH});
       var d1=await r1.json();
       if(Array.isArray(d1))d1.forEach(function(l){if(!seen.has(l.id)){seen.add(l.id);allLetters.push(l);}});
     }catch(e){}
     try{
-      var r2=await fetch(SUPABASE_URL+"/letters?select=id,author_id,recipient_id,date_of_letter,description,full_text&description=ilike.*"+kw+"*&limit=15",{headers:SH});
+      var r2=await fetch(SUPABASE_URL+"/letters?select=id,author_id,recipient_id,date_of_letter,description,full_text,title&description=ilike.*"+kw+"*&limit=15",{headers:SH});
       var d2=await r2.json();
       if(Array.isArray(d2))d2.forEach(function(l){if(!seen.has(l.id)){seen.add(l.id);allLetters.push(l);}});
     }catch(e){}
   }
-
   allLetters.sort(function(a,b){
     var aScore=0,bScore=0;
     var aText=((a.full_text||"")+(a.description||"")).toLowerCase();
@@ -143,7 +139,6 @@ async function searchDatabase(question){
     terms.forEach(function(t){if(aText.indexOf(t)>=0)aScore++;if(bText.indexOf(t)>=0)bScore++;});
     return bScore-aScore;
   });
-
   return allLetters.slice(0,60);
 }
 
@@ -167,6 +162,17 @@ async function loadPeopleNames(letters){
 
 function fdate(d){if(!d)return"unknown date";var p=d.split("-");if(p.length!==3)return d;return parseInt(p[1])+"/"+parseInt(p[2])+"/"+p[0];}
 
+function getDisplayName(letter, names){
+  var author=names[String(letter.author_id)]||"";
+  var recip=names[String(letter.recipient_id)]||"";
+  if(author&&recip)return author+" &#x2192; "+recip+" ("+fdate(letter.date_of_letter)+")";
+  if(author)return author+" &#x2192; Unknown ("+fdate(letter.date_of_letter)+")";
+  if(recip)return "Unknown &#x2192; "+recip+" ("+fdate(letter.date_of_letter)+")";
+  // Fall back to title
+  if(letter.title)return letter.title.substring(0,80)+(letter.title.length>80?"...":"");
+  return "Untitled document";
+}
+
 function formatLetters(letters,names){
   return letters.map(function(l,i){
     var author=names[String(l.author_id)]||"Unknown";
@@ -174,7 +180,9 @@ function formatLetters(letters,names){
     var date=fdate(l.date_of_letter);
     var text=l.full_text||(l.description?"[Description: "+l.description+"]":"[No text]");
     if(text.length>3000)text=text.substring(0,3000)+"...[truncated]";
-    return"=== LETTER "+(i+1)+" ===\nFrom: "+author+"\nTo: "+recip+"\nDate: "+date+"\n\n"+text;
+    var header="=== LETTER "+(i+1)+" ===\nFrom: "+author+"\nTo: "+recip+"\nDate: "+date;
+    if(l.title&&(author==="Unknown"||recip==="Unknown"))header+="\nDocument: "+l.title;
+    return header+"\n\n"+text;
   }).join("\n\n");
 }
 
@@ -182,16 +190,14 @@ async function askClaude(question,letters,names,useWeb){
   var dss=isDSSQuery(question);
   var sys="You are a research assistant specializing in papyri and biblical manuscript acquisition, trafficking, and provenance. You have access to private correspondence between dealers, scholars, collectors, and institutions.\n\nYour role:\n1. Analyze the primary source letters carefully\n2. Cross-reference with scholarly knowledge\n3. Identify contradictions or challenges to established narratives\n4. Cite specific letters by sender, recipient, and date\n5. Quote significant passages directly\n6. Be honest about uncertainty\n7. Think like a historian\n\n";
   if(dss)sys+=DSS_SYSTEM_KNOWLEDGE+"\nWhen analyzing for DSS connections, look for: references to 'fragments'/'material'/'texts' even without explicit DSS mention; negotiations with known DSS dealers; provenance discussions; price negotiations for biblical/Hebrew manuscripts; specific manuscript content matching known DSS texts.\n\n";
-
   var user="RESEARCH QUESTION:\n"+question+"\n\n";
   if(letters.length>0){
-    user+="PRIMARY SOURCES ("+letters.length+" relevant letters from database):\n\n"+formatLetters(letters,names)+"\n\n";
-    user+="Please provide a thorough research analysis based on these primary sources. ";
+    user+="PRIMARY SOURCES ("+letters.length+" relevant documents from database):\n\n"+formatLetters(letters,names)+"\n\n";
+    user+="Please provide a thorough research analysis. ";
   } else {
-    user+="No matching letters found in database. Please provide analysis based on your knowledge and note what primary sources would be useful.\n\n";
+    user+="No matching documents found in database. Please provide analysis based on your knowledge.\n\n";
   }
   if(useWeb)user+="Draw on scholarly literature and public record for context. Identify tensions between private correspondence and public narrative.";
-
   var r=await fetch("/api/chat",{
     method:"POST",
     headers:{"content-type":"application/json"},
@@ -212,10 +218,8 @@ async function sendQuestion(){
   input.value="";
   document.getElementById("sendBtn").disabled=true;
   var dss=isDSSQuery(question);
-  var userMsg=question+(dss?' <span class="dss-badge">DSS Mode</span>':"");
-  addMessage("user",userMsg);
+  addMessage("user",question+(dss?' <span class="dss-badge">DSS Mode</span>':""));
   showThinking("Searching database"+(dss?" with DSS knowledge base":"")+"...");
-
   try{
     var letters=[],names={};
     if(useDB){
@@ -223,29 +227,27 @@ async function sendQuestion(){
       names=await loadPeopleNames(letters);
     }
     hideThinking();
-    var statusMsg="Found <strong>"+letters.length+"</strong> relevant letters";
-    if(dss)statusMsg+=" (DSS mode — searching "+ALL_DSS_TERMS.slice(0,4).join(", ")+" and more)";
+    var statusMsg="Found <strong>"+letters.length+"</strong> relevant documents";
+    if(dss)statusMsg+=" (DSS mode active)";
     statusMsg+=". Analyzing with Claude...";
     var statusDiv=addMessage("system",statusMsg);
     showThinking("Claude is reading and synthesizing...");
     var answer=await askClaude(question,letters,names,useWeb);
     hideThinking();
     statusDiv.remove();
-
     var formatted=answer
       .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
       .replace(/\n\n/g,"</p><p>").replace(/\n/g,"<br>")
       .replace(/\*\*(.+?)\*\*/g,"<strong>$1</strong>")
       .replace(/\*(.+?)\*/g,"<em>$1</em>");
     formatted="<p>"+formatted+"</p>";
-
     var sourcesList="";
     if(letters.length>0){
-      sourcesList='<div class="sources"><strong>Letters analyzed ('+letters.length+'):</strong>';
+      sourcesList='<div class="sources"><strong>Documents analyzed ('+letters.length+'):</strong>';
       letters.slice(0,15).forEach(function(l){
-        var author=names[String(l.author_id)]||"Unknown";
-        var recip=names[String(l.recipient_id)]||"Unknown";
-        sourcesList+='<div class="source-item">'+author+" &#x2192; "+recip+" ("+fdate(l.date_of_letter)+")"+(l.description?' &mdash; '+l.description.substring(0,70):"")+'</div>';
+        var display=getDisplayName(l,names);
+        var desc=l.description?' &mdash; '+l.description.substring(0,60):"";
+        sourcesList+='<div class="source-item">'+display+desc+'</div>';
       });
       if(letters.length>15)sourcesList+='<div style="color:#888;font-size:11px;margin-top:4px">...and '+(letters.length-15)+' more</div>';
       sourcesList+='</div>';
