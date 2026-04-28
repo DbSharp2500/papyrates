@@ -7,14 +7,18 @@
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:Arial,sans-serif;background:#1a1a2e;min-height:100vh;display:flex;flex-direction:column}
-.header{background:#2d4a8a;color:white;padding:16px 24px;display:flex;align-items:center;gap:12px}
+.header{background:#2d4a8a;color:white;padding:16px 24px;display:flex;align-items:center;justify-content:space-between}
 .header h1{font-size:20px;font-weight:500}
 .header p{font-size:13px;opacity:0.8;margin-top:2px}
+.header-btns{display:flex;gap:8px}
+.hbtn{background:rgba(255,255,255,0.2);color:white;border:1px solid rgba(255,255,255,0.4);padding:6px 12px;border-radius:6px;cursor:pointer;font-size:12px}
+.hbtn:hover{background:rgba(255,255,255,0.3)}
 .chat-container{flex:1;overflow-y:auto;padding:24px;display:flex;flex-direction:column;gap:16px;max-width:900px;width:100%;margin:0 auto}
 .message{padding:16px;border-radius:10px;line-height:1.7;font-size:14px}
 .message.user{background:#2d4a8a;color:white;align-self:flex-end;max-width:80%}
 .message.assistant{background:white;color:#222;align-self:flex-start;max-width:90%;box-shadow:0 2px 8px rgba(0,0,0,0.2)}
 .message.system{background:#1e3a5f;color:#aac4e8;align-self:center;font-size:12px;padding:8px 16px;border-radius:20px;text-align:center}
+.message.memory{background:#1a3a2a;color:#7ecfa0;align-self:flex-start;max-width:90%;font-size:12px;border:1px solid #2a5a3a}
 .message h3{color:#2d4a8a;margin-bottom:8px;font-size:15px}
 .sources{margin-top:12px;padding-top:12px;border-top:1px solid #e0e0e0;font-size:12px;color:#666}
 .source-item{background:#f0f3fa;padding:6px 10px;border-radius:4px;margin-top:6px}
@@ -35,26 +39,59 @@ body{font-family:Arial,sans-serif;background:#1a1a2e;min-height:100vh;display:fl
 .settings label{display:flex;align-items:center;gap:6px;cursor:pointer}
 .counter{margin-left:auto;color:#556}
 .dss-badge{background:#4a1a6e;color:#d4a8ff;padding:2px 8px;border-radius:10px;font-size:11px;margin-left:8px}
+.save-session-bar{background:#1a2a1a;border-top:1px solid #2a5a2a;padding:12px 24px;display:none}
+.save-session-bar.visible{display:block}
+.save-row{max-width:900px;margin:0 auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.save-row p{color:#7ecfa0;font-size:13px;flex:1}
+.sbtn{padding:8px 16px;border-radius:6px;cursor:pointer;font-size:13px;border:none}
+.sbtn.green{background:#2a6a3a;color:white}
+.sbtn.green:hover{background:#3a8a4a}
+.sbtn.gray{background:#333;color:#aaa}
+.sbtn.gray:hover{background:#444}
+.memory-panel{background:#0f1f0f;border:1px solid #2a5a2a;border-radius:8px;padding:16px;margin:16px 24px;display:none;max-width:900px;margin-left:auto;margin-right:auto}
+.memory-panel.visible{display:block}
+.memory-panel h3{color:#7ecfa0;font-size:14px;margin-bottom:12px}
+.memory-entry{background:#1a2a1a;border:1px solid #2a4a2a;border-radius:6px;padding:10px;margin-bottom:8px;font-size:12px;color:#aaa}
+.memory-entry .date{color:#7ecfa0;font-size:11px;margin-bottom:4px}
+.memory-entry .text{color:#ccc;line-height:1.5}
 </style>
 </head>
 <body>
+<div id="login-screen" style="max-width:360px;margin:80px auto;background:#16213e;border-radius:12px;padding:32px;box-shadow:0 2px 20px rgba(0,0,0,0.4);text-align:center"><h1 style="color:#7ecfa0;font-size:22px;margin-bottom:8px">🏴‍☠️ Papyrates Research</h1><p style="color:#888;font-size:14px;margin-bottom:24px">Enter password to access</p><input type="password" id="pwd-input" placeholder="Password" style="width:100%;padding:10px 14px;border:1px solid #2d4a8a;border-radius:6px;font-size:14px;margin-bottom:12px;background:#1a1a2e;color:white"><button onclick="doLogin()" style="width:100%;padding:10px;background:#2d4a8a;color:white;border:none;border-radius:6px;font-size:15px;cursor:pointer">Enter</button><div id="login-error" style="color:#c0392b;font-size:13px;margin-top:8px"></div></div>
+<div id="main-app" style="display:none;flex-direction:column;min-height:100vh" class="flex-col">
 <div class="header">
   <div>
     <h1>&#x1F3F4;&#x200D;&#x2620;&#xFE0F; Papyrates Research Assistant</h1>
     <p>AI-powered analysis of the papyri correspondence database</p>
   </div>
+  <div class="header-btns">
+    <button class="hbtn" onclick="toggleMemoryPanel()">&#x1F9E0; Memory</button>
+    <button class="hbtn" onclick="showSaveBar()">&#x1F4BE; Save Session</button>
+  </div>
 </div>
 <div class="settings">
   <label><input type="checkbox" id="useDB" checked> Search database letters</label>
   <label><input type="checkbox" id="useWeb" checked> Include scholarly context</label>
+  <label><input type="checkbox" id="useMemory" checked> Use session memory</label>
   <span id="letterCount" class="counter">Loading...</span>
 </div>
+<div class="memory-panel" id="memoryPanel">
+  <h3>&#x1F9E0; Research Memory — Previous Session Findings</h3>
+  <div id="memoryEntries"><em style="color:#556">Loading memory...</em></div>
+</div>
 <div class="chat-container" id="chat">
-  <div class="message system">Ask a research question. I will search the correspondence database and synthesize an answer.<br>I have specialized knowledge of Dead Sea Scroll manuscripts, dealers, and provenance issues.</div>
+  <div class="message system">Ask a research question. Previous session findings are loaded automatically.<br>Click "Save Session" when done to preserve what was learned.</div>
+</div>
+<div class="save-session-bar" id="saveBar">
+  <div class="save-row">
+    <p>&#x1F4BE; Ready to save this session. Claude will summarize findings — you can add or remove anything before saving.</p>
+    <button class="sbtn green" onclick="startSaveSession()">Generate Summary</button>
+    <button class="sbtn gray" onclick="hideSaveBar()">Cancel</button>
+  </div>
 </div>
 <div class="input-area">
   <div class="input-row">
-    <textarea id="questionInput" placeholder="Ask a research question... (e.g. 'What do the letters reveal about post-2002 Dead Sea Scroll fragments?')" rows="2"></textarea>
+    <textarea id="questionInput" placeholder="Ask a research question..." rows="2"></textarea>
     <button class="send-btn" id="sendBtn" onclick="sendQuestion()">Ask</button>
   </div>
 </div>
@@ -63,16 +100,57 @@ var SUPABASE_URL="https://vzfwobsnfqnnqvnsfksq.supabase.co/rest/v1";
 var SUPABASE_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ6ZndvYnNuZnFubnF2bnNma3NxIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3Njg4ODA3MCwiZXhwIjoyMDkyNDY0MDcwfQ.J_TE4qWj9r6TIvGeptM58r2WtI6ytOe9zg7BBe29wHI";
 var SH={"apikey":SUPABASE_KEY,"Authorization":"Bearer "+SUPABASE_KEY};
 
-var DSS_TRIGGERS=["dead sea","dss","qumran","cave 4","cave 11","judean desert","wadi murabba","nahal hever","museum of the bible","motb","green collection","hobby lobby","post-2002","post 2002","unprovenanced","forgery","forgeries","kando","ferrini","schoyen","fragment"];
+var sessionHistory=[];
+var loadedMemory=[];
+var savingSession=false;
+var pendingSummary=null;
 
-var ALL_DSS_TERMS=["dead sea","scroll","qumran","fragment","kando","william kando","ferrini","schøyen","schoyen","museum of the bible","hobby lobby","green collection","azusa pacific","lanier","cave 4","cave 11","wadi","judean desert","nahal hever","ketef jericho","israel antiquities","paleo-leviticus","paleo leviticus","genesis apocryphon","isaiah scroll","psalms scroll","enoch","jubilees","community rule","war scroll","damascus document","temple scroll","hodayot","pesher","mmt","tefillin","phylactery","mezuzah","unprovenanced","provenance","forgery","forged","looted","smuggled","authentication","radiocarbon","ink analysis","repatriation","hobby lobby settlement","national stolen property","southwest radio","scott carroll","jerry pattengale","brill collection","southwestern baptist","liberty university","4q","11q","1q","testament","apocryphon","sectarian","schiffman","charlesworth","elgvin","justnes","rollston","tov"];
+var DSS_TRIGGERS=["dead sea","dss","qumran","cave 4","cave 11","judean desert","museum of the bible","motb","green collection","hobby lobby","post-2002","post 2002","unprovenanced","forgery","forgeries","kando","ferrini","schoyen","fragment"];
+var ALL_DSS_TERMS=["dead sea","scroll","qumran","fragment","kando","william kando","ferrini","schøyen","schoyen","museum of the bible","hobby lobby","green collection","azusa pacific","lanier","cave 4","cave 11","wadi","judean desert","nahal hever","israel antiquities","paleo-leviticus","genesis apocryphon","isaiah scroll","psalms scroll","enoch","jubilees","community rule","war scroll","damascus document","temple scroll","hodayot","pesher","mmt","tefillin","phylactery","mezuzah","unprovenanced","provenance","forgery","forged","looted","authentication","radiocarbon","repatriation","hobby lobby settlement","scott carroll","jerry pattengale","southwestern baptist","liberty university","4q","11q","1q","apocryphon","sectarian","schiffman","charlesworth","elgvin","justnes","rollston","tov"];
+var DSS_SYSTEM_KNOWLEDGE="SPECIALIZED KNOWLEDGE - DEAD SEA SCROLLS:\n\nMANUSCRIPT NAMES: Paleo-Leviticus (4QpaleoLev), Genesis Apocryphon, Isaiah Scroll (1QIsa), Psalms Scroll (11QPsa), 1 Enoch (4QEn), Jubilees (4QJub), Community Rule (1QS), War Scroll (1QM), Damascus Document, Temple Scroll (11QT), Hodayot (1QH), Pesharim, Songs of Sabbath Sacrifice, MMT (4QMMT), New Jerusalem, Visions of Amram, Aramaic Levi, 4Q542-548, Tefillin, Mezuzot\n\nKEY DEALERS: Kando family (Khalil Eskander Shahin, William Kando), anonymous Swiss/Norwegian dealers\n\nKEY INSTITUTIONS (post-2002): Museum of the Bible (MOTB), Hobby Lobby, Green Collection, Azusa Pacific University, Southwestern Baptist Theological Seminary, Liberty University, Lanier Theological Library\n\nKEY SCHOLARS: Emanuel Tov, Lawrence Schiffman, James Charlesworth, Torleif Elgvin, Kipp Davis, Arstein Justnes, Christopher Rollston, Michael Langlois, Craig Evans, Scott Carroll, Jerry Pattengale\n\nPROVENANCE: Most post-2002 fragments lack pre-2002 documentation. 16+ MOTB fragments proven forgeries (2016-2020). Hobby Lobby paid $3M fine, returned artifacts to Iraq (2017-2018).\n";
 
-var DSS_SYSTEM_KNOWLEDGE="SPECIALIZED KNOWLEDGE - DEAD SEA SCROLLS:\n\nYou have expert knowledge of Dead Sea Scroll manuscripts. When letters mention the following, recognize them as DSS-related even without explicit mention:\n\nMANUSCRIPT NAMES: Paleo-Leviticus (4QpaleoLev), Genesis Apocryphon, Isaiah Scroll (1QIsa), Psalms Scroll (11QPsa), 1 Enoch (4QEn), Jubilees (4QJub), Community Rule (1QS), War Scroll (1QM), Damascus Document, Temple Scroll (11QT), Hodayot (1QH), Pesharim, Songs of the Sabbath Sacrifice, MMT (4QMMT), New Jerusalem, Visions of Amram, Aramaic Levi, 4Q542-548, Tefillin, Mezuzot\n\nKEY DEALERS: Kando family (Khalil Eskander Shahin, William Kando), anonymous Swiss/Norwegian dealers, Bethlehem/Jerusalem antiquities market\n\nKEY INSTITUTIONS (post-2002): Museum of the Bible (MOTB), Hobby Lobby, Green Collection, Azusa Pacific University, Southwestern Baptist Theological Seminary, Liberty University, Lanier Theological Library, Green Scholars Initiative\n\nKEY SCHOLARS: Emanuel Tov, Lawrence Schiffman, James Charlesworth, Torleif Elgvin, Kipp Davis, Arstein Justnes, Christopher Rollston, Michael Langlois, Craig Evans, Scott Carroll, Jerry Pattengale\n\nPROVENANCE: Most post-2002 fragments lack pre-2002 documentation. 16+ MOTB fragments proven as forgeries (2016-2020). Hobby Lobby paid $3M fine, returned artifacts to Iraq (2017-2018). The 2002 flood of new fragments is widely considered suspicious.\n\nCONTEXT: References to 'the fragments', 'the material', 'the scrolls', 'the texts' in negotiations with Kando, Ferrini, Schøyen, or other known dealers likely refer to DSS fragments.\n";
-
+// Load letter count
 fetch(SUPABASE_URL+"/letters?select=id&limit=1",{headers:Object.assign({},SH,{"Prefer":"count=exact"})}).then(function(r){
   var ct=r.headers.get("content-range");
-  if(ct){var m=ct.match(/\/(\d+)/);if(m)document.getElementById("letterCount").textContent=parseInt(m[1]).toLocaleString()+" letters in database";}
+  if(ct){var m=ct.match(/\/(\d+)/);if(m)document.getElementById("letterCount").textContent=parseInt(m[1]).toLocaleString()+" letters";}
 }).catch(function(){});
+
+// Load memory on startup
+loadMemory();
+
+async function loadMemory(){
+  try{
+    var r=await fetch(SUPABASE_URL+"/research_memory?select=id,session_date,summary,confirmed_findings&order=session_date.desc&limit=8",{headers:SH});
+    var data=await r.json();
+    if(Array.isArray(data)&&data.length>0){
+      loadedMemory=data;
+      renderMemoryPanel();
+      if(document.getElementById("useMemory").checked){
+        addMessage("memory","&#x1F9E0; <strong>Memory loaded:</strong> "+data.length+" previous session"+(data.length>1?"s":"")+" found. I will consider prior findings when answering your questions.");
+      }
+    }
+  }catch(e){}
+}
+
+function renderMemoryPanel(){
+  var panel=document.getElementById("memoryEntries");
+  if(loadedMemory.length===0){panel.innerHTML='<em style="color:#556">No previous sessions saved yet.</em>';return;}
+  panel.innerHTML=loadedMemory.map(function(m){
+    var d=new Date(m.session_date);
+    var dateStr=d.toLocaleDateString()+" "+d.toLocaleTimeString();
+    var text=(m.confirmed_findings||m.summary||"").substring(0,300);
+    return'<div class="memory-entry"><div class="date">'+dateStr+'</div><div class="text">'+text+(text.length>=300?"...":"")+'</div></div>';
+  }).join("");
+}
+
+function toggleMemoryPanel(){
+  var panel=document.getElementById("memoryPanel");
+  panel.classList.toggle("visible");
+  renderMemoryPanel();
+}
+
+function showSaveBar(){document.getElementById("saveBar").classList.add("visible");}
+function hideSaveBar(){document.getElementById("saveBar").classList.remove("visible");}
 
 document.getElementById("questionInput").addEventListener("keydown",function(e){
   if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();sendQuestion();}
@@ -93,51 +171,35 @@ function addMessage(type,content){
   chat.scrollTop=chat.scrollHeight;
   return div;
 }
-
 function showThinking(msg){
   var chat=document.getElementById("chat");
   var div=document.createElement("div");
-  div.className="thinking";
-  div.id="thinking";
+  div.className="thinking";div.id="thinking";
   div.innerHTML='<div class="dot"></div><div class="dot"></div><div class="dot"></div><span style="color:#666;font-size:13px;margin-left:8px">'+(msg||"Searching...")+'</span>';
-  chat.appendChild(div);
-  chat.scrollTop=chat.scrollHeight;
+  chat.appendChild(div);chat.scrollTop=chat.scrollHeight;
 }
 function hideThinking(){var t=document.getElementById("thinking");if(t)t.remove();}
 
 function getSearchTerms(question){
-  var q=question.toLowerCase();
-  var terms=[];
-  if(isDSSQuery(question)){terms=terms.concat(ALL_DSS_TERMS.slice(0,30));}
-  var stopwords=["the","a","an","and","or","but","in","on","at","to","for","of","with","by","from","is","are","was","were","be","been","have","has","had","do","does","did","will","would","could","should","may","might","what","which","who","when","where","how","why","that","this","these","those","i","we","you","they","he","she","it","all","any","some","about","into","through","during","before","after","searching","internet","articles","websites","information","found","primary","sources","letters","faxes","court","documents","database","contradicts","challenges","scholarly","consensus","post"];
-  var words=q.replace(/[^\w\s]/g," ").split(/\s+/).filter(function(w){return w.length>3&&stopwords.indexOf(w)===-1;});
+  var q=question.toLowerCase();var terms=[];
+  if(isDSSQuery(question))terms=terms.concat(ALL_DSS_TERMS.slice(0,30));
+  var stop=["the","a","an","and","or","but","in","on","at","to","for","of","with","by","from","is","are","was","were","be","been","have","has","had","do","does","did","will","would","could","should","may","might","what","which","who","when","where","how","why","that","this","these","those","i","we","you","they","he","she","it","all","any","some","about","into","searching","internet","articles","websites","information","found","primary","sources","letters","faxes","court","documents","database","contradicts","challenges","scholarly","consensus","post"];
+  var words=q.replace(/[^\w\s]/g," ").split(/\s+/).filter(function(w){return w.length>3&&stop.indexOf(w)===-1;});
   terms=terms.concat(words);
   return Array.from(new Set(terms)).slice(0,25);
 }
 
 async function searchDatabase(question){
-  var terms=getSearchTerms(question);
-  var allLetters=[];
-  var seen=new Set();
+  var terms=getSearchTerms(question);var allLetters=[];var seen=new Set();
   for(var i=0;i<Math.min(terms.length,20);i++){
     var kw=encodeURIComponent(terms[i]);
-    try{
-      var r1=await fetch(SUPABASE_URL+"/letters?select=id,author_id,recipient_id,date_of_letter,description,full_text,title&full_text=ilike.*"+kw+"*&limit=30",{headers:SH});
-      var d1=await r1.json();
-      if(Array.isArray(d1))d1.forEach(function(l){if(!seen.has(l.id)){seen.add(l.id);allLetters.push(l);}});
-    }catch(e){}
-    try{
-      var r2=await fetch(SUPABASE_URL+"/letters?select=id,author_id,recipient_id,date_of_letter,description,full_text,title&description=ilike.*"+kw+"*&limit=15",{headers:SH});
-      var d2=await r2.json();
-      if(Array.isArray(d2))d2.forEach(function(l){if(!seen.has(l.id)){seen.add(l.id);allLetters.push(l);}});
-    }catch(e){}
+    try{var r1=await fetch(SUPABASE_URL+"/letters?select=id,author_id,recipient_id,date_of_letter,description,full_text,title&full_text=ilike.*"+kw+"*&limit=30",{headers:SH});var d1=await r1.json();if(Array.isArray(d1))d1.forEach(function(l){if(!seen.has(l.id)){seen.add(l.id);allLetters.push(l);}});}catch(e){}
+    try{var r2=await fetch(SUPABASE_URL+"/letters?select=id,author_id,recipient_id,date_of_letter,description,full_text,title&description=ilike.*"+kw+"*&limit=15",{headers:SH});var d2=await r2.json();if(Array.isArray(d2))d2.forEach(function(l){if(!seen.has(l.id)){seen.add(l.id);allLetters.push(l);}});}catch(e){}
   }
   allLetters.sort(function(a,b){
-    var aScore=0,bScore=0;
-    var aText=((a.full_text||"")+(a.description||"")).toLowerCase();
-    var bText=((b.full_text||"")+(b.description||"")).toLowerCase();
-    terms.forEach(function(t){if(aText.indexOf(t)>=0)aScore++;if(bText.indexOf(t)>=0)bScore++;});
-    return bScore-aScore;
+    var aS=0,bS=0,aT=((a.full_text||"")+(a.description||"")).toLowerCase(),bT=((b.full_text||"")+(b.description||"")).toLowerCase();
+    terms.forEach(function(t){if(aT.indexOf(t)>=0)aS++;if(bT.indexOf(t)>=0)bS++;});
+    return bS-aS;
   });
   return allLetters.slice(0,60);
 }
@@ -146,68 +208,113 @@ async function loadPeopleNames(letters){
   var ids=new Set();
   letters.forEach(function(l){if(l.author_id)ids.add(l.author_id);if(l.recipient_id)ids.add(l.recipient_id);});
   if(ids.size===0)return{};
-  var idList=Array.from(ids).join(",");
   try{
-    var r=await fetch(SUPABASE_URL+"/people?id=in.("+idList+")&select=id,first_name,last_name",{headers:SH});
-    var data=await r.json();
-    var map={};
-    if(Array.isArray(data))data.forEach(function(p){
-      var l=(p.last_name||"").trim();
-      var f=(p.first_name||"").trim();
-      map[String(p.id)]=l&&f?l+", "+f:l||f||"Unknown";
-    });
+    var r=await fetch(SUPABASE_URL+"/people?id=in.("+Array.from(ids).join(",")+")"+"&select=id,first_name,last_name",{headers:SH});
+    var data=await r.json();var map={};
+    if(Array.isArray(data))data.forEach(function(p){var l=(p.last_name||"").trim();var f=(p.first_name||"").trim();map[String(p.id)]=l&&f?l+", "+f:l||f||"Unknown";});
     return map;
   }catch(e){return{};}
 }
 
 function fdate(d){if(!d)return"unknown date";var p=d.split("-");if(p.length!==3)return d;return parseInt(p[1])+"/"+parseInt(p[2])+"/"+p[0];}
 
-function getDisplayName(letter, names){
-  var author=names[String(letter.author_id)]||"";
-  var recip=names[String(letter.recipient_id)]||"";
-  if(author&&recip)return author+" &#x2192; "+recip+" ("+fdate(letter.date_of_letter)+")";
-  if(author)return author+" &#x2192; Unknown ("+fdate(letter.date_of_letter)+")";
-  if(recip)return "Unknown &#x2192; "+recip+" ("+fdate(letter.date_of_letter)+")";
-  // Fall back to title
-  if(letter.title)return letter.title.substring(0,80)+(letter.title.length>80?"...":"");
-  return "Untitled document";
+function getDisplayName(l,names){
+  var a=names[String(l.author_id)]||"";var r=names[String(l.recipient_id)]||"";
+  if(a&&r)return a+" &#x2192; "+r+" ("+fdate(l.date_of_letter)+")";
+  if(a)return a+" &#x2192; Unknown ("+fdate(l.date_of_letter)+")";
+  if(r)return"Unknown &#x2192; "+r+" ("+fdate(l.date_of_letter)+")";
+  if(l.title)return l.title.substring(0,80)+(l.title.length>80?"...":"");
+  return"Untitled document";
 }
 
 function formatLetters(letters,names){
   return letters.map(function(l,i){
-    var author=names[String(l.author_id)]||"Unknown";
-    var recip=names[String(l.recipient_id)]||"Unknown";
-    var date=fdate(l.date_of_letter);
+    var a=names[String(l.author_id)]||"Unknown";var r=names[String(l.recipient_id)]||"Unknown";
     var text=l.full_text||(l.description?"[Description: "+l.description+"]":"[No text]");
     if(text.length>3000)text=text.substring(0,3000)+"...[truncated]";
-    var header="=== LETTER "+(i+1)+" ===\nFrom: "+author+"\nTo: "+recip+"\nDate: "+date;
-    if(l.title&&(author==="Unknown"||recip==="Unknown"))header+="\nDocument: "+l.title;
-    return header+"\n\n"+text;
+    var hdr="=== LETTER "+(i+1)+" ===\nFrom: "+a+"\nTo: "+r+"\nDate: "+fdate(l.date_of_letter);
+    if(l.title&&(a==="Unknown"||r==="Unknown"))hdr+="\nDocument: "+l.title;
+    return hdr+"\n\n"+text;
   }).join("\n\n");
 }
 
-async function askClaude(question,letters,names,useWeb){
-  var dss=isDSSQuery(question);
-  var sys="You are a research assistant specializing in papyri and biblical manuscript acquisition, trafficking, and provenance. You have access to private correspondence between dealers, scholars, collectors, and institutions.\n\nYour role:\n1. Analyze the primary source letters carefully\n2. Cross-reference with scholarly knowledge\n3. Identify contradictions or challenges to established narratives\n4. Cite specific letters by sender, recipient, and date\n5. Quote significant passages directly\n6. Be honest about uncertainty\n7. Think like a historian\n\n";
-  if(dss)sys+=DSS_SYSTEM_KNOWLEDGE+"\nWhen analyzing for DSS connections, look for: references to 'fragments'/'material'/'texts' even without explicit DSS mention; negotiations with known DSS dealers; provenance discussions; price negotiations for biblical/Hebrew manuscripts; specific manuscript content matching known DSS texts.\n\n";
-  var user="RESEARCH QUESTION:\n"+question+"\n\n";
-  if(letters.length>0){
-    user+="PRIMARY SOURCES ("+letters.length+" relevant documents from database):\n\n"+formatLetters(letters,names)+"\n\n";
-    user+="Please provide a thorough research analysis. ";
-  } else {
-    user+="No matching documents found in database. Please provide analysis based on your knowledge.\n\n";
-  }
-  if(useWeb)user+="Draw on scholarly literature and public record for context. Identify tensions between private correspondence and public narrative.";
-  var r=await fetch("/api/chat",{
-    method:"POST",
-    headers:{"content-type":"application/json"},
-    body:JSON.stringify({"model":"claude-sonnet-4-5","max_tokens":4096,"system":sys,"messages":[{"role":"user","content":user}]})
+function buildMemoryContext(){
+  if(!loadedMemory.length)return"";
+  var ctx="RESEARCH MEMORY - FINDINGS FROM PREVIOUS SESSIONS:\n\n";
+  loadedMemory.slice(0,5).forEach(function(m,i){
+    var d=new Date(m.session_date).toLocaleDateString();
+    ctx+="Session "+(i+1)+" ("+d+"):\n";
+    if(m.confirmed_findings)ctx+=m.confirmed_findings+"\n";
+    else if(m.summary)ctx+=m.summary.substring(0,500)+"\n";
+    ctx+="\n";
   });
-  var data=await r.json();
-  if(data.content&&data.content[0])return data.content[0].text;
-  if(data.error)return"Error: "+data.error.message;
-  return"No response received.";
+  ctx+="Use these prior findings as context. Build on what was already discovered rather than repeating it.\n\n";
+  return ctx;
 }
+
+async function askClaude(question,letters,names,useWeb,useMemory){
+  var dss=isDSSQuery(question);
+  var sys="You are a research assistant specializing in papyri and biblical manuscript acquisition, trafficking, and provenance. You have access to private correspondence between dealers, scholars, collectors, and institutions.\n\nYour role:\n1. Analyze primary source letters carefully\n2. Cross-reference with scholarly knowledge\n3. Identify contradictions or challenges to established narratives\n4. Cite specific letters by sender, recipient, and date\n5. Quote significant passages directly\n6. Be honest about uncertainty\n7. Think like a historian\n\n";
+  if(dss)sys+=DSS_SYSTEM_KNOWLEDGE+"\n";
+  if(useMemory&&loadedMemory.length>0)sys+=buildMemoryContext();
+  var user="RESEARCH QUESTION:\n"+question+"\n\n";
+  if(letters.length>0){user+="PRIMARY SOURCES ("+letters.length+" relevant documents):\n\n"+formatLetters(letters,names)+"\n\n";user+="Please provide a thorough research analysis. ";}
+  else{user+="No matching documents found. Please provide analysis based on your knowledge.\n\n";}
+  if(useWeb)user+="Draw on scholarly literature and public record. Identify tensions between private correspondence and public narrative.";
+  sessionHistory.push({role:"user",content:user});
+  var r=await fetch("/api/chat",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({"model":"claude-sonnet-4-5","max_tokens":4096,"system":sys,"messages":sessionHistory})});
+  var data=await r.json();
+  var reply="No response received.";
+  if(data.content&&data.content[0])reply=data.content[0].text;
+  else if(data.error)reply="Error: "+data.error.message;
+  sessionHistory.push({role:"assistant",content:reply});
+  return reply;
+}
+
+async function startSaveSession(){
+  if(sessionHistory.length===0){addMessage("system","No conversation to save yet.");return;}
+  hideSaveBar();
+  savingSession=true;
+  showThinking("Generating session summary...");
+  // Ask Claude to summarize the session
+  var summaryPrompt="Please summarize the key research findings from our conversation today. Focus on:\n1. What was discovered or confirmed about specific manuscripts, dealers, or transactions\n2. Any contradictions found between private correspondence and public record\n3. Unanswered questions that need follow-up\n4. Specific letter references that were most significant\n\nKeep it concise but complete. This will be saved as research memory for future sessions.";
+  var r=await fetch("/api/chat",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({"model":"claude-sonnet-4-5","max_tokens":1000,"messages":sessionHistory.concat([{role:"user",content:summaryPrompt}])})});
+  var data=await r.json();
+  hideThinking();
+  var summary="No summary generated.";
+  if(data.content&&data.content[0])summary=data.content[0].text;
+  pendingSummary=summary;
+  // Show summary for review
+  var reviewDiv=addMessage("memory","<strong>&#x1F4BE; Session Summary (review before saving):</strong><br><br>"+summary.replace(/\n/g,"<br>")+"<br><br><div style='display:flex;gap:8px;margin-top:8px'><button class='sbtn green' onclick='addToSummary()'>+ Add something</button><button class='sbtn green' onclick='confirmSave()'>&#x2713; Save as is</button><button class='sbtn gray' onclick='cancelSave()'>Cancel</button></div>");
+  savingSession=false;
+}
+
+function addToSummary(){
+  var addition=prompt("What would you like to add to the summary?");
+  if(addition&&addition.trim()){
+    pendingSummary=pendingSummary+"\n\nAdditional note: "+addition.trim();
+    addMessage("system","Added to summary: "+addition.trim());
+  }
+}
+
+async function confirmSave(){
+  if(!pendingSummary)return;
+  try{
+    var r=await fetch(SUPABASE_URL+"/research_memory",{
+      method:"POST",
+      headers:Object.assign({},SH,{"Content-Type":"application/json","Prefer":"return=representation"}),
+      body:JSON.stringify({summary:pendingSummary,confirmed_findings:pendingSummary})
+    });
+    var data=await r.json();
+    if(Array.isArray(data)&&data.length>0){
+      addMessage("system","&#x2705; Session saved to memory! Future sessions will build on these findings.");
+      loadedMemory.unshift(data[0]);
+      pendingSummary=null;
+    }
+  }catch(e){addMessage("system","Error saving: "+e.message);}
+}
+
+function cancelSave(){pendingSummary=null;addMessage("system","Save cancelled.");}
 
 async function sendQuestion(){
   var input=document.getElementById("questionInput");
@@ -215,49 +322,49 @@ async function sendQuestion(){
   if(!question)return;
   var useDB=document.getElementById("useDB").checked;
   var useWeb=document.getElementById("useWeb").checked;
+  var useMemory=document.getElementById("useMemory").checked;
   input.value="";
   document.getElementById("sendBtn").disabled=true;
   var dss=isDSSQuery(question);
   addMessage("user",question+(dss?' <span class="dss-badge">DSS Mode</span>':""));
-  showThinking("Searching database"+(dss?" with DSS knowledge base":"")+"...");
+  showThinking("Searching database"+(dss?" (DSS mode)":"")+"...");
   try{
     var letters=[],names={};
-    if(useDB){
-      letters=await searchDatabase(question);
-      names=await loadPeopleNames(letters);
-    }
+    if(useDB){letters=await searchDatabase(question);names=await loadPeopleNames(letters);}
     hideThinking();
-    var statusMsg="Found <strong>"+letters.length+"</strong> relevant documents";
-    if(dss)statusMsg+=" (DSS mode active)";
-    statusMsg+=". Analyzing with Claude...";
-    var statusDiv=addMessage("system",statusMsg);
+    var sd=addMessage("system","Found <strong>"+letters.length+"</strong> relevant documents"+(dss?" (DSS mode)":"")+". Analyzing with Claude...");
     showThinking("Claude is reading and synthesizing...");
-    var answer=await askClaude(question,letters,names,useWeb);
-    hideThinking();
-    statusDiv.remove();
-    var formatted=answer
-      .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
-      .replace(/\n\n/g,"</p><p>").replace(/\n/g,"<br>")
-      .replace(/\*\*(.+?)\*\*/g,"<strong>$1</strong>")
-      .replace(/\*(.+?)\*/g,"<em>$1</em>");
-    formatted="<p>"+formatted+"</p>";
-    var sourcesList="";
+    var answer=await askClaude(question,letters,names,useWeb,useMemory);
+    hideThinking();sd.remove();
+    var fmt=answer.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/\n\n/g,"</p><p>").replace(/\n/g,"<br>").replace(/\*\*(.+?)\*\*/g,"<strong>$1</strong>").replace(/\*(.+?)\*/g,"<em>$1</em>");
+    fmt="<p>"+fmt+"</p>";
+    var src="";
     if(letters.length>0){
-      sourcesList='<div class="sources"><strong>Documents analyzed ('+letters.length+'):</strong>';
-      letters.slice(0,15).forEach(function(l){
-        var display=getDisplayName(l,names);
-        var desc=l.description?' &mdash; '+l.description.substring(0,60):"";
-        sourcesList+='<div class="source-item">'+display+desc+'</div>';
-      });
-      if(letters.length>15)sourcesList+='<div style="color:#888;font-size:11px;margin-top:4px">...and '+(letters.length-15)+' more</div>';
-      sourcesList+='</div>';
+      src='<div class="sources"><strong>Documents analyzed ('+letters.length+'):</strong>';
+      letters.slice(0,15).forEach(function(l){var dn=getDisplayName(l,names);var desc=l.description?' &mdash; '+l.description.substring(0,60):"";src+='<div class="source-item">'+dn+desc+'</div>';});
+      if(letters.length>15)src+='<div style="color:#888;font-size:11px;margin-top:4px">...and '+(letters.length-15)+' more</div>';
+      src+='</div>';
     }
-    addMessage("assistant","<h3>Research Analysis</h3>"+formatted+sourcesList);
-  }catch(e){
-    hideThinking();
-    addMessage("assistant","Error: "+e.message);
-  }
+    addMessage("assistant","<h3>Research Analysis</h3>"+fmt+src);
+  }catch(e){hideThinking();addMessage("assistant","Error: "+e.message);}
   document.getElementById("sendBtn").disabled=false;
+}
+</script>
+</div>
+<script>
+document.getElementById("login-btn-r") && document.getElementById("login-btn-r").addEventListener("click",doLogin);
+document.getElementById("pwd-input") && document.getElementById("pwd-input").addEventListener("keydown",function(e){if(e.key==="Enter")doLogin();});
+function doLogin(){
+  var val=document.getElementById("pwd-input").value.trim();
+  if(val==="papyrates2024"){
+    document.getElementById("login-screen").style.display="none";
+    var app=document.getElementById("main-app");
+    app.style.display="flex";
+    app.style.flexDirection="column";
+    app.style.minHeight="100vh";
+  } else {
+    document.getElementById("login-error").textContent="Incorrect password.";
+  }
 }
 </script>
 </body>
