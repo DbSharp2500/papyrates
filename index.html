@@ -232,7 +232,12 @@ function renderRows(){
   var totalPages=Math.ceil(state.filteredCount/state.pageSize)||1;
   var html='<div class="col-headers"><span>Author</span><span>Recipient</span><span>Date</span><span></span></div>';
   html+=state.letters.map(function(l,i){return'<div class="letter-row" onclick="openLetter('+i+')"><span class="letter-name">'+(pname(l.author_id)||l.title||"&mdash;")+'</span><span class="letter-name">'+(pname(l.recipient_id)||"&mdash;")+'</span><span class="letter-date">'+(fdate(l.date_of_letter)||"&mdash;")+'</span><span class="arrow">&#x203A;</span></div>';}).join("");
-  html+='<div class="pagination"><button class="page-btn" onclick="changePage(-1)"'+(state.page===0?" disabled":"")+'>&#8592; Prev</button><span class="page-info">Page '+(state.page+1)+' of '+totalPages+'</span><button class="page-btn" onclick="changePage(1)"+((state.page+1)*state.pageSize>=state.filteredCount?" disabled":"")+'>Next &#8594;</button></div>';
+  html+='<div class="pagination">';
+  html+='<button class="page-btn" onclick="changePage(-1)"'+(state.page===0?' disabled':'')+'>&#8592; Prev</button>';
+  html+='<span class="page-info">Page '+(state.page+1)+' of '+totalPages+'</span>';
+  var nextDisabled=(state.page+1)*state.pageSize>=state.filteredCount?' disabled':'';
+  html+='<button class="page-btn" onclick="changePage(1)"'+nextDisabled+'>Next &#8594;</button>';
+  html+='</div>';
   return html;
 }
 function renderDetail(){
