@@ -20,6 +20,13 @@ body{font-family:Arial,sans-serif;background:#1a1a2e;min-height:100vh;display:fl
 .message.system{background:#1e3a5f;color:#aac4e8;align-self:center;font-size:12px;padding:8px 16px;border-radius:20px;text-align:center}
 .message.memory{background:#1a3a2a;color:#7ecfa0;align-self:flex-start;max-width:90%;font-size:12px;border:1px solid #2a5a3a}
 .message h3{color:#2d4a8a;margin-bottom:8px;font-size:15px}
+.message.assistant table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+.message.assistant th{background:#2d4a8a;color:white;padding:8px 12px;text-align:left}
+.message.assistant td{padding:7px 12px;border-bottom:1px solid #e0e0e0}
+.message.assistant tr:nth-child(even) td{background:#f5f7fc}
+.message.assistant ul,.message.assistant ol{margin:8px 0 8px 20px}
+.message.assistant h1,.message.assistant h2,.message.assistant h3,.message.assistant h4{color:#2d4a8a;margin:12px 0 6px}
+.message.assistant blockquote{border-left:3px solid #2d4a8a;padding-left:12px;color:#555;margin:8px 0}
 .sources{margin-top:12px;padding-top:12px;border-top:1px solid #e0e0e0;font-size:12px;color:#666}
 .source-item{background:#f0f3fa;padding:6px 10px;border-radius:4px;margin-top:6px}
 .input-area{background:#16213e;padding:16px 24px;border-top:1px solid #2d4a8a}
@@ -73,6 +80,13 @@ body{font-family:Arial,sans-serif;background:#1a1a2e;min-height:100vh;display:fl
   <label><input type="checkbox" id="useDB" checked> Search database letters</label>
   <label><input type="checkbox" id="useWeb" checked> Include scholarly context</label>
   <label><input type="checkbox" id="useMemory" checked> Use session memory</label>
+  <label style="display:flex;align-items:center;gap:6px">
+    Letters:
+    <input type="range" id="letterSlider" min="15" max="60" step="15" value="30"
+      style="width:80px;accent-color:#5a8ad4"
+      oninput="document.getElementById('sliderVal').textContent=this.value">
+    <span id="sliderVal" style="color:#5a8ad4;font-weight:bold;min-width:20px">30</span>
+  </label>
   <span id="letterCount" class="counter">Loading...</span>
 </div>
 <div class="memory-panel" id="memoryPanel">
@@ -201,7 +215,9 @@ async function searchDatabase(question){
     terms.forEach(function(t){if(aT.indexOf(t)>=0)aS++;if(bT.indexOf(t)>=0)bS++;});
     return bS-aS;
   });
-  return allLetters.slice(0,60);
+  // Use slider value to determine how many letters to return
+  var limit=parseInt(document.getElementById("letterSlider").value)||30;
+  return allLetters.slice(0,limit);
 }
 
 async function loadPeopleNames(letters){
@@ -254,7 +270,7 @@ function buildMemoryContext(){
 
 async function askClaude(question,letters,names,useWeb,useMemory){
   var dss=isDSSQuery(question);
-  var sys="You are a research assistant specializing in papyri and biblical manuscript acquisition, trafficking, and provenance. You have access to private correspondence between dealers, scholars, collectors, and institutions.\n\nYour role:\n1. Analyze primary source letters carefully\n2. Cross-reference with scholarly knowledge\n3. Identify contradictions or challenges to established narratives\n4. Cite specific letters by sender, recipient, and date\n5. Quote significant passages directly\n6. Be honest about uncertainty\n7. Think like a historian\n\n";
+  var sys="You are a research assistant specializing in papyri and biblical manuscript acquisition, trafficking, and provenance. You have access to private correspondence between dealers, scholars, collectors, and institutions.\n\nYour role:\n1. Analyze primary source letters carefully\n2. Cross-reference with scholarly knowledge\n3. Identify contradictions or challenges to established narratives\n4. Cite specific letters by sender, recipient, and date\n5. Quote significant passages directly\n6. Be honest about uncertainty\n7. Think like a historian\n\nFORMATTING: You may use HTML in your responses including <table>, <tr>, <th>, <td>, <ul>, <ol>, <li>, <strong>, <em>, <h3>, <h4>, <blockquote>. Use tables when comparing multiple items or presenting structured data. Use headers to organize long responses.\n\n";
   if(dss)sys+=DSS_SYSTEM_KNOWLEDGE+"\n";
   if(useMemory&&loadedMemory.length>0)sys+=buildMemoryContext();
   var user="RESEARCH QUESTION:\n"+question+"\n\n";
@@ -262,7 +278,9 @@ async function askClaude(question,letters,names,useWeb,useMemory){
   else{user+="No matching documents found. Please provide analysis based on your knowledge.\n\n";}
   if(useWeb)user+="Draw on scholarly literature and public record. Identify tensions between private correspondence and public narrative.";
   sessionHistory.push({role:"user",content:user});
-  var r=await fetch("/api/chat",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({"model":"claude-sonnet-4-5","max_tokens":4096,"system":sys,"messages":sessionHistory})});
+  // Limit to last 3 turns (6 messages) to control context window size
+  var historyToSend=sessionHistory.slice(-6);
+  var r=await fetch("/api/chat",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({"model":"claude-sonnet-4-5","max_tokens":4096,"system":sys,"messages":historyToSend})});
   var data=await r.json();
   var reply="No response received.";
   if(data.content&&data.content[0])reply=data.content[0].text;
@@ -276,7 +294,6 @@ async function startSaveSession(){
   hideSaveBar();
   savingSession=true;
   showThinking("Generating session summary...");
-  // Ask Claude to summarize the session
   var summaryPrompt="Please summarize the key research findings from our conversation today. Focus on:\n1. What was discovered or confirmed about specific manuscripts, dealers, or transactions\n2. Any contradictions found between private correspondence and public record\n3. Unanswered questions that need follow-up\n4. Specific letter references that were most significant\n\nKeep it concise but complete. This will be saved as research memory for future sessions.";
   var r=await fetch("/api/chat",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({"model":"claude-sonnet-4-5","max_tokens":1000,"messages":sessionHistory.concat([{role:"user",content:summaryPrompt}])})});
   var data=await r.json();
@@ -284,7 +301,6 @@ async function startSaveSession(){
   var summary="No summary generated.";
   if(data.content&&data.content[0])summary=data.content[0].text;
   pendingSummary=summary;
-  // Show summary for review
   var reviewDiv=addMessage("memory","<strong>&#x1F4BE; Session Summary (review before saving):</strong><br><br>"+summary.replace(/\n/g,"<br>")+"<br><br><div style='display:flex;gap:8px;margin-top:8px'><button class='sbtn green' onclick='addToSummary()'>+ Add something</button><button class='sbtn green' onclick='confirmSave()'>&#x2713; Save as is</button><button class='sbtn gray' onclick='cancelSave()'>Cancel</button></div>");
   savingSession=false;
 }
@@ -316,6 +332,21 @@ async function confirmSave(){
 
 function cancelSave(){pendingSummary=null;addMessage("system","Save cancelled.");}
 
+function formatResponse(answer){
+  // If Claude returned HTML tags, render directly (just clean up stray ampersands)
+  if(/(<table|<tr|<td|<ul|<ol|<h[1-6]|<blockquote)/i.test(answer)){
+    return answer.replace(/&(?![a-z#0-9]+;)/g,"&amp;");
+  }
+  // Otherwise apply markdown-style conversion
+  var fmt=answer
+    .replace(/&(?![a-z#0-9]+;)/g,"&amp;")
+    .replace(/\*\*(.+?)\*\*/g,"<strong>$1</strong>")
+    .replace(/\*(.+?)\*/g,"<em>$1</em>")
+    .replace(/\n\n/g,"</p><p>")
+    .replace(/\n/g,"<br>");
+  return "<p>"+fmt+"</p>";
+}
+
 async function sendQuestion(){
   var input=document.getElementById("questionInput");
   var question=input.value.trim();
@@ -332,12 +363,12 @@ async function sendQuestion(){
     var letters=[],names={};
     if(useDB){letters=await searchDatabase(question);names=await loadPeopleNames(letters);}
     hideThinking();
-    var sd=addMessage("system","Found <strong>"+letters.length+"</strong> relevant documents"+(dss?" (DSS mode)":"")+". Analyzing with Claude...");
+    var sliderVal=document.getElementById("letterSlider").value;
+    var sd=addMessage("system","Found <strong>"+letters.length+"</strong> relevant documents (limit: "+sliderVal+")"+(dss?" (DSS mode)":"")+". Analyzing with Claude...");
     showThinking("Claude is reading and synthesizing...");
     var answer=await askClaude(question,letters,names,useWeb,useMemory);
     hideThinking();sd.remove();
-    var fmt=answer.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/\n\n/g,"</p><p>").replace(/\n/g,"<br>").replace(/\*\*(.+?)\*\*/g,"<strong>$1</strong>").replace(/\*(.+?)\*/g,"<em>$1</em>");
-    fmt="<p>"+fmt+"</p>";
+    var fmt=formatResponse(answer);
     var src="";
     if(letters.length>0){
       src='<div class="sources"><strong>Documents analyzed ('+letters.length+'):</strong>';
