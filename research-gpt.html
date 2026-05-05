@@ -528,7 +528,7 @@ async function sendQuestion(){
       if(letters.length>15)src+='<div style="color:#888;font-size:11px;margin-top:4px">...and '+(letters.length-15)+' more</div>';
       src+='</div>';
     }
-    addMessage("assistant","<h3>Research Analysis <span style="font-size:11px;background:#10a37f;color:white;padding:2px 7px;border-radius:4px;vertical-align:middle">GPT-4o</span></h3>"+fmt+src);
+    addMessage("assistant","<h3>Research Analysis <span style='font-size:11px;background:#10a37f;color:white;padding:2px 7px;border-radius:4px;vertical-align:middle'>GPT-4o</span></h3>"+fmt+src);
   }catch(e){
     hideThinking();
     addMessage("assistant","Error: "+e.message);
