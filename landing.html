@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Papyrates</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:Georgia,serif;background:#1a1408;min-height:100vh;display:flex;flex-direction:column;align-items:center;}
+
+/* Login */
+#login-screen{display:flex;align-items:center;justify-content:center;min-height:100vh;width:100%;background:#1a1408;}
+.login-box{background:#2a2010;border:1px solid #6a5030;border-radius:12px;padding:32px;text-align:center;max-width:320px;width:90%;}
+.login-box h1{color:#d4a96a;font-size:24px;margin-bottom:8px;letter-spacing:2px;}
+.login-box p{color:#a08050;font-size:13px;margin-bottom:20px;}
+.login-box input{width:100%;padding:10px;background:#1a1408;border:1px solid #6a5030;border-radius:6px;font-size:14px;color:#d4a96a;margin-bottom:12px;text-align:center;}
+.login-box input::placeholder{color:#6a5030;}
+.login-box button{width:100%;background:#7a5020;color:#f0e0b0;border:none;padding:10px;border-radius:6px;cursor:pointer;font-size:14px;font-family:Georgia,serif;letter-spacing:1px;}
+.login-box button:hover{background:#9a6828;}
+.login-error{color:#c06030;font-size:12px;margin-top:6px;}
+
+/* Main */
+#main{display:none;flex-direction:column;align-items:center;width:100%;padding-bottom:40px;}
+
+/* Hero */
+.hero{width:100%;max-width:700px;text-align:center;padding:20px 20px 0;}
+.hero img{width:100%;max-width:600px;height:auto;display:block;margin:0 auto;}
+.hero-sub{color:#a08050;font-size:14px;letter-spacing:2px;text-transform:uppercase;margin-top:8px;margin-bottom:28px;}
+
+/* Section headers */
+.section-label{width:100%;max-width:660px;padding:0 20px;margin-bottom:12px;}
+.section-label h2{font-size:13px;text-transform:uppercase;letter-spacing:3px;color:#7a6040;border-bottom:1px solid #3a2a10;padding-bottom:6px;}
+
+/* Tile grid */
+.tile-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;width:100%;max-width:660px;padding:0 20px;margin-bottom:28px;}
+.tile{background:#2a2010;border:1px solid #4a3820;border-radius:10px;padding:18px 16px;cursor:pointer;text-decoration:none;display:flex;align-items:flex-start;gap:14px;transition:background 0.15s,border-color 0.15s;}
+.tile:hover{background:#3a3018;border-color:#8a6830;}
+.tile-icon{font-size:26px;flex-shrink:0;line-height:1;}
+.tile-text{}
+.tile-title{font-size:14px;font-weight:bold;color:#d4a96a;margin-bottom:4px;font-family:Georgia,serif;}
+.tile-desc{font-size:12px;color:#8a7050;line-height:1.4;}
+
+/* Special tile colors */
+.tile.research{border-color:#2a4a2a;}
+.tile.research:hover{background:#1a2a1a;border-color:#4a8a4a;}
+.tile.research .tile-title{color:#7ecfa0;}
+
+.tile.gpt{border-color:#1a3a1a;}
+.tile.gpt:hover{background:#0d200d;border-color:#3a7a3a;}
+.tile.gpt .tile-title{color:#5abf7a;}
+
+.tile.danger{border-color:#4a2a2a;}
+.tile.danger:hover{background:#2a1010;border-color:#8a4a4a;}
+.tile.danger .tile-title{color:#d4846a;}
+
+/* Divider */
+.divider{width:100%;max-width:660px;padding:0 20px;margin-bottom:28px;}
+.divider hr{border:none;border-top:1px solid #3a2a10;}
+
+/* Footer */
+.footer{color:#4a3820;font-size:11px;letter-spacing:1px;margin-top:10px;}
+</style>
+</head>
+<body>
+
+<div id="login-screen">
+  <div class="login-box">
+    <h1>PAPYRATES</h1>
+    <p>Enter the password to access the archive</p>
+    <input type="password" id="pwd" placeholder="Password" autofocus>
+    <button onclick="doLogin()">Enter the Archive</button>
+    <div class="login-error" id="login-err"></div>
+  </div>
+</div>
+
+<div id="main">
+  <div class="hero">
+    <img src="/papyrates_flag.jpg" alt="Papyrates — skull and crossbones on papyrus">
+    <div class="hero-sub">Manuscript Research Archive</div>
+  </div>
+
+  <!-- RESEARCH SECTION -->
+  <div class="section-label"><h2>Research &amp; Analysis</h2></div>
+  <div class="tile-grid">
+    <a class="tile research" href="/research.html">
+      <div class="tile-icon">🤖</div>
+      <div class="tile-text">
+        <div class="tile-title">Claude Research</div>
+        <div class="tile-desc">AI-powered analysis with semantic search across all documents</div>
+      </div>
+    </a>
+    <a class="tile gpt" href="/research-gpt.html">
+      <div class="tile-icon">🤖</div>
+      <div class="tile-text">
+        <div class="tile-title">GPT-4o Research</div>
+        <div class="tile-desc">OpenAI powered analysis of the correspondence database</div>
+      </div>
+    </a>
+    <a class="tile" href="/research-gemini.html" style="opacity:0.5;pointer-events:none;">
+      <div class="tile-icon">🤖</div>
+      <div class="tile-text">
+        <div class="tile-title" style="color:#8a8070;">Gemini Research</div>
+        <div class="tile-desc">Coming soon — Google Gemini powered research portal</div>
+      </div>
+    </a>
+    <a class="tile" href="/index.html?filter=1">
+      <div class="tile-icon">🔍</div>
+      <div class="tile-text">
+        <div class="tile-title">Browse &amp; Filter</div>
+        <div class="tile-desc">Search and filter all 7,400+ documents by author, recipient, date, language</div>
+      </div>
+    </a>
+  </div>
+
+  <!-- DATA ENTRY SECTION -->
+  <div class="section-label"><h2>Data Entry &amp; Maintenance</h2></div>
+  <div class="tile-grid">
+    <a class="tile" href="/index.html?action=add">
+      <div class="tile-icon">📄</div>
+      <div class="tile-text">
+        <div class="tile-title">Add New Document</div>
+        <div class="tile-desc">Add a new letter, report, image, or other document to the archive</div>
+      </div>
+    </a>
+    <a class="tile" href="/index.html?action=nodesc">
+      <div class="tile-icon">📋</div>
+      <div class="tile-text">
+        <div class="tile-title">No Description</div>
+        <div class="tile-desc">Find documents missing descriptions — assign work to assistants</div>
+      </div>
+    </a>
+    <a class="tile" href="/index.html?action=dupes">
+      <div class="tile-icon">◀▶</div>
+      <div class="tile-text">
+        <div class="tile-title">Review Duplicates</div>
+        <div class="tile-desc">Compare suspected duplicate documents side by side using OCR text</div>
+      </div>
+    </a>
+    <a class="tile" href="/index.html?action=notype">
+      <div class="tile-icon">🏷️</div>
+      <div class="tile-text">
+        <div class="tile-title">Untyped Documents</div>
+        <div class="tile-desc">Find documents with no document type assigned yet</div>
+      </div>
+    </a>
+  </div>
+
+  <!-- ADD TO TABLES SECTION -->
+  <div class="section-label"><h2>Add to Database Tables</h2></div>
+  <div class="tile-grid">
+    <a class="tile" href="/index.html?action=addperson">
+      <div class="tile-icon">👤</div>
+      <div class="tile-text">
+        <div class="tile-title">Add Person</div>
+        <div class="tile-desc">Add a new person to the people table</div>
+      </div>
+    </a>
+    <a class="tile" href="/index.html?action=addmanuscript">
+      <div class="tile-icon">📜</div>
+      <div class="tile-text">
+        <div class="tile-title">Add Manuscript</div>
+        <div class="tile-desc">Add a new papyrus or manuscript record</div>
+      </div>
+    </a>
+    <a class="tile" href="/index.html?action=addinstitution">
+      <div class="tile-icon">🏛️</div>
+      <div class="tile-text">
+        <div class="tile-title">Add Institution</div>
+        <div class="tile-desc">Add a museum, university, library or other institution</div>
+      </div>
+    </a>
+    <a class="tile" href="/index.html?action=addperson" style="opacity:0.5;pointer-events:none;">
+      <div class="tile-icon">🗂️</div>
+      <div class="tile-text">
+        <div class="tile-title" style="color:#8a8070;">Browse All Tables</div>
+        <div class="tile-desc">Coming soon — browse people, manuscripts, institutions</div>
+      </div>
+    </a>
+  </div>
+
+  <div class="footer">Papyrates Archive &mdash; Restricted Access</div>
+</div>
+
+<script>
+document.getElementById("pwd").addEventListener("keydown", function(e){ if(e.key==="Enter") doLogin(); });
+
+function doLogin(){
+  var val = document.getElementById("pwd").value.trim();
+  if(val === "papyrates2024"){
+    document.getElementById("login-screen").style.display = "none";
+    var m = document.getElementById("main");
+    m.style.display = "flex";
+  } else {
+    document.getElementById("login-err").textContent = "Incorrect password.";
+  }
+}
+
+// Handle action params from other pages linking here
+window.addEventListener("load", function(){
+  // If already logged in via session (future), auto-show main
+  // For now just show login
+});
+</script>
+</body>
+</html>
