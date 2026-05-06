@@ -13,8 +13,9 @@ body{font-family:Arial,sans-serif;background:#f0f3fa;min-height:100vh;}
 .header h1{font-size:18px;font-weight:500;}
 .header-right{display:flex;align-items:center;gap:10px;}
 .header .count{font-size:13px;opacity:0.85;}
-.add-btn{background:rgba(255,255,255,0.2);color:white;border:1px solid rgba(255,255,255,0.4);padding:6px 12px;border-radius:6px;cursor:pointer;font-size:13px;white-space:nowrap;}
-.add-btn:hover{background:rgba(255,255,255,0.3);}
+
+.home-btn{background:rgba(255,255,255,0.15);color:white;border:1px solid rgba(255,255,255,0.3);padding:6px 12px;border-radius:6px;cursor:pointer;font-size:13px;text-decoration:none;white-space:nowrap;}
+.home-btn:hover{background:rgba(255,255,255,0.25);}
 /* Filters */
 .filters{background:#3a5ba0;padding:12px 16px;display:flex;flex-direction:column;gap:8px;}
 .filter-row{display:flex;gap:8px;align-items:center;}
@@ -41,9 +42,6 @@ body{font-family:Arial,sans-serif;background:#f0f3fa;min-height:100vh;}
 .clear-btn{background:rgba(255,100,100,0.3);color:white;border:1px solid rgba(255,100,100,0.5);padding:7px 12px;border-radius:6px;cursor:pointer;font-size:12px;}
 .clear-btn:hover{background:rgba(255,100,100,0.4);}
 /* No-description filter button */
-.nodesc-btn{background:rgba(255,200,50,0.2);color:white;border:1px solid rgba(255,200,50,0.5);padding:7px 12px;border-radius:6px;cursor:pointer;font-size:12px;white-space:nowrap;}
-.nodesc-btn:hover{background:rgba(255,200,50,0.3);}
-.nodesc-btn.active{background:rgba(255,200,50,0.45);border-color:rgba(255,200,50,0.8);font-weight:600;}
 /* Results */
 .results-header{background:#e8ecf5;padding:10px 16px;border-bottom:1px solid #d0d8ec;}
 .results-count{font-size:13px;color:#3a5ba0;font-weight:500;}
@@ -111,8 +109,6 @@ body{font-family:Arial,sans-serif;background:#f0f3fa;min-height:100vh;}
 .save-msg.success{background:#e8f5e9;color:#2e7d32;border:1px solid #a5d6a7;}
 .save-msg.error{background:#fdecea;color:#c62828;border:1px solid #ef9a9a;}
 /* Duplicate review */
-.dup-btn{background:rgba(255,150,50,0.25);color:white;border:1px solid rgba(255,150,50,0.5);padding:6px 12px;border-radius:6px;cursor:pointer;font-size:13px;white-space:nowrap;}
-.dup-btn:hover{background:rgba(255,150,50,0.4);}
 .dup-header{background:#7a3a00;color:white;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;}
 .dup-progress{background:#fff3e0;padding:10px 16px;font-size:13px;color:#555;border-bottom:1px solid #ffe0b2;}
 .dup-group{background:white;padding:14px 16px;border-bottom:3px solid #ffe0b2;}
@@ -171,7 +167,7 @@ var state = {
   authorText: "", recipientText: "",
   dateFrom: "", dateTo: "",
   language: "", descSearch: "", textSearch: "",
-  noDesc: false,
+
   letters: [], totalCount: 0, filteredCount: 0,
   page: 0, pageSize: 50,
   loading: true,
@@ -259,7 +255,6 @@ function buildQ(){
   if(state.language)f.push("language=eq."+encodeURIComponent(state.language));
   if(state.descSearch)f.push("description=ilike.*"+encodeURIComponent(state.descSearch)+"*");
   if(state.textSearch)f.push("full_text=ilike.*"+encodeURIComponent(state.textSearch)+"*");
-  if(state.noDesc)f.push("or=(description.is.null,description.eq.)");
   if(f.length)q+="&"+f.join("&");
   q+="&order=date_of_letter.asc.nullslast&offset="+(state.page*state.pageSize)+"&limit="+state.pageSize;
   return q;
@@ -274,7 +269,6 @@ function buildCountQ(){
   if(state.language)f.push("language=eq."+encodeURIComponent(state.language));
   if(state.descSearch)f.push("description=ilike.*"+encodeURIComponent(state.descSearch)+"*");
   if(state.textSearch)f.push("full_text=ilike.*"+encodeURIComponent(state.textSearch)+"*");
-  if(state.noDesc)f.push("or=(description.is.null,description.eq.)");
   if(f.length)q+="&"+f.join("&");
   return q;
 }
@@ -300,10 +294,9 @@ function selectRecip(id,name){state.recipientId=id;state.recipientText=name;stat
 function clearAuthor(){state.authorId="";state.authorText="";state.page=0;buildRecipOpts().then(function(){render();loadLetters();});}
 function clearRecip(){state.recipientId="";state.recipientText="";state.page=0;buildAuthorOpts().then(function(){render();loadLetters();});}
 function doSwap(){var aId=state.authorId,aName=state.authorText,rId=state.recipientId,rName=state.recipientText;state.authorId=rId;state.authorText=rName;state.recipientId=aId;state.recipientText=aName;state.page=0;Promise.all([buildAuthorOpts(),buildRecipOpts()]).then(function(){loadLetters();});}
-function doClear(){state.authorId="";state.authorText="";state.recipientId="";state.recipientText="";state.dateFrom="";state.dateTo="";state.language="";state.descSearch="";state.textSearch="";state.noDesc=false;state.page=0;Promise.all([buildAuthorOpts(),buildRecipOpts()]).then(function(){loadLetters();});}
+function doClear(){state.authorId="";state.authorText="";state.recipientId="";state.recipientText="";state.dateFrom="";state.dateTo="";state.language="";state.descSearch="";state.textSearch="";state.page=0;Promise.all([buildAuthorOpts(),buildRecipOpts()]).then(function(){loadLetters();});}
 function onFilter(k,v){state[k]=v;state.page=0;loadLetters();}
 var st;function onSearch(k,v){state[k]=v;clearTimeout(st);st=setTimeout(function(){state.page=0;loadLetters();},600);}
-function toggleNoDesc(){state.noDesc=!state.noDesc;state.page=0;loadLetters();}
 
 function openLetter(idx){
   state.selected=state.letters[idx];
@@ -559,14 +552,13 @@ function onRecipKey(e){if(e.key==="Escape"){var dd=document.getElementById("reci
 // ── RENDER VIEWS ────────────────────────────────────────────────────────────
 
 function renderList(){
-  var hasFilter=state.authorId||state.recipientId||state.dateFrom||state.dateTo||state.language||state.descSearch||state.textSearch||state.noDesc;
+  var hasFilter=state.authorId||state.recipientId||state.dateFrom||state.dateTo||state.language||state.descSearch||state.textSearch;
   var displayCount=hasFilter?state.filteredCount.toLocaleString():state.totalCount.toLocaleString();
   var aOpts=filteredAuthorOpts();var rOpts=filteredRecipOpts();
 
   var html='<div class="header"><h1>&#x1F3F4;&#x200D;&#x2620;&#xFE0F; Papyrates Database</h1>'
     +'<div class="header-right"><span class="count">'+displayCount+' letters</span>'
-    +'<button class="add-btn" onclick="openAddNew()">+ Add Letter</button>'
-    +'<button class="dup-btn" onclick="openDuplicates()">&#9664;&#9654; Duplicates</button>'
+    +'<a class="home-btn" href="/">&#8962; Home</a>'
     +'</div></div>';
 
   html+='<div class="filters">';
@@ -588,7 +580,7 @@ function renderList(){
   html+='<div class="filter-row"><span class="filter-label">Date from:</span><input type="date" class="date-input" value="'+state.dateFrom+'" onchange="onFilter(\'dateFrom\',this.value)"><span style="color:rgba(255,255,255,0.7);font-size:12px;flex-shrink:0">to</span><input type="date" class="date-input" value="'+state.dateTo+'" onchange="onFilter(\'dateTo\',this.value)"></div>';
   html+='<div class="filter-row"><span class="filter-label">Description:</span><input class="filter-input" placeholder="Search descriptions..." value="'+state.descSearch+'" oninput="onSearch(\'descSearch\',this.value)"></div>';
   html+='<div class="filter-row"><span class="filter-label">Full text:</span><input class="filter-input" placeholder="Search OCR text..." value="'+state.textSearch+'" oninput="onSearch(\'textSearch\',this.value)">'
-    +'<button class="nodesc-btn'+(state.noDesc?" active":"")+'" onclick="toggleNoDesc()" title="Show only letters with no description">📋 No Description</button>'
+
     +'<button class="clear-btn" onclick="doClear()">Clear all</button></div>';
   html+='</div>';
 
