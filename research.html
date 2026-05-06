@@ -215,7 +215,7 @@ loadMemory();
 // ── Memory ────────────────────────────────────────────────────────────────────
 async function loadMemory(){
   try{
-    var r = await fetch(SUPABASE_URL+"/research_memory?select=id,session_date,summary,confirmed_findings&order=session_date.desc&limit=8", {headers:SH});
+    var r = await fetch(SUPABASE_URL+"/research_memory?select=id,session_date,summary,confirmed_findings&or=(ai_source.eq.claude,ai_source.is.null)&order=session_date.desc&limit=8", {headers:SH});
     var data = await r.json();
     if(Array.isArray(data)&&data.length>0){
       loadedMemory = data;
@@ -580,7 +580,7 @@ async function confirmSave(){
     var r = await fetch(SUPABASE_URL+"/research_memory",{
       method:"POST",
       headers:Object.assign({},SH,{"Content-Type":"application/json","Prefer":"return=representation"}),
-      body:JSON.stringify({summary:pendingSummary,confirmed_findings:pendingSummary})
+      body:JSON.stringify({summary:pendingSummary,confirmed_findings:pendingSummary,ai_source:"claude"})
     });
     var data = await r.json();
     if(Array.isArray(data)&&data.length>0){
