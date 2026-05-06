@@ -110,6 +110,36 @@ body{font-family:Arial,sans-serif;background:#f0f3fa;min-height:100vh;}
 .save-msg{padding:10px 14px;border-radius:6px;font-size:13px;margin-top:10px;text-align:center;}
 .save-msg.success{background:#e8f5e9;color:#2e7d32;border:1px solid #a5d6a7;}
 .save-msg.error{background:#fdecea;color:#c62828;border:1px solid #ef9a9a;}
+/* Duplicate review */
+.dup-btn{background:rgba(255,150,50,0.25);color:white;border:1px solid rgba(255,150,50,0.5);padding:6px 12px;border-radius:6px;cursor:pointer;font-size:13px;white-space:nowrap;}
+.dup-btn:hover{background:rgba(255,150,50,0.4);}
+.dup-header{background:#7a3a00;color:white;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;}
+.dup-progress{background:#fff3e0;padding:10px 16px;font-size:13px;color:#555;border-bottom:1px solid #ffe0b2;}
+.dup-group{background:white;padding:14px 16px;border-bottom:3px solid #ffe0b2;}
+.dup-group-title{font-size:12px;font-weight:bold;color:#7a3a00;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px;}
+.dup-cards{display:flex;gap:10px;overflow-x:auto;padding-bottom:6px;}
+.dup-card{flex:0 0 280px;border:1px solid #ddd;border-radius:8px;padding:12px;background:#fafafa;font-size:12px;}
+.dup-card.dup-kept{border:2px solid #2e7d32;background:#f1f8e9;}
+.dup-card.dup-deleted{opacity:0.4;border:2px solid #c62828;}
+.dup-card-meta{font-size:11px;color:#888;margin-bottom:4px;}
+.dup-card-title{font-size:13px;font-weight:500;color:#222;margin-bottom:5px;}
+.dup-card-desc{color:#555;margin-bottom:8px;line-height:1.4;font-size:12px;}
+.dup-card-ocr{background:#f0f0f0;border-radius:4px;padding:8px;font-size:11px;color:#444;max-height:140px;overflow-y:auto;white-space:pre-wrap;line-height:1.5;margin-bottom:8px;}
+.dup-card-ocr.no-text{background:#fafafa;color:#aaa;font-style:italic;}
+.dup-card-actions{display:flex;gap:5px;}
+.dup-keep-btn{flex:1;background:#2d4a8a;color:white;border:none;padding:6px;border-radius:5px;cursor:pointer;font-size:11px;}
+.dup-keep-btn:hover{background:#3a5ba0;}
+.dup-keep-btn.active{background:#2e7d32;}
+.dup-delete-btn{flex:1;background:#c62828;color:white;border:none;padding:6px;border-radius:5px;cursor:pointer;font-size:11px;}
+.dup-delete-btn:hover{background:#e53935;}
+.dup-delete-btn:disabled{opacity:0.4;cursor:default;}
+.dup-edit-btn{background:#555;color:white;border:none;padding:6px 8px;border-radius:5px;cursor:pointer;font-size:11px;}
+.dup-edit-btn:hover{background:#333;}
+.dup-nav{display:flex;gap:10px;align-items:center;justify-content:center;padding:12px 16px;background:white;border-top:1px solid #e0e0e0;}
+.dup-nav-btn{background:none;border:1px solid #7a3a00;color:#7a3a00;padding:6px 16px;border-radius:6px;cursor:pointer;font-size:13px;}
+.dup-nav-btn:disabled{opacity:0.4;cursor:default;}
+.dup-nav-btn:not(:disabled):hover{background:#fff3e0;}
+.dup-notice{background:#fff8e1;border:1px solid #ffe082;border-radius:6px;padding:10px 14px;font-size:12px;color:#5d4037;margin:10px 0;}
 /* Login screen */
 #login-screen{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;background:#f0f3fa;}
 .login-box{background:white;padding:32px;border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,0.1);text-align:center;max-width:320px;width:90%;}
@@ -564,6 +594,7 @@ function renderList(){
   var html='<div class="header"><h1>&#x1F3F4;&#x200D;&#x2620;&#xFE0F; Papyrates Database</h1>'
     +'<div class="header-right"><span class="count">'+displayCount+' letters</span>'
     +'<button class="add-btn" onclick="openAddNew()">+ Add Letter</button>'
+    +'<button class="dup-btn" onclick="openDuplicates()">&#9664;&#9654; Duplicates</button>'
     +'</div></div>';
 
   html+='<div class="filters">';
@@ -778,6 +809,202 @@ function renderManuscript(){
   return html;
 }
 
+
+// ── DUPLICATE REVIEW ─────────────────────────────────────────────────────────
+
+var dupState = {
+  groups: [], groupIdx: 0, loading: false, decisions: {}
+};
+
+function openDuplicates(){
+  dupState = {groups:[],groupIdx:0,loading:true,decisions:{}};
+  viewStack.push(state.view);
+  state.view = "duplicates";
+  render();
+  loadDuplicateGroups();
+}
+
+async function loadDuplicateGroups(){
+  var all=[], offset=0;
+  while(true){
+    var batch=await sq("letters?select=id,author_id,recipient_id,date_of_letter,description,full_text,title&limit=500&offset="+offset);
+    if(!batch||!batch.length)break;
+    all=all.concat(batch);
+    if(batch.length<500)break;
+    offset+=500;
+  }
+  var groups={};
+  all.forEach(function(l){
+    var key=String(l.author_id)+"|"+String(l.recipient_id)+"|"+String(l.date_of_letter);
+    if(key==="null|null|null")return;
+    if(!groups[key])groups[key]=[];
+    groups[key].push(l);
+  });
+  var dupGroups=Object.values(groups).filter(function(g){return g.length>1;});
+  dupGroups.sort(function(a,b){return b.length-a.length;});
+  dupState.groups=dupGroups;
+  dupState.loading=false;
+  render();
+}
+
+function dupNavigate(dir){
+  dupState.groupIdx=Math.max(0,Math.min(dupState.groups.length-1,dupState.groupIdx+dir));
+  render();
+}
+
+function dupDecide(letterId, decision){
+  dupState.decisions[letterId]=decision;
+  render();
+}
+
+function dupSimilarity(a, b){
+  var ta=(a.full_text||"").trim().substring(0,400).toLowerCase();
+  var tb=(b.full_text||"").trim().substring(0,400).toLowerCase();
+  if(!ta&&!tb)return null;
+  if(!ta||!tb)return "low";
+  if(ta===tb)return "high";
+  var matches=0, len=Math.min(ta.length,tb.length,200);
+  for(var i=0;i<len;i++){if(tb.indexOf(ta[i])>=0)matches++;}
+  var score=matches/len;
+  if(score>0.85)return "high";
+  if(score>0.6)return "med";
+  return "low";
+}
+
+function escHtml(v){return(v||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
+
+function renderDuplicates(){
+  if(dupState.loading){
+    return '<div class="dup-header"><button class="back-btn" onclick="goBack()">&#8592; Back</button>'
+      +'<span style="font-size:16px;font-weight:500">Duplicate Review</span><span></span></div>'
+      +'<div style="padding:40px;text-align:center;color:#666;background:white">Loading all letters and finding duplicates...<br><small style="color:#aaa">This may take 20-30 seconds</small></div>';
+  }
+  if(!dupState.groups.length){
+    return '<div class="dup-header"><button class="back-btn" onclick="goBack()">&#8592; Back</button>'
+      +'<span style="font-size:16px;font-weight:500">Duplicate Review</span><span></span></div>'
+      +'<div style="padding:32px;text-align:center;color:#666;background:white">No duplicate groups found!</div>';
+  }
+  var idx=dupState.groupIdx, group=dupState.groups[idx], total=dupState.groups.length;
+  var authorName=pname(group[0].author_id)||"Unknown";
+  var recipName=pname(group[0].recipient_id)||"Unknown";
+  var dateStr=fdate(group[0].date_of_letter)||"No date";
+  var keeperId=dupState.groupKeeper?dupState.groupKeeper[idx]:null;
+  var groupDone=dupState.groupDone?dupState.groupDone[idx]:false;
+
+  var html='<div class="dup-header">'
+    +'<button class="back-btn" onclick="goBack()">&#8592; Back</button>'
+    +'<span style="font-size:15px;font-weight:500">Duplicate Review</span>'
+    +'<span style="font-size:12px;opacity:0.8">'+total+' groups</span>'
+    +'</div>';
+  html+='<div class="dup-progress">'
+    +'<span>Group '+(idx+1)+' of '+total+' &mdash; '+group.length+' letters &mdash; <strong>'+authorName+' &#8594; '+recipName+'</strong> &mdash; '+dateStr+'</span>'
+    +'<span style="color:#2e7d32;font-weight:500">'+(dupState.doneCount||0)+' groups resolved</span>'
+    +'</div>';
+
+  html+='<div class="dup-group">';
+
+  if(groupDone){
+    html+='<div class="dup-notice" style="background:#e8f5e9;border-color:#a5d6a7;color:#2e7d32">&#10003; This group has been resolved. Navigate to the next group.</div>';
+  } else {
+    html+='<div class="dup-notice">&#128270; Read the OCR text below and <strong>click &quot;✓ Keep This One&quot; on the record you want to preserve</strong>. The others will be deleted after your confirmation. Use &quot;&#9998; Edit&quot; to view full details first.</div>';
+  }
+
+  html+='<div class="dup-cards">';
+  group.forEach(function(l,i){
+    var isKeeper=(keeperId===l.id);
+    var isOther=(keeperId&&keeperId!==l.id);
+    var cardClass="dup-card"+(isKeeper?" dup-kept":isOther?" dup-deleted":"");
+    var ocrText=(l.full_text||"").trim();
+    var ocrDisplay=ocrText?ocrText.substring(0,600)+(ocrText.length>600?"...":""):"No OCR text available";
+    var simBadge="";
+    if(i===0){
+      simBadge='<span style="background:#e8ecf5;color:#2d4a8a;padding:2px 6px;border-radius:10px;font-size:10px">Card 1</span>';
+    } else {
+      var sim=dupSimilarity(group[0],l);
+      if(sim==="high")simBadge='<span style="background:#fdecea;color:#c62828;padding:2px 6px;border-radius:10px;font-size:10px;font-weight:bold">HIGH MATCH</span>';
+      else if(sim==="med")simBadge='<span style="background:#fff8e1;color:#f57f17;padding:2px 6px;border-radius:10px;font-size:10px;font-weight:bold">PARTIAL MATCH</span>';
+      else simBadge='<span style="background:#e8f5e9;color:#2e7d32;padding:2px 6px;border-radius:10px;font-size:10px;font-weight:bold">DIFFERENT CONTENT</span>';
+    }
+    html+='<div class="'+cardClass+'">';
+    html+='<div class="dup-card-meta">ID: '+l.id+' &nbsp; '+simBadge+'</div>';
+    html+='<div class="dup-card-title">'+(l.title||"(no title)")+'</div>';
+    if(l.description)html+='<div class="dup-card-desc">'+escHtml(l.description.substring(0,120))+(l.description.length>120?"...":"")+'</div>';
+    html+='<div class="dup-card-ocr'+(ocrText?"":" no-text")+'">'+escHtml(ocrDisplay)+'</div>';
+    html+='<div class="dup-card-actions">';
+    if(!groupDone){
+      if(isKeeper){
+        html+='<button class="dup-keep-btn active" style="flex:2" onclick="dupClearKeeper()">&#10003; This is the Keeper &mdash; click to change</button>';
+      } else {
+        html+='<button class="dup-keep-btn" style="flex:2" onclick="dupSelectKeeper('+l.id+')">&#10003; Keep This One</button>';
+      }
+    } else {
+      html+='<button class="dup-keep-btn" style="flex:2;opacity:0.5" disabled>'+(isKeeper?"&#10003; Kept":"Deleted")+'</button>';
+    }
+    html+='<button class="dup-edit-btn" onclick="openLetterById('+l.id+')">&#9998; Edit</button>';
+    html+='</div></div>';
+  });
+  html+='</div>';
+
+  // Confirm deletion button — shown once a keeper is selected
+  if(keeperId&&!groupDone){
+    var otherIds=group.filter(function(l){return l.id!==keeperId;}).map(function(l){return l.id;});
+    html+='<div style="padding:12px 0 4px;text-align:center">'
+      +'<button onclick="confirmKeepAndDelete()" style="background:#c62828;color:white;border:none;padding:10px 28px;border-radius:8px;cursor:pointer;font-size:14px;font-weight:500">'
+      +'&#128465; Delete the other '+(otherIds.length)+' record'+(otherIds.length>1?"s":"")+' and keep ID '+keeperId
+      +'</button>'
+      +'<button onclick="dupClearKeeper()" style="background:none;border:1px solid #ccc;color:#666;padding:10px 16px;border-radius:8px;cursor:pointer;font-size:13px;margin-left:10px">Cancel</button>'
+      +'</div>';
+  }
+
+  html+='</div>';
+  html+='<div class="dup-nav">';
+  html+='<button class="dup-nav-btn" onclick="dupNavigate(-1)"'+(idx===0?" disabled":"")+'>&#8592; Prev</button>';
+  html+='<span style="font-size:13px;color:#555">'+(idx+1)+' / '+total+'</span>';
+  html+='<button class="dup-nav-btn" onclick="dupNavigate(1)"'+(idx>=total-1?" disabled":"")+'>Next &#8594;</button>';
+  html+='</div>';
+  return html;
+}
+
+function dupSelectKeeper(keeperId){
+  if(!dupState.groupKeeper)dupState.groupKeeper={};
+  dupState.groupKeeper[dupState.groupIdx]=keeperId;
+  render();
+}
+
+function dupClearKeeper(){
+  if(dupState.groupKeeper)delete dupState.groupKeeper[dupState.groupIdx];
+  render();
+}
+
+async function confirmKeepAndDelete(){
+  var idx=dupState.groupIdx;
+  var group=dupState.groups[idx];
+  var keeperId=dupState.groupKeeper?dupState.groupKeeper[idx]:null;
+  if(!keeperId)return;
+  var toDelete=group.filter(function(l){return l.id!==keeperId;});
+  var names=toDelete.map(function(l){return "ID "+l.id+(l.title?" ("+l.title+")":"");}).join(", ");
+  if(!confirm("Keep record ID "+keeperId+" and permanently delete: "+names+"?\n\nThis cannot be undone."))return;
+
+  var errors=[];
+  for(var i=0;i<toDelete.length;i++){
+    var r=await fetch(SURL+"/letters?id=eq."+toDelete[i].id,{method:"DELETE",headers:SH});
+    if(!r.ok&&r.status!==204)errors.push(toDelete[i].id);
+  }
+
+  if(errors.length){
+    alert("Some deletes failed for IDs: "+errors.join(", "));
+  } else {
+    // Mark group as done
+    if(!dupState.groupDone)dupState.groupDone={};
+    dupState.groupDone[idx]=true;
+    if(!dupState.doneCount)dupState.doneCount=0;
+    dupState.doneCount++;
+    // Remove deleted letters from group (keep only the keeper)
+    dupState.groups[idx]=group.filter(function(l){return l.id===keeperId;});
+    render();
+  }
+}
+
 function render(){
   var app=document.getElementById("app");if(!app)return;
   if(state.view==="detail")app.innerHTML=renderDetail();
@@ -785,6 +1012,7 @@ function render(){
   else if(state.view==="add")app.innerHTML=renderEditForm(true);
   else if(state.view==="person")app.innerHTML=renderPerson();
   else if(state.view==="manuscript")app.innerHTML=renderManuscript();
+  else if(state.view==="duplicates")app.innerHTML=renderDuplicates();
   else app.innerHTML=renderList();
 }
 
