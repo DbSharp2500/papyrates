@@ -140,47 +140,19 @@ body{font-family:Arial,sans-serif;background:#f0f3fa;min-height:100vh;}
 .dup-nav-btn:disabled{opacity:0.4;cursor:default;}
 .dup-nav-btn:not(:disabled):hover{background:#fff3e0;}
 .dup-notice{background:#fff8e1;border:1px solid #ffe082;border-radius:6px;padding:10px 14px;font-size:12px;color:#5d4037;margin:10px 0;}
-/* Login screen */
-#login-screen{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;background:#f0f3fa;}
-.login-box{background:white;padding:32px;border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,0.1);text-align:center;max-width:320px;width:90%;}
-.login-box h1{color:#2d4a8a;margin-bottom:8px;font-size:22px;}
-.login-box p{color:#888;font-size:13px;margin-bottom:20px;}
-.login-box input{width:100%;padding:10px;border:1px solid #ccc;border-radius:6px;font-size:14px;margin-bottom:12px;text-align:center;}
-.login-box button{width:100%;background:#2d4a8a;color:white;border:none;padding:10px;border-radius:6px;cursor:pointer;font-size:14px;}
-.login-box button:hover{background:#3a5ba0;}
-.login-error{color:#c00;font-size:12px;margin-top:6px;}
+
 </style>
 </head>
 <body>
 
-<div id="login-screen">
-  <div class="login-box">
-    <h1>&#x1F3F4;&#x200D;&#x2620;&#xFE0F; Papyrates</h1>
-    <p>Enter the password to access the database</p>
-    <input type="password" id="pwd-input" placeholder="Password">
-    <button id="login-btn">Enter</button>
-    <div class="login-error" id="login-error"></div>
-  </div>
-</div>
 
-<div id="main-app" style="display:none">
+
+<div id="main-app" style="display:block">
   <div class="app" id="app"></div>
 </div>
 
 <script>
-var APP_PASSWORD = "papyrates2024";
-document.getElementById("login-btn").addEventListener("click", doLogin);
-document.getElementById("pwd-input").addEventListener("keydown", function(e){ if(e.key==="Enter") doLogin(); });
-function doLogin(){
-  var val = document.getElementById("pwd-input").value.trim();
-  if(val === APP_PASSWORD){
-    document.getElementById("login-screen").style.display = "none";
-    document.getElementById("main-app").style.display = "block";
-    init();
-  } else {
-    document.getElementById("login-error").textContent = "Incorrect password. Please try again.";
-  }
-}
+init();
 
 var SURL = "https://vzfwobsnfqnnqvnsfksq.supabase.co/rest/v1";
 var SKEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ6ZndvYnNuZnFubnF2bnNma3NxIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3Njg4ODA3MCwiZXhwIjoyMDkyNDY0MDcwfQ.J_TE4qWj9r6TIvGeptM58r2WtI6ytOe9zg7BBe29wHI";
