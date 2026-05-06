@@ -41,6 +41,9 @@ body{font-family:Arial,sans-serif;background:#f0f3fa;min-height:100vh;}
 .filter-input:focus{outline:none;border-color:rgba(255,255,255,0.6);}
 .clear-btn{background:rgba(255,100,100,0.3);color:white;border:1px solid rgba(255,100,100,0.5);padding:7px 12px;border-radius:6px;cursor:pointer;font-size:12px;}
 .clear-btn:hover{background:rgba(255,100,100,0.4);}
+.nodesc-btn{background:rgba(255,200,50,0.18);color:white;border:1px solid rgba(255,200,50,0.45);padding:7px 10px;border-radius:6px;cursor:pointer;font-size:11px;white-space:nowrap;}
+.nodesc-btn:hover{background:rgba(255,200,50,0.3);}
+.nodesc-btn.active{background:rgba(255,200,50,0.45);border-color:rgba(255,200,50,0.8);font-weight:600;}
 /* No-description filter button */
 /* Results */
 .results-header{background:#e8ecf5;padding:10px 16px;border-bottom:1px solid #d0d8ec;}
@@ -166,7 +169,7 @@ var state = {
   authorId: "", recipientId: "",
   authorText: "", recipientText: "",
   dateFrom: "", dateTo: "",
-  language: "", descSearch: "", textSearch: "",
+  language: "", descSearch: "", textSearch: "", docType: "", noDesc: false, notype: false,
 
   letters: [], totalCount: 0, filteredCount: 0,
   page: 0, pageSize: 50,
@@ -253,8 +256,11 @@ function buildQ(){
   if(state.dateFrom)f.push("date_of_letter=gte."+state.dateFrom);
   if(state.dateTo)f.push("date_of_letter=lte."+state.dateTo);
   if(state.language)f.push("language=eq."+encodeURIComponent(state.language));
+  if(state.docType)f.push("document_type=eq."+encodeURIComponent(state.docType));
   if(state.descSearch)f.push("description=ilike.*"+encodeURIComponent(state.descSearch)+"*");
   if(state.textSearch)f.push("full_text=ilike.*"+encodeURIComponent(state.textSearch)+"*");
+  if(state.noDesc)f.push("or=(description.is.null,description.eq.)");
+  if(state.notype)f.push("or=(document_type.is.null,document_type.eq.Correspondence)");
   if(f.length)q+="&"+f.join("&");
   q+="&order=date_of_letter.asc.nullslast&offset="+(state.page*state.pageSize)+"&limit="+state.pageSize;
   return q;
@@ -267,8 +273,11 @@ function buildCountQ(){
   if(state.dateFrom)f.push("date_of_letter=gte."+state.dateFrom);
   if(state.dateTo)f.push("date_of_letter=lte."+state.dateTo);
   if(state.language)f.push("language=eq."+encodeURIComponent(state.language));
+  if(state.docType)f.push("document_type=eq."+encodeURIComponent(state.docType));
   if(state.descSearch)f.push("description=ilike.*"+encodeURIComponent(state.descSearch)+"*");
   if(state.textSearch)f.push("full_text=ilike.*"+encodeURIComponent(state.textSearch)+"*");
+  if(state.noDesc)f.push("or=(description.is.null,description.eq.)");
+  if(state.notype)f.push("or=(document_type.is.null,document_type.eq.Correspondence)");
   if(f.length)q+="&"+f.join("&");
   return q;
 }
@@ -283,6 +292,24 @@ function loadLetters(){
 }
 
 function init(){
+  // Handle URL action params from home page
+  var params = new URLSearchParams(window.location.search);
+  var action = params.get("action");
+  if(action === "nodesc"){ state.noDesc = true; }
+  else if(action === "notype"){ state.notype = true; }
+  else if(action === "dupes"){ 
+    Promise.all([loadPeople(),loadManuscripts(),loadInstitutions()]).then(function(){
+      return sqCount("letters?select=id");
+    }).then(function(count){ state.totalCount=count; state.filteredCount=count; return Promise.all([buildAuthorOpts(),buildRecipOpts()]); })
+    .then(function(){ openDuplicates(); });
+    return;
+  }
+  else if(action === "add"){ 
+    Promise.all([loadPeople(),loadManuscripts(),loadInstitutions()]).then(function(){
+      openAddNew();
+    });
+    return;
+  }
   Promise.all([loadPeople(),loadManuscripts(),loadInstitutions()])
     .then(function(){return sqCount("letters?select=id");})
     .then(function(count){state.totalCount=count;state.filteredCount=count;render();return Promise.all([buildAuthorOpts(),buildRecipOpts()]);})
@@ -294,8 +321,10 @@ function selectRecip(id,name){state.recipientId=id;state.recipientText=name;stat
 function clearAuthor(){state.authorId="";state.authorText="";state.page=0;buildRecipOpts().then(function(){render();loadLetters();});}
 function clearRecip(){state.recipientId="";state.recipientText="";state.page=0;buildAuthorOpts().then(function(){render();loadLetters();});}
 function doSwap(){var aId=state.authorId,aName=state.authorText,rId=state.recipientId,rName=state.recipientText;state.authorId=rId;state.authorText=rName;state.recipientId=aId;state.recipientText=aName;state.page=0;Promise.all([buildAuthorOpts(),buildRecipOpts()]).then(function(){loadLetters();});}
-function doClear(){state.authorId="";state.authorText="";state.recipientId="";state.recipientText="";state.dateFrom="";state.dateTo="";state.language="";state.descSearch="";state.textSearch="";state.page=0;Promise.all([buildAuthorOpts(),buildRecipOpts()]).then(function(){loadLetters();});}
+function doClear(){state.authorId="";state.authorText="";state.recipientId="";state.recipientText="";state.dateFrom="";state.dateTo="";state.language="";state.descSearch="";state.textSearch="";state.docType="";state.noDesc=false;state.notype=false;state.page=0;Promise.all([buildAuthorOpts(),buildRecipOpts()]).then(function(){loadLetters();});}
 function onFilter(k,v){state[k]=v;state.page=0;loadLetters();}
+function toggleNoDesc(){state.noDesc=!state.noDesc;state.page=0;loadLetters();}
+function toggleNotype(){state.notype=!state.notype;state.page=0;loadLetters();}
 var st;function onSearch(k,v){state[k]=v;clearTimeout(st);st=setTimeout(function(){state.page=0;loadLetters();},600);}
 
 function openLetter(idx){
@@ -521,6 +550,7 @@ function saveLetter(){
 
 // ── RENDER HELPERS ─────────────────────────────────────────────────────────
 
+var DOC_TYPES=["Correspondence","Financial Document","Legal Document","Scholarly Work","Manuscript Record","Institutional Record","Interview / Oral History","Journal / Diary","Press / Media","Manuscript Image","Literary Manuscript"];
 var LANGS=["English","French","German","Latin","Italian","Spanish","Coptic","Greek","Arabic","Dutch","Hebrew"];
 
 function miniLetterRow(l,showAuthor){
