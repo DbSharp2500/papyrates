@@ -161,6 +161,7 @@ var manuscripts = {};
 var institutions = {};
 var allAuthorOpts = [];
 var allRecipOpts = [];
+var allManuscriptOpts = [];
 var viewStack = [];
 
 var state = {
@@ -169,6 +170,7 @@ var state = {
   authorText: "", recipientText: "",
   dateFrom: "", dateTo: "",
   language: "", descSearch: "", textSearch: "", docType: "", noDesc: false, notype: false,
+  manuscriptId: "", manuscriptText: "", manuscriptLetterIds: null,
 
   letters: [], totalCount: 0, filteredCount: 0,
   page: 0, pageSize: 50,
@@ -216,7 +218,10 @@ function loadPeople(){
 }
 function loadManuscripts(){
   return sq("manuscripts?select=id,name,description&limit=2000").then(function(rows){
-    if(Array.isArray(rows))rows.forEach(function(m){manuscripts[String(m.id)]=m;});
+    if(Array.isArray(rows)){
+      rows.forEach(function(m){manuscripts[String(m.id)]=m;});
+      allManuscriptOpts=rows.map(function(m){return{id:m.id,name:m.name||""};}).filter(function(x){return x.name;}).sort(function(a,b){return a.name.localeCompare(b.name);});
+    }
   });
 }
 function loadInstitutions(){
@@ -239,6 +244,30 @@ function buildRecipOpts(){
     allRecipOpts=ids.map(function(id){return{id:id,name:pname(id)};}).filter(function(x){return x.name;}).sort(function(a,b){return a.name.localeCompare(b.name);});
   });
 }
+function filteredManuscriptOpts(){if(!state.manuscriptText)return allManuscriptOpts;var t=state.manuscriptText.toLowerCase();return allManuscriptOpts.filter(function(o){return o.name.toLowerCase().indexOf(t)>=0;});}
+
+function selectManuscript(id,name){
+  state.manuscriptId=String(id);state.manuscriptText=name;state.page=0;
+  var dd=document.getElementById("ms-drop");if(dd)dd.classList.remove("open");
+  sq("letter_manuscripts?manuscript_id=eq."+id+"&select=letter_id&limit=5000").then(function(rows){
+    state.manuscriptLetterIds=Array.isArray(rows)?rows.map(function(r){return r.letter_id;}):[];
+    render();loadLetters();
+  });
+}
+function clearManuscript(){
+  state.manuscriptId="";state.manuscriptText="";state.manuscriptLetterIds=null;state.page=0;
+  var dd=document.getElementById("ms-drop");if(dd)dd.classList.remove("open");
+  render();loadLetters();
+}
+function onManuscriptInput(v){
+  state.manuscriptText=v;if(!v){state.manuscriptId="";state.manuscriptLetterIds=null;}
+  var dd=document.getElementById("ms-drop");if(!dd)return;
+  dd.classList.add("open");
+  var opts=filteredManuscriptOpts();
+  dd.innerHTML=opts.length===0?'<div class="ac-item" style="color:#999">No matches</div>':opts.map(function(o){return'<div class="ac-item'+(o.id==state.manuscriptId?" selected-item":"")+'" onmousedown="event.preventDefault();selectManuscript('+o.id+',\''+o.name.replace(/\\/g,"\\\\").replace(/'/g,"\\'")+'\')">'+o.name+'</div>';}).join("");
+}
+
+
 function filteredAuthorOpts(){if(!state.authorText)return allAuthorOpts;var t=state.authorText.toLowerCase();return allAuthorOpts.filter(function(o){return o.name.toLowerCase().indexOf(t)>=0;});}
 function filteredRecipOpts(){if(!state.recipientText)return allRecipOpts;var t=state.recipientText.toLowerCase();return allRecipOpts.filter(function(o){return o.name.toLowerCase().indexOf(t)>=0;});}
 
@@ -254,6 +283,9 @@ function buildQ(){
   if(state.recipientId)f.push("recipient_id=eq."+state.recipientId);
   if(state.dateFrom)f.push("date_of_letter=gte."+state.dateFrom);
   if(state.dateTo)f.push("date_of_letter=lte."+state.dateTo);
+  if(state.manuscriptLetterIds!==null){
+    if(state.manuscriptLetterIds.length===0)f.push("id=eq.0");
+    else f.push("id=in.("+state.manuscriptLetterIds.join(",")+")"); }
   if(state.language)f.push("language=eq."+encodeURIComponent(state.language));
   if(state.docType)f.push("document_type=eq."+encodeURIComponent(state.docType));
   if(state.descSearch)f.push("description=ilike.*"+encodeURIComponent(state.descSearch)+"*");
@@ -271,6 +303,9 @@ function buildCountQ(){
   if(state.recipientId)f.push("recipient_id=eq."+state.recipientId);
   if(state.dateFrom)f.push("date_of_letter=gte."+state.dateFrom);
   if(state.dateTo)f.push("date_of_letter=lte."+state.dateTo);
+  if(state.manuscriptLetterIds!==null){
+    if(state.manuscriptLetterIds.length===0)f.push("id=eq.0");
+    else f.push("id=in.("+state.manuscriptLetterIds.join(",")+")"); }
   if(state.language)f.push("language=eq."+encodeURIComponent(state.language));
   if(state.docType)f.push("document_type=eq."+encodeURIComponent(state.docType));
   if(state.descSearch)f.push("description=ilike.*"+encodeURIComponent(state.descSearch)+"*");
@@ -476,6 +511,7 @@ function efPersonInput(role,val){
 }
 
 document.addEventListener("click",function(e){
+  if(!e.target.closest("#ms-inp")&&!e.target.closest("#ms-drop")){var msd=document.getElementById("ms-drop");if(msd)msd.classList.remove("open");}
   if(!e.target.closest(".form-ac-wrap")){
     var ad=document.getElementById("eform-author-drop");var rd=document.getElementById("eform-recip-drop");
     if(ad)ad.classList.remove("open");if(rd)rd.classList.remove("open");
@@ -588,7 +624,7 @@ function onRecipKey(e){if(e.key==="Escape"){var dd=document.getElementById("reci
 // ── RENDER VIEWS ────────────────────────────────────────────────────────────
 
 function renderList(){
-  var hasFilter=state.authorId||state.recipientId||state.dateFrom||state.dateTo||state.language||state.docType||state.descSearch||state.textSearch||state.noDesc||state.notype;
+  var hasFilter=state.authorId||state.recipientId||state.dateFrom||state.dateTo||state.language||state.docType||state.descSearch||state.textSearch||state.noDesc||state.notype||state.manuscriptId;
   var displayCount=hasFilter?state.filteredCount.toLocaleString():state.totalCount.toLocaleString();
   var aOpts=filteredAuthorOpts();var rOpts=filteredRecipOpts();
 
@@ -611,6 +647,16 @@ function renderList(){
   html+='<div class="ac-dropdown" id="recip-drop">';
   html+=rOpts.length===0?'<div class="ac-item" style="color:#999">Type to search...</div>':rOpts.map(function(o){return'<div class="ac-item'+(o.id==state.recipientId?" selected-item":"")+'" onmousedown="event.preventDefault();selectRecip(\''+o.id+'\',\''+o.name.replace(/\\/g,"\\\\").replace(/'/g,"\\'")+'\')">'+o.name+'</div>';}).join("");
   html+='</div></div></div>';
+
+  var msOpts=filteredManuscriptOpts();
+  html+='<div class="filter-row"><span class="filter-label">Manuscript:</span>';
+  html+='<div class="ac-wrap"><input class="ac-input" id="ms-inp" type="text" placeholder="Type to search manuscripts..." value="'+state.manuscriptText.replace(/"/g,"&quot;")+'" oninput="onManuscriptInput(this.value)" onfocus="document.getElementById(\'ms-drop\').classList.add(\'open\')" autocomplete="off">';
+  if(state.manuscriptText)html+='<button class="ac-clear" onclick="clearManuscript()">x</button>';
+  html+='<div class="ac-dropdown" id="ms-drop">';
+  html+=msOpts.length===0?'<div class="ac-item" style="color:#999">Type to search...</div>':msOpts.map(function(o){return'<div class="ac-item"'+' onmousedown="event.preventDefault();selectManuscript('+o.id+',\''+o.name.replace(/\\/g,"\\\\").replace(/'/g,"\\'")+'\')">'+o.name+'</div>';}).join("");
+  html+='</div></div>';
+  if(state.manuscriptId)html+='<span style="color:rgba(255,255,255,0.7);font-size:11px;flex-shrink:0">'+(state.manuscriptLetterIds===null?'Loading...':(state.manuscriptLetterIds.length+' docs'))+'</span>';
+  html+='</div>';
 
   html+='<div class="filter-row"><span class="filter-label">Language:</span><select class="filter-select" onchange="onFilter(\'language\',this.value)"><option value="">Any</option>'+LANGS.map(function(l){return'<option value="'+l+'"'+(state.language===l?" selected":"")+'>'+l+'</option>';}).join("")+'</select></div>';
   var _dtSel='<select class="filter-select" onchange="onFilter(\'docType\',this.value)"><option value="">All types</option>'+DOC_TYPES.map(function(t){return'<option value="'+t+'"'+(state.docType===t?' selected':'')+'>'+t+'</option>';}).join('')+'</select>';
