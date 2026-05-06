@@ -58,6 +58,16 @@ body{font-family:Arial,sans-serif;background:#1a1408;min-height:100vh;display:fl
 .msg.success{background:#1a3a1a;color:#7ecfa0;border:1px solid #2a5a2a;}
 .msg.error{background:#3a1010;color:#ef9a9a;border:1px solid #6a2020;}
 
+.inst-check-row{display:flex;align-items:center;gap:10px;padding:7px 8px;border-radius:5px;cursor:pointer;}
+.inst-check-row:hover{background:#2a1f0a;}
+.inst-check-row input[type=checkbox]{accent-color:#a06828;width:15px;height:15px;flex-shrink:0;cursor:pointer;}
+.inst-check-row label{font-size:13px;color:#d4a96a;cursor:pointer;flex:1;}
+.inst-check-row .inst-loc{font-size:11px;color:#6a5030;}
+.inst-note-row{margin-bottom:8px;}
+.inst-note-row label{font-size:12px;color:#8a6840;display:block;margin-bottom:3px;}
+.inst-note-row input{width:100%;padding:7px 10px;background:#1a1408;border:1px solid #5a3a10;border-radius:5px;font-size:13px;color:#e0c890;}
+.inst-note-row input::placeholder{color:#4a3018;}
+.inst-note-row input:focus{outline:none;border-color:#a06828;}
 /* Recent additions */
 .recent{width:100%;max-width:560px;margin-top:24px;}
 .recent h3{color:#8a6840;font-size:12px;text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid #3a2a10;}
@@ -126,6 +136,18 @@ body{font-family:Arial,sans-serif;background:#1a1408;min-height:100vh;display:fl
     <label>Description / Notes</label>
     <textarea id="m-desc" placeholder="Contents, date, language, current location, significance..."></textarea>
   </div>
+  <div class="field">
+    <label>Holding Institutions <span style="color:#5a4020;font-size:10px;text-transform:none;letter-spacing:0">(select multiple — manuscripts can be split across institutions)</span></label>
+    <div id="inst-picker" style="border:1px solid #5a3a10;border-radius:6px;background:#1a1408;max-height:200px;overflow-y:auto;padding:6px;">
+      <div style="color:#5a4020;font-size:13px;padding:6px;">Loading institutions...</div>
+    </div>
+  </div>
+  <div id="inst-notes-box" style="display:none;">
+    <div class="field">
+      <label>Notes per institution <span style="color:#5a4020;font-size:10px;text-transform:none;letter-spacing:0">(optional — e.g. "holds fragments 1-3", "acquired 2009")</span></label>
+      <div id="inst-notes-fields"></div>
+    </div>
+  </div>
   <button class="save-btn" id="save-manuscript" onclick="checkDuplicates('manuscript')">&#10003; Add Manuscript</button>
   <div class="msg" id="msg-manuscript"></div>
 </div>
@@ -163,6 +185,64 @@ body{font-family:Arial,sans-serif;background:#1a1408;min-height:100vh;display:fl
 </div>
 
 <script>
+// ── Load institutions for manuscript form ─────────────────────────────────
+var allInstitutions = [];
+
+async function loadInstitutions(){
+  try{
+    var r = await fetch(SB+"/institutions?select=id,name,location&order=name.asc&limit=500", {headers:{"apikey":KEY,"Authorization":"Bearer "+KEY}});
+    allInstitutions = await r.json();
+    renderInstPicker();
+  } catch(e){ document.getElementById('inst-picker').innerHTML='<div style="color:#ef9a9a;padding:6px;font-size:13px;">Failed to load institutions</div>'; }
+}
+
+function renderInstPicker(){
+  var picker = document.getElementById('inst-picker');
+  if(!allInstitutions.length){ picker.innerHTML='<div style="color:#5a4020;font-size:13px;padding:6px;">No institutions found</div>'; return; }
+  picker.innerHTML = allInstitutions.map(function(inst){
+    return '<div class="inst-check-row">'
+      +'<input type="checkbox" id="inst-'+inst.id+'" value="'+inst.id+'" onchange="updateInstNotes()">'
+      +'<label for="inst-'+inst.id+'">'+escHtml(inst.name)+(inst.location?'<span class="inst-loc"> — '+escHtml(inst.location)+'</span>':'')+'</label>'
+      +'</div>';
+  }).join('');
+}
+
+function getSelectedInstitutions(){
+  var checked = document.querySelectorAll('#inst-picker input[type=checkbox]:checked');
+  return Array.from(checked).map(function(c){ return parseInt(c.value); });
+}
+
+function updateInstNotes(){
+  var selected = getSelectedInstitutions();
+  var notesBox = document.getElementById('inst-notes-box');
+  var notesFields = document.getElementById('inst-notes-fields');
+  if(selected.length===0){ notesBox.style.display='none'; return; }
+  notesBox.style.display='block';
+  notesFields.innerHTML = selected.map(function(id){
+    var inst = allInstitutions.find(function(i){ return i.id===id; });
+    var name = inst ? inst.name : 'Institution #'+id;
+    return '<div class="inst-note-row">'
+      +'<label>'+escHtml(name)+'</label>'
+      +'<input type="text" id="inst-note-'+id+'" placeholder="Notes (optional) — e.g. holds fragments 1-3, acquired 2009">'
+      +'</div>';
+  }).join('');
+}
+
+// Save institution links after manuscript is created
+async function saveManuscriptInstitutions(manuscriptId){
+  var selected = getSelectedInstitutions();
+  if(!selected.length) return;
+  var rows = selected.map(function(instId){
+    var notes = (document.getElementById('inst-note-'+instId)||{value:''}).value.trim();
+    return {manuscript_id: manuscriptId, institution_id: instId, notes: notes||null};
+  });
+  await fetch(SB+"/manuscript_institutions", {
+    method:"POST",
+    headers:{"apikey":KEY,"Authorization":"Bearer "+KEY,"Content-Type":"application/json","Prefer":"return=minimal"},
+    body: JSON.stringify(rows)
+  });
+}
+
 var SB  = "https://vzfwobsnfqnnqvnsfksq.supabase.co/rest/v1";
 var KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ6ZndvYnNuZnFubnF2bnNma3NxIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3Njg4ODA3MCwiZXhwIjoyMDkyNDY0MDcwfQ.J_TE4qWj9r6TIvGeptM58r2WtI6ytOe9zg7BBe29wHI";
 var SH  = {"apikey":KEY,"Authorization":"Bearer "+KEY,"Content-Type":"application/json","Prefer":"return=representation"};
@@ -323,6 +403,11 @@ async function doSave(type){
     var data = await r.json();
     var newId = Array.isArray(data)&&data.length>0 ? data[0].id : "?";
 
+    // Save institution links for manuscripts
+    if(type==="manuscript" && Array.isArray(data) && data.length>0){
+      await saveManuscriptInstitutions(data[0].id);
+    }
+
     showMsg(type, "success", "&#10003; Saved! "+escHtml(displayName)+" added with ID #"+newId);
     clearForm(type);
     addToRecent(type, displayName, newId);
@@ -348,6 +433,9 @@ function clearForm(type){
   } else if(type==="manuscript"){
     document.getElementById("m-name").value="";
     document.getElementById("m-desc").value="";
+    document.querySelectorAll('#inst-picker input[type=checkbox]').forEach(function(c){ c.checked=false; });
+    document.getElementById('inst-notes-box').style.display='none';
+    document.getElementById('inst-notes-fields').innerHTML='';
   } else {
     document.getElementById("i-name").value="";
     document.getElementById("i-loc").value="";
@@ -404,6 +492,7 @@ window.addEventListener("load", function(){
   var t = params.get("type");
   if(t==="manuscript") switchTab("manuscript");
   else if(t==="institution") switchTab("institution");
+  loadInstitutions();
   // else default to person
 });
 
