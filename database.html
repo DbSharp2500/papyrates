@@ -395,12 +395,12 @@ function openLetterById(id){
 }
 
 function goBack(){
+  // Simply navigate back through the view stack.
+  // The Home button handles going back to the home page.
+  // Filters and sorting remain intact when returning to list view.
   var prev=viewStack.pop();
-  if(!prev||prev==="list"){
-    var params=new URLSearchParams(window.location.search);
-    if(params.get("action")){window.location.href="/";return;}
-  }
-  state.view=prev||"list";render();
+  state.view=prev||"list";
+  render();
 }
 function toggleFT(){state.showFT=!state.showFT;render();}
 function changePage(d){state.page+=d;loadLetters();}
