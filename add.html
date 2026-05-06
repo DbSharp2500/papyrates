@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Papyrates — Add Records</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:Arial,sans-serif;background:#1a1408;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding-bottom:40px;}
+
+/* Header */
+.header{background:#2a1f0a;border-bottom:1px solid #5a3a10;width:100%;padding:14px 24px;display:flex;align-items:center;justify-content:space-between;margin-bottom:32px;}
+.header h1{color:#d4a96a;font-size:18px;font-family:Georgia,serif;letter-spacing:1px;}
+.home-btn{background:rgba(212,169,106,0.15);color:#d4a96a;border:1px solid rgba(212,169,106,0.35);padding:6px 14px;border-radius:6px;cursor:pointer;font-size:13px;text-decoration:none;}
+.home-btn:hover{background:rgba(212,169,106,0.25);}
+
+/* Tab switcher */
+.tabs{display:flex;gap:8px;margin-bottom:28px;}
+.tab{padding:10px 24px;border-radius:8px;cursor:pointer;font-size:14px;font-family:Georgia,serif;border:1px solid #5a3a10;color:#a08050;background:#2a1f0a;transition:all 0.15s;}
+.tab:hover{background:#3a2a10;color:#d4a96a;}
+.tab.active{background:#7a5020;color:#f0e0b0;border-color:#a06828;}
+
+/* Form card */
+.card{background:#2a1f0a;border:1px solid #4a3010;border-radius:12px;padding:28px;width:100%;max-width:560px;}
+
+/* Form fields */
+.field{margin-bottom:18px;}
+.field label{display:block;font-size:11px;text-transform:uppercase;letter-spacing:0.8px;color:#8a6840;margin-bottom:6px;}
+.field input,.field textarea{width:100%;padding:10px 12px;background:#1a1408;border:1px solid #5a3a10;border-radius:6px;font-size:14px;color:#e0c890;font-family:Arial,sans-serif;}
+.field input::placeholder,.field textarea::placeholder{color:#5a4020;}
+.field input:focus,.field textarea:focus{outline:none;border-color:#a06828;box-shadow:0 0 0 2px rgba(160,104,40,0.15);}
+.field textarea{resize:vertical;min-height:80px;line-height:1.5;}
+
+.field-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+
+/* Save button */
+.save-btn{width:100%;padding:12px;background:#7a5020;color:#f0e0b0;border:none;border-radius:8px;font-size:15px;font-family:Georgia,serif;cursor:pointer;letter-spacing:0.5px;margin-top:4px;}
+.save-btn:hover{background:#9a6828;}
+.save-btn:disabled{opacity:0.4;cursor:default;}
+
+/* Duplicate warning */
+.dup-warning{background:#3a2000;border:1px solid #a05010;border-radius:8px;padding:16px;margin-bottom:20px;display:none;}
+.dup-warning.show{display:block;}
+.dup-warning h3{color:#e08030;font-size:13px;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:10px;}
+.dup-item{background:#2a1800;border:1px solid #6a3a10;border-radius:6px;padding:10px 12px;margin-bottom:8px;cursor:pointer;transition:border-color 0.15s;}
+.dup-item:hover{border-color:#a06828;}
+.dup-item-name{font-size:14px;color:#e0c890;font-weight:bold;}
+.dup-item-desc{font-size:12px;color:#8a6840;margin-top:3px;}
+.dup-actions{display:flex;gap:10px;margin-top:14px;}
+.dup-proceed{flex:1;padding:9px;background:#5a3010;color:#e0b060;border:1px solid #8a5020;border-radius:6px;cursor:pointer;font-size:13px;}
+.dup-proceed:hover{background:#7a4010;}
+.dup-cancel{flex:1;padding:9px;background:#1a1408;color:#8a6840;border:1px solid #4a3010;border-radius:6px;cursor:pointer;font-size:13px;}
+.dup-cancel:hover{background:#2a1f0a;}
+
+/* Result messages */
+.msg{padding:12px 16px;border-radius:8px;font-size:14px;margin-top:16px;text-align:center;display:none;}
+.msg.show{display:block;}
+.msg.success{background:#1a3a1a;color:#7ecfa0;border:1px solid #2a5a2a;}
+.msg.error{background:#3a1010;color:#ef9a9a;border:1px solid #6a2020;}
+
+/* Recent additions */
+.recent{width:100%;max-width:560px;margin-top:24px;}
+.recent h3{color:#8a6840;font-size:12px;text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid #3a2a10;}
+.recent-item{background:#2a1f0a;border:1px solid #3a2a10;border-radius:6px;padding:10px 14px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;}
+.recent-item-name{font-size:13px;color:#d4a96a;}
+.recent-item-sub{font-size:11px;color:#6a5030;margin-top:2px;}
+.recent-item-id{font-size:11px;color:#5a4020;}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>&#x1F3F4;&#x200D;&#x2620;&#xFE0F; Add Records</h1>
+  <a class="home-btn" href="/">&#8962; Home</a>
+</div>
+
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('person')">&#128100; Person</div>
+  <div class="tab" onclick="switchTab('manuscript')">&#128196; Manuscript</div>
+  <div class="tab" onclick="switchTab('institution')">&#127963; Institution</div>
+</div>
+
+<!-- PERSON FORM -->
+<div class="card" id="form-person">
+  <div class="dup-warning" id="dup-person">
+    <h3>&#9888; Possible duplicate found</h3>
+    <div id="dup-person-list"></div>
+    <div class="dup-actions">
+      <button class="dup-proceed" onclick="saveAnyway('person')">Add anyway — it's a different person</button>
+      <button class="dup-cancel" onclick="cancelDup('person')">Cancel — use existing record</button>
+    </div>
+  </div>
+  <div class="field field-row">
+    <div>
+      <label>First Name</label>
+      <input type="text" id="p-first" placeholder="e.g. James" oninput="clearMsg('person')">
+    </div>
+    <div>
+      <label>Last Name *</label>
+      <input type="text" id="p-last" placeholder="e.g. Robinson" oninput="clearMsg('person')">
+    </div>
+  </div>
+  <div class="field">
+    <label>Description / Notes</label>
+    <textarea id="p-desc" placeholder="Who is this person? Role in the papyrus trade, dates active, nationality, etc."></textarea>
+  </div>
+  <button class="save-btn" id="save-person" onclick="checkDuplicates('person')">&#10003; Add Person</button>
+  <div class="msg" id="msg-person"></div>
+</div>
+
+<!-- MANUSCRIPT FORM -->
+<div class="card" id="form-manuscript" style="display:none;">
+  <div class="dup-warning" id="dup-manuscript">
+    <h3>&#9888; Possible duplicate found</h3>
+    <div id="dup-manuscript-list"></div>
+    <div class="dup-actions">
+      <button class="dup-proceed" onclick="saveAnyway('manuscript')">Add anyway — it's a different manuscript</button>
+      <button class="dup-cancel" onclick="cancelDup('manuscript')">Cancel — use existing record</button>
+    </div>
+  </div>
+  <div class="field">
+    <label>Manuscript Name *</label>
+    <input type="text" id="m-name" placeholder="e.g. Papyrus Bodmer II, P52, 4Q175" oninput="clearMsg('manuscript')">
+  </div>
+  <div class="field">
+    <label>Description / Notes</label>
+    <textarea id="m-desc" placeholder="Contents, date, language, current location, significance..."></textarea>
+  </div>
+  <button class="save-btn" id="save-manuscript" onclick="checkDuplicates('manuscript')">&#10003; Add Manuscript</button>
+  <div class="msg" id="msg-manuscript"></div>
+</div>
+
+<!-- INSTITUTION FORM -->
+<div class="card" id="form-institution" style="display:none;">
+  <div class="dup-warning" id="dup-institution">
+    <h3>&#9888; Possible duplicate found</h3>
+    <div id="dup-institution-list"></div>
+    <div class="dup-actions">
+      <button class="dup-proceed" onclick="saveAnyway('institution')">Add anyway — it's a different institution</button>
+      <button class="dup-cancel" onclick="cancelDup('institution')">Cancel — use existing record</button>
+    </div>
+  </div>
+  <div class="field">
+    <label>Institution Name *</label>
+    <input type="text" id="i-name" placeholder="e.g. Museum of the Bible, Bodleian Library" oninput="clearMsg('institution')">
+  </div>
+  <div class="field">
+    <label>Location</label>
+    <input type="text" id="i-loc" placeholder="e.g. Washington D.C., USA">
+  </div>
+  <div class="field">
+    <label>Notes</label>
+    <textarea id="i-notes" placeholder="Role in manuscript collecting, acquisition history, key contacts..."></textarea>
+  </div>
+  <button class="save-btn" id="save-institution" onclick="checkDuplicates('institution')">&#10003; Add Institution</button>
+  <div class="msg" id="msg-institution"></div>
+</div>
+
+<!-- Recent additions -->
+<div class="recent" id="recent-box" style="display:none;">
+  <h3>&#x1F552; Recently Added</h3>
+  <div id="recent-list"></div>
+</div>
+
+<script>
+var SB  = "https://vzfwobsnfqnnqvnsfksq.supabase.co/rest/v1";
+var KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ6ZndvYnNuZnFubnF2bnNma3NxIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3Njg4ODA3MCwiZXhwIjoyMDkyNDY0MDcwfQ.J_TE4qWj9r6TIvGeptM58r2WtI6ytOe9zg7BBe29wHI";
+var SH  = {"apikey":KEY,"Authorization":"Bearer "+KEY,"Content-Type":"application/json","Prefer":"return=representation"};
+
+var currentTab = "person";
+var recentAdded = [];
+
+// ── Tab switching ────────────────────────────────────────────────────────────
+function switchTab(tab){
+  currentTab = tab;
+  document.querySelectorAll('.tab').forEach(function(t,i){
+    t.classList.toggle('active', ["person","manuscript","institution"][i]===tab);
+  });
+  document.getElementById('form-person').style.display      = tab==="person"      ? "block" : "none";
+  document.getElementById('form-manuscript').style.display  = tab==="manuscript"  ? "block" : "none";
+  document.getElementById('form-institution').style.display = tab==="institution" ? "block" : "none";
+  hideDup(tab);
+}
+
+// ── Duplicate checking ───────────────────────────────────────────────────────
+
+// Levenshtein distance for fuzzy matching
+function levDist(a, b){
+  a = a.toLowerCase(); b = b.toLowerCase();
+  var m = a.length, n = b.length;
+  var dp = [];
+  for(var i=0;i<=m;i++){dp[i]=[i];for(var j=1;j<=n;j++)dp[i][j]=0;}
+  for(var j=0;j<=n;j++)dp[0][j]=j;
+  for(var i=1;i<=m;i++)for(var j=1;j<=n;j++){
+    dp[i][j]=a[i-1]===b[j-1]?dp[i-1][j-1]:1+Math.min(dp[i-1][j],dp[i][j-1],dp[i-1][j-1]);
+  }
+  return dp[m][n];
+}
+
+function isSimilar(a, b){
+  a = (a||"").toLowerCase().trim();
+  b = (b||"").toLowerCase().trim();
+  if(!a||!b) return false;
+  if(a===b) return true;
+  // Check if one contains the other
+  if(a.includes(b)||b.includes(a)) return true;
+  // Check first 4 chars match (same root)
+  if(a.length>=4&&b.length>=4&&a.substring(0,4)===b.substring(0,4)) return true;
+  // Levenshtein within 2 for short names, 3 for longer
+  var threshold = Math.max(a.length,b.length) > 8 ? 3 : 2;
+  return levDist(a,b) <= threshold;
+}
+
+async function checkDuplicates(type){
+  hideDup(type);
+  clearMsg(type);
+
+  var name = getNameForType(type);
+  if(!name.trim()){
+    showMsg(type, "error", "Please enter a name before saving.");
+    return;
+  }
+
+  setLoading(type, true);
+
+  var dupes = [];
+  try{
+    if(type==="person"){
+      var last = document.getElementById("p-last").value.trim();
+      var first = document.getElementById("p-first").value.trim();
+      // Search by last name similarity
+      var r = await fetch(`${SB}/people?select=id,first_name,last_name,description&last_name=ilike.*${encodeURIComponent(last.substring(0,4))}*&limit=50`, {headers:{"apikey":KEY,"Authorization":"Bearer "+KEY}});
+      var rows = await r.json();
+      dupes = (rows||[]).filter(function(p){
+        return isSimilar(last, p.last_name||"") || isSimilar(first, p.first_name||"");
+      });
+    } else if(type==="manuscript"){
+      var name2 = document.getElementById("m-name").value.trim();
+      var r2 = await fetch(`${SB}/manuscripts?select=id,name,description&name=ilike.*${encodeURIComponent(name2.substring(0,6))}*&limit=50`, {headers:{"apikey":KEY,"Authorization":"Bearer "+KEY}});
+      var rows2 = await r2.json();
+      dupes = (rows2||[]).filter(function(m){ return isSimilar(name2, m.name||""); });
+    } else {
+      var name3 = document.getElementById("i-name").value.trim();
+      var r3 = await fetch(`${SB}/institutions?select=id,name,location,notes&name=ilike.*${encodeURIComponent(name3.substring(0,5))}*&limit=50`, {headers:{"apikey":KEY,"Authorization":"Bearer "+KEY}});
+      var rows3 = await r3.json();
+      dupes = (rows3||[]).filter(function(i){ return isSimilar(name3, i.name||""); });
+    }
+  } catch(e){ dupes = []; }
+
+  setLoading(type, false);
+
+  if(dupes.length > 0){
+    showDupWarning(type, dupes);
+  } else {
+    doSave(type);
+  }
+}
+
+function showDupWarning(type, dupes){
+  var listEl = document.getElementById("dup-"+type+"-list");
+  listEl.innerHTML = dupes.slice(0,5).map(function(d){
+    var name = type==="person"
+      ? ((d.last_name||"")+(d.first_name?", "+d.first_name:""))
+      : (d.name||"");
+    var sub = d.description ? d.description.substring(0,80)+"..." : (d.location||"");
+    return '<div class="dup-item"><div class="dup-item-name">'+escHtml(name)+'</div>'
+      +(sub?'<div class="dup-item-desc">'+escHtml(sub)+'</div>':'')
+      +'</div>';
+  }).join("");
+  document.getElementById("dup-"+type).classList.add("show");
+}
+
+function hideDup(type){
+  var el = document.getElementById("dup-"+type);
+  if(el) el.classList.remove("show");
+}
+
+function cancelDup(type){
+  hideDup(type);
+  showMsg(type, "error", "Save cancelled. Use the existing record instead.");
+}
+
+function saveAnyway(type){
+  hideDup(type);
+  doSave(type);
+}
+
+// ── Save record ──────────────────────────────────────────────────────────────
+async function doSave(type){
+  setLoading(type, true);
+  clearMsg(type);
+
+  var payload, url, displayName;
+
+  if(type==="person"){
+    var first = document.getElementById("p-first").value.trim();
+    var last  = document.getElementById("p-last").value.trim();
+    var desc  = document.getElementById("p-desc").value.trim();
+    if(!last){ showMsg(type,"error","Last name is required."); setLoading(type,false); return; }
+    payload = {first_name:first||null, last_name:last, description:desc||null};
+    url = SB+"/people";
+    displayName = last+(first?", "+first:"");
+  } else if(type==="manuscript"){
+    var mname = document.getElementById("m-name").value.trim();
+    var mdesc = document.getElementById("m-desc").value.trim();
+    if(!mname){ showMsg(type,"error","Manuscript name is required."); setLoading(type,false); return; }
+    payload = {name:mname, description:mdesc||null};
+    url = SB+"/manuscripts";
+    displayName = mname;
+  } else {
+    var iname = document.getElementById("i-name").value.trim();
+    var iloc  = document.getElementById("i-loc").value.trim();
+    var inotes= document.getElementById("i-notes").value.trim();
+    if(!iname){ showMsg(type,"error","Institution name is required."); setLoading(type,false); return; }
+    payload = {name:iname, location:iloc||null, notes:inotes||null};
+    url = SB+"/institutions";
+    displayName = iname;
+  }
+
+  try{
+    var r = await fetch(url, {method:"POST", headers:SH, body:JSON.stringify(payload)});
+    if(!r.ok) throw new Error("HTTP "+r.status);
+    var data = await r.json();
+    var newId = Array.isArray(data)&&data.length>0 ? data[0].id : "?";
+
+    showMsg(type, "success", "&#10003; Saved! "+escHtml(displayName)+" added with ID #"+newId);
+    clearForm(type);
+    addToRecent(type, displayName, newId);
+    setLoading(type, false);
+  } catch(e){
+    showMsg(type, "error", "Save failed: "+e.message);
+    setLoading(type, false);
+  }
+}
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+function getNameForType(type){
+  if(type==="person")      return (document.getElementById("p-last").value||"").trim();
+  if(type==="manuscript")  return (document.getElementById("m-name").value||"").trim();
+  return (document.getElementById("i-name").value||"").trim();
+}
+
+function clearForm(type){
+  if(type==="person"){
+    document.getElementById("p-first").value="";
+    document.getElementById("p-last").value="";
+    document.getElementById("p-desc").value="";
+  } else if(type==="manuscript"){
+    document.getElementById("m-name").value="";
+    document.getElementById("m-desc").value="";
+  } else {
+    document.getElementById("i-name").value="";
+    document.getElementById("i-loc").value="";
+    document.getElementById("i-notes").value="";
+  }
+}
+
+function setLoading(type, loading){
+  var btn = document.getElementById("save-"+type);
+  if(!btn) return;
+  btn.disabled = loading;
+  btn.textContent = loading ? "Checking..." : (
+    type==="person"      ? "✓ Add Person" :
+    type==="manuscript"  ? "✓ Add Manuscript" : "✓ Add Institution"
+  );
+}
+
+function showMsg(type, cls, text){
+  var el = document.getElementById("msg-"+type);
+  el.className = "msg show "+cls;
+  el.innerHTML = text;
+}
+
+function clearMsg(type){
+  var el = document.getElementById("msg-"+type);
+  if(el){ el.className="msg"; el.innerHTML=""; }
+}
+
+function escHtml(v){
+  return (v||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+}
+
+function addToRecent(type, name, id){
+  recentAdded.unshift({type:type, name:name, id:id});
+  renderRecent();
+}
+
+function renderRecent(){
+  if(recentAdded.length===0){ document.getElementById("recent-box").style.display="none"; return; }
+  document.getElementById("recent-box").style.display="block";
+  var icons = {person:"&#128100;", manuscript:"&#128196;", institution:"&#127963;"};
+  document.getElementById("recent-list").innerHTML = recentAdded.slice(0,8).map(function(r){
+    return '<div class="recent-item">'
+      +'<div><div class="recent-item-name">'+icons[r.type]+' '+escHtml(r.name)+'</div>'
+      +'<div class="recent-item-sub">'+r.type+'</div></div>'
+      +'<div class="recent-item-id">ID #'+r.id+'</div>'
+      +'</div>';
+  }).join("");
+}
+
+// Handle ?type= URL param from home page tiles
+window.addEventListener("load", function(){
+  var params = new URLSearchParams(window.location.search);
+  var t = params.get("type");
+  if(t==="manuscript") switchTab("manuscript");
+  else if(t==="institution") switchTab("institution");
+  // else default to person
+});
+
+// Enter key support
+document.addEventListener("keydown", function(e){
+  if(e.key==="Enter"&&e.target.tagName!=="TEXTAREA"){
+    checkDuplicates(currentTab);
+  }
+});
+</script>
+</body>
+</html>
