@@ -49,6 +49,10 @@ body{font-family:Georgia,serif;background:#1a1408;min-height:100vh;display:flex;
 .tile.gpt:hover{background:#0d200d;border-color:#3a7a3a;}
 .tile.gpt .tile-title{color:#5abf7a;}
 
+.tile.gemini{border-color:#2a1a4a;}
+.tile.gemini:hover{background:#1a0d2a;border-color:#7a4aaa;}
+.tile.gemini .tile-title{color:#a855f7;}
+
 .tile.danger{border-color:#4a2a2a;}
 .tile.danger:hover{background:#2a1010;border-color:#8a4a4a;}
 .tile.danger .tile-title{color:#d4846a;}
@@ -96,11 +100,11 @@ body{font-family:Georgia,serif;background:#1a1408;min-height:100vh;display:flex;
         <div class="tile-desc">OpenAI powered analysis of the correspondence database</div>
       </div>
     </a>
-    <a class="tile" href="/research-gemini.html" style="opacity:0.5;pointer-events:none;">
-      <div class="tile-icon">🤖</div>
+    <a class="tile gemini" href="/research-gemini.html">
+      <div class="tile-icon">✦</div>
       <div class="tile-text">
-        <div class="tile-title" style="color:#8a8070;">Gemini Research</div>
-        <div class="tile-desc">Coming soon — Google Gemini powered research portal</div>
+        <div class="tile-title">Gemini Research</div>
+        <div class="tile-desc">Google Gemini 1.5 Pro powered research portal</div>
       </div>
     </a>
     <a class="tile" href="/database.html">
@@ -198,14 +202,7 @@ function showMain(){
   var m = document.getElementById("main");
   m.style.display = "flex";
 }
-// Skip login if already authenticated this session
 if(sessionStorage.getItem("papyrates_auth")==="1"){ showMain(); }
-
-// Handle action params from other pages linking here
-window.addEventListener("load", function(){
-  // If already logged in via session (future), auto-show main
-  // For now just show login
-});
 </script>
 </body>
 </html>
