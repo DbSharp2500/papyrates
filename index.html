@@ -187,13 +187,19 @@ document.getElementById("pwd").addEventListener("keydown", function(e){ if(e.key
 function doLogin(){
   var val = document.getElementById("pwd").value.trim();
   if(val === "papyrates2024"){
-    document.getElementById("login-screen").style.display = "none";
-    var m = document.getElementById("main");
-    m.style.display = "flex";
+    sessionStorage.setItem("papyrates_auth","1");
+    showMain();
   } else {
     document.getElementById("login-err").textContent = "Incorrect password.";
   }
 }
+function showMain(){
+  document.getElementById("login-screen").style.display = "none";
+  var m = document.getElementById("main");
+  m.style.display = "flex";
+}
+// Skip login if already authenticated this session
+if(sessionStorage.getItem("papyrates_auth")==="1"){ showMain(); }
 
 // Handle action params from other pages linking here
 window.addEventListener("load", function(){
