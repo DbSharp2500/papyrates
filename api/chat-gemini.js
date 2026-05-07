@@ -4,7 +4,6 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
@@ -17,17 +16,41 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'messages array required' });
     }
 
-    // Gemini requires strictly alternating user/model turns
-    const rawContents = messages.map(msg => ({
-      role: msg.role === 'assistant' ? 'model' : 'user',
-      parts: [{ text: msg.content }]
-    }));
+    // Convert messages to Gemini format.
+    // Content can be a plain string OR { text, attachment: { mimeType, base64 } }
+    const rawContents = messages.map(msg => {
+      const role = msg.role === 'assistant' ? 'model' : 'user';
+      const content = msg.content;
 
+      if (typeof content === 'string') {
+        return { role, parts: [{ text: content }] };
+      }
+
+      // Content with attachment
+      if (content && typeof content === 'object' && content.attachment) {
+        const parts = [];
+        const att = content.attachment;
+        // Add the file inline
+        parts.push({
+          inlineData: {
+            mimeType: att.mimeType,
+            data: att.base64
+          }
+        });
+        if (content.text) parts.push({ text: content.text });
+        return { role, parts };
+      }
+
+      // Fallback
+      return { role, parts: [{ text: String(content) }] };
+    });
+
+    // Gemini requires strictly alternating user/model turns — merge consecutive same-role messages
     const geminiContents = [];
     for (const turn of rawContents) {
       const last = geminiContents[geminiContents.length - 1];
       if (last && last.role === turn.role) {
-        last.parts[0].text += '\n' + turn.parts[0].text;
+        last.parts = last.parts.concat(turn.parts);
       } else {
         geminiContents.push(turn);
       }
@@ -39,19 +62,14 @@ export default async function handler(req, res) {
 
     const requestBody = {
       contents: geminiContents,
-      generationConfig: {
-        maxOutputTokens: 2048,
-        temperature: 0.7,
-      }
+      generationConfig: { maxOutputTokens: 2048, temperature: 0.7 }
     };
 
     if (system) {
-      requestBody.systemInstruction = {
-        parts: [{ text: system }]
-      };
+      requestBody.systemInstruction = { parts: [{ text: system }] };
     }
 
-    // Try models in order — use v1 (stable) not v1beta
+    // Try models in order — v1 (stable) first, then v1beta
     const models = [
       { version: 'v1',     name: 'gemini-2.0-flash' },
       { version: 'v1',     name: 'gemini-1.5-pro-001' },
@@ -79,8 +97,6 @@ export default async function handler(req, res) {
       const errText = await geminiRes.text();
       console.error(`${version}/${name} failed (${geminiRes.status}):`, errText);
       lastError = `${name}: ${geminiRes.status} — ${errText}`;
-
-      // Stop on auth errors
       if (geminiRes.status === 403) break;
     }
 
