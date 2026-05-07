@@ -40,13 +40,21 @@ body{font-family:Arial,sans-serif;background:#1a1a2e;min-height:100vh;display:fl
 .ctrl-group input[type=checkbox]{accent-color:#5a8ad4;}
 .ctrl-group input[type=range]{width:80px;accent-color:#5a8ad4;}
 .ctrl-group span{color:#7ecfa0;font-size:12px;min-width:60px;}
-.input-row{display:flex;gap:10px;}
+.input-row{display:flex;gap:10px;align-items:flex-end;}
 .input-row textarea{flex:1;background:#1e2d4a;color:white;border:1px solid #3a5a8a;border-radius:8px;padding:12px;font-size:14px;resize:none;min-height:60px;max-height:200px;font-family:Arial,sans-serif;}
 .input-row textarea::placeholder{color:#556;}
 .input-row textarea:focus{outline:none;border-color:#5a8ad4;}
 .send-btn{background:#2d4a8a;color:white;border:none;padding:12px 24px;border-radius:8px;cursor:pointer;font-size:14px;white-space:nowrap;height:48px;}
 .send-btn:hover{background:#3a5ba0;}
 .send-btn:disabled{opacity:0.5;cursor:default;}
+/* Attach button */
+.attach-btn{background:#1e2d4a;color:#7ecfa0;border:1px solid #3a5a8a;border-radius:8px;width:44px;height:48px;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background 0.15s;}
+.attach-btn:hover{background:#2a3d5a;}
+/* File badge */
+.file-badge{display:none;align-items:center;gap:8px;background:#1a2d1a;border:1px solid #2a5a2a;border-radius:6px;padding:5px 10px;margin-top:6px;}
+.file-badge span{color:#7ecfa0;font-size:12px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.file-badge button{background:none;border:none;color:#888;cursor:pointer;font-size:14px;padding:0 2px;}
+.file-badge button:hover{color:#f08080;}
 .thinking{display:flex;gap:6px;align-items:center;padding:16px;background:white;border-radius:10px;align-self:flex-start;box-shadow:0 2px 8px rgba(0,0,0,0.2);}
 .dot{width:8px;height:8px;background:#2d4a8a;border-radius:50%;animation:bounce 1.2s ease infinite;}
 .dot:nth-child(2){animation-delay:0.2s;}
@@ -57,24 +65,20 @@ body{font-family:Arial,sans-serif;background:#1a1a2e;min-height:100vh;display:fl
 .sbtn.gray{background:#333;color:#aaa;border-color:#555;}
 .sbtn:hover{opacity:0.85;}
 #letterCount{color:#7ecfa0;}
-/* Article panel */
 .article-panel{background:#12203a;border-bottom:1px solid #2a3a5a;padding:12px 24px;max-width:900px;width:100%;margin:0 auto;display:none;}
 .article-panel.open{display:block;}
 .article-panel textarea{width:100%;background:#1a2a4a;color:#ccc;border:1px solid #3a5a8a;border-radius:6px;padding:10px;font-size:12px;resize:vertical;min-height:80px;font-family:Arial,sans-serif;}
 .article-panel-btns{display:flex;gap:8px;margin-top:8px;align-items:center;}
 .article-active-badge{color:#7ecfa0;font-size:12px;}
-/* Memory panel */
 .memory-panel{background:#0e1a2e;border-bottom:1px solid #1a3a1a;padding:16px 24px;display:none;max-width:900px;width:100%;margin:0 auto;}
 .memory-panel.visible{display:block;}
 .memory-panel h3{color:#7ecfa0;font-size:14px;margin-bottom:12px;}
 .memory-entry{background:#1a2a1a;border:1px solid #2a4a2a;border-radius:6px;padding:10px;margin-bottom:8px;font-size:12px;color:#aaa;}
 .memory-entry .date{color:#7ecfa0;font-size:11px;margin-bottom:4px;}
 .memory-entry .text{color:#ccc;line-height:1.5;}
-/* Save bar */
 .save-bar{background:#1a2a1a;border-top:1px solid #2a4a2a;padding:10px 24px;display:none;justify-content:space-between;align-items:center;max-width:900px;width:100%;margin:0 auto;}
 .save-bar.visible{display:flex;}
 .save-bar span{color:#7ecfa0;font-size:13px;}
-/* Login */
 #login-screen{display:flex;align-items:center;justify-content:center;min-height:100vh;background:#1a1a2e;}
 .login-box{background:#16213e;border:1px solid #2a3a5a;border-radius:12px;padding:32px;text-align:center;max-width:320px;width:90%;}
 .login-box h1{color:#7ecfa0;font-size:22px;margin-bottom:8px;}
@@ -83,7 +87,6 @@ body{font-family:Arial,sans-serif;background:#1a1a2e;min-height:100vh;display:fl
 .login-box button{width:100%;background:#2d4a8a;color:white;border:none;padding:10px;border-radius:6px;cursor:pointer;font-size:14px;}
 .login-box button:hover{background:#3a5ba0;}
 .login-error{color:#f08080;font-size:12px;margin-top:6px;}
-/* Search mode indicator */
 .search-mode{font-size:11px;color:#556;margin-left:8px;}
 .search-mode.vector{color:#1a8a4a;}
 .search-mode.hybrid{color:#7a6aaa;}
@@ -162,9 +165,16 @@ body{font-family:Arial,sans-serif;background:#1a1a2e;min-height:100vh;display:fl
       <span id="letterCount" style="font-size:12px">Loading...</span>
       <span class="search-mode" id="searchModeLabel"></span>
     </div>
+    <!-- Hidden file input — accepts PDFs and images -->
+    <input type="file" id="fileInput" accept=".pdf,image/*" style="display:none" onchange="handleFileSelect(event)">
     <div class="input-row">
-      <textarea id="questionInput" placeholder="Ask a research question. Previous session findings are loaded automatically.&#10;Click &quot;Save Session&quot; when done to preserve what was learned." rows="2"></textarea>
+      <button class="attach-btn" onclick="document.getElementById('fileInput').click()" title="Attach PDF or image">&#x1F4CE;</button>
+      <textarea id="questionInput" placeholder="Ask a research question, or attach a PDF/image with the 📎 button.&#10;Click &quot;Save Session&quot; when done to preserve what was learned." rows="2"></textarea>
       <button class="send-btn" id="sendBtn" onclick="sendQuestion()">Ask</button>
+    </div>
+    <div class="file-badge" id="fileBadge">
+      <span id="fileName"></span>
+      <button onclick="clearAttachment()" title="Remove attachment">&#x2715;</button>
     </div>
   </div>
 
@@ -180,11 +190,10 @@ var loadedMemory   = [];
 var savingSession  = false;
 var pendingSummary = null;
 var activeArticle  = null;
+var attachedFile   = null; // { name, mimeType, base64 }
 
-// ── Embedding & vector search state ──────────────────────────────────────────
-var vectorSearchAvailable = false;  // set to true once we confirm embeddings exist
+var vectorSearchAvailable = false;
 
-// ── DSS config (unchanged) ────────────────────────────────────────────────────
 var DSS_TRIGGERS = ["dead sea","dss","qumran","cave 4","cave 11","judean desert","museum of the bible","motb","green collection","hobby lobby","post-2002","post 2002","unprovenanced","forgery","forgeries","kando","ferrini","schoyen","fragment"];
 var ALL_DSS_TERMS = ["dead sea","scroll","qumran","fragment","kando","william kando","ferrini","schøyen","schoyen","museum of the bible","hobby lobby","green collection","azusa pacific","lanier","cave 4","cave 11","wadi","judean desert","nahal hever","israel antiquities","paleo-leviticus","genesis apocryphon","isaiah scroll","psalms scroll","enoch","jubilees","community rule","war scroll","damascus document","temple scroll","hodayot","pesher","mmt","tefillin","phylactery","mezuzah","unprovenanced","provenance","forgery","forged","looted","authentication","radiocarbon","repatriation","hobby lobby settlement","scott carroll","jerry pattengale","southwestern baptist","liberty university","4q","11q","1q","apocryphon","sectarian","schiffman","charlesworth","elgvin","justnes","rollston","tov"];
 var DSS_SYSTEM_KNOWLEDGE = "SPECIALIZED KNOWLEDGE - DEAD SEA SCROLLS:\n\nMANUSCRIPT NAMES: Paleo-Leviticus (4QpaleoLev), Genesis Apocryphon, Isaiah Scroll (1QIsa), Psalms Scroll (11QPsa), 1 Enoch (4QEn), Jubilees (4QJub), Community Rule (1QS), War Scroll (1QM), Damascus Document, Temple Scroll (11QT), Hodayot (1QH), Pesharim, Songs of Sabbath Sacrifice, MMT (4QMMT), New Jerusalem, Visions of Amram, Aramaic Levi, 4Q542-548, Tefillin, Mezuzot\n\nKEY DEALERS: Kando family (Khalil Eskander Shahin, William Kando), anonymous Swiss/Norwegian dealers\n\nKEY INSTITUTIONS (post-2002): Museum of the Bible (MOTB), Hobby Lobby, Green Collection, Azusa Pacific University, Southwestern Baptist Theological Seminary, Liberty University, Lanier Theological Library\n\nKEY SCHOLARS: Emanuel Tov, Lawrence Schiffman, James Charlesworth, Torleif Elgvin, Kipp Davis, Arstein Justnes, Christopher Rollston, Michael Langlois, Craig Evans, Scott Carroll, Jerry Pattengale\n\nPROVENANCE: Most post-2002 fragments lack pre-2002 documentation. 16+ MOTB fragments proven forgeries (2016-2020). Hobby Lobby paid $3M fine, returned artifacts to Iraq (2017-2018).\n";
@@ -196,7 +205,6 @@ fetch(SUPABASE_URL+"/letters?select=id&limit=1", {headers: Object.assign({}, SH,
     if(ct){var m=ct.match(/\/(\d+)/);if(m)document.getElementById("letterCount").textContent=parseInt(m[1]).toLocaleString()+" letters";}
   }).catch(function(){});
 
-// Check if vector embeddings exist in the database
 fetch(SUPABASE_URL+"/letters?select=id&embedding=not.is.null&limit=1", {headers: SH})
   .then(function(r){return r.json();})
   .then(function(data){
@@ -205,12 +213,38 @@ fetch(SUPABASE_URL+"/letters?select=id&embedding=not.is.null&limit=1", {headers:
       document.getElementById("searchModeLabel").textContent = "⚡ Semantic search ready";
       document.getElementById("searchModeLabel").className = "search-mode vector";
     } else {
-      document.getElementById("searchModeLabel").textContent = "● Keyword search (run embed_letters.py to enable semantic search)";
+      document.getElementById("searchModeLabel").textContent = "● Keyword search";
       document.getElementById("searchModeLabel").className = "search-mode keyword";
     }
   }).catch(function(){});
 
 loadMemory();
+
+// ── File attachment ───────────────────────────────────────────────────────────
+function handleFileSelect(event) {
+  var file = event.target.files[0];
+  if (!file) return;
+  if (file.size > 15 * 1024 * 1024) {
+    alert('File too large. Please keep files under 15MB.');
+    event.target.value = '';
+    return;
+  }
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    var base64 = e.target.result.split(',')[1];
+    attachedFile = { name: file.name, mimeType: file.type, base64: base64 };
+    document.getElementById('fileBadge').style.display = 'flex';
+    document.getElementById('fileName').textContent = '\uD83D\uDCCE ' + file.name;
+  };
+  reader.readAsDataURL(file);
+  event.target.value = '';
+}
+
+function clearAttachment() {
+  attachedFile = null;
+  document.getElementById('fileBadge').style.display = 'none';
+  document.getElementById('fileName').textContent = '';
+}
 
 // ── Memory ────────────────────────────────────────────────────────────────────
 async function loadMemory(){
@@ -245,9 +279,7 @@ function toggleMemoryPanel(){
 }
 
 // ── Article panel ─────────────────────────────────────────────────────────────
-function toggleArticlePanel(){
-  document.getElementById("articlePanel").classList.toggle("open");
-}
+function toggleArticlePanel(){document.getElementById("articlePanel").classList.toggle("open");}
 function useArticle(){
   var text = document.getElementById("articleText").value.trim();
   if(!text){addMessage("system","Please paste an article first.");return;}
@@ -255,7 +287,7 @@ function useArticle(){
   document.getElementById("articleBadge").style.display="inline";
   document.getElementById("articleToggleBtn").style.background="rgba(126,207,160,0.3)";
   document.getElementById("articlePanel").classList.remove("open");
-  addMessage("system","&#x1F4F0; Article loaded as context ("+activeArticle.length+" chars). It will be included in your next questions without triggering a database search.");
+  addMessage("system","&#x1F4F0; Article loaded as context ("+activeArticle.length+" chars).");
 }
 function clearArticle(){
   activeArticle = null;
@@ -273,7 +305,7 @@ document.getElementById("questionInput").addEventListener("keydown",function(e){
   if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();sendQuestion();}
 });
 
-// ── Search ────────────────────────────────────────────────────────────────────
+// ── Search helpers ────────────────────────────────────────────────────────────
 function isDSSQuery(q){
   var ql=q.toLowerCase();
   for(var i=0;i<DSS_TRIGGERS.length;i++){if(ql.indexOf(DSS_TRIGGERS[i])>=0)return true;}
@@ -299,35 +331,18 @@ function showThinking(msg){
 }
 function hideThinking(){var t=document.getElementById("thinking");if(t)t.remove();}
 
-// ── Vector search (primary) ──────────────────────────────────────────────────
 async function vectorSearch(question, limit){
-  // 1. Get embedding for the query via serverless function
-  var embedRes = await fetch("/api/embed", {
-    method:  "POST",
-    headers: {"Content-Type":"application/json"},
-    body:    JSON.stringify({text: question})
-  });
+  var embedRes = await fetch("/api/embed", {method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({text:question})});
   if(!embedRes.ok) throw new Error("Embed API error "+embedRes.status);
   var embedData = await embedRes.json();
   var embedding = embedData.embedding;
   if(!embedding) throw new Error("No embedding returned");
-
-  // 2. Call Supabase RPC match_letters
-  var rpcRes = await fetch(SUPABASE_URL+"/rpc/match_letters", {
-    method:  "POST",
-    headers: Object.assign({}, SH, {"Content-Type":"application/json"}),
-    body:    JSON.stringify({
-      query_embedding: embedding,
-      match_count:     limit,
-      match_threshold: 0.45
-    })
-  });
+  var rpcRes = await fetch(SUPABASE_URL+"/rpc/match_letters", {method:"POST",headers:Object.assign({},SH,{"Content-Type":"application/json"}),body:JSON.stringify({query_embedding:embedding,match_count:limit,match_threshold:0.45})});
   if(!rpcRes.ok) throw new Error("RPC error "+rpcRes.status);
   var letters = await rpcRes.json();
   return Array.isArray(letters) ? letters : [];
 }
 
-// ── Keyword search (fallback / supplement) ───────────────────────────────────
 function getSearchTerms(question){
   var q = question.toLowerCase(); var terms=[];
   if(isDSSQuery(question)) terms = terms.concat(ALL_DSS_TERMS.slice(0,30));
@@ -342,55 +357,27 @@ async function keywordSearch(question, limit){
   var allLetters=[]; var seen=new Set();
   for(var i=0;i<Math.min(terms.length,20);i++){
     var kw=encodeURIComponent(terms[i]);
-    try{
-      var r1=await fetch(SUPABASE_URL+"/letters?select=id,author_id,recipient_id,date_of_letter,description,full_text,title&full_text=ilike.*"+kw+"*&limit=30",{headers:SH});
-      var d1=await r1.json();
-      if(Array.isArray(d1))d1.forEach(function(l){if(!seen.has(l.id)){seen.add(l.id);allLetters.push(l);}});
-    }catch(e){}
-    try{
-      var r2=await fetch(SUPABASE_URL+"/letters?select=id,author_id,recipient_id,date_of_letter,description,full_text,title&description=ilike.*"+kw+"*&limit=15",{headers:SH});
-      var d2=await r2.json();
-      if(Array.isArray(d2))d2.forEach(function(l){if(!seen.has(l.id)){seen.add(l.id);allLetters.push(l);}});
-    }catch(e){}
+    try{var r1=await fetch(SUPABASE_URL+"/letters?select=id,author_id,recipient_id,date_of_letter,description,full_text,title&full_text=ilike.*"+kw+"*&limit=30",{headers:SH});var d1=await r1.json();if(Array.isArray(d1))d1.forEach(function(l){if(!seen.has(l.id)){seen.add(l.id);allLetters.push(l);}});}catch(e){}
+    try{var r2=await fetch(SUPABASE_URL+"/letters?select=id,author_id,recipient_id,date_of_letter,description,full_text,title&description=ilike.*"+kw+"*&limit=15",{headers:SH});var d2=await r2.json();if(Array.isArray(d2))d2.forEach(function(l){if(!seen.has(l.id)){seen.add(l.id);allLetters.push(l);}});}catch(e){}
   }
-  allLetters.sort(function(a,b){
-    var aS=0,bS=0,aT=((a.full_text||"")+(a.description||"")).toLowerCase(),bT=((b.full_text||"")+(b.description||"")).toLowerCase();
-    terms.forEach(function(t){if(aT.indexOf(t)>=0)aS++;if(bT.indexOf(t)>=0)bS++;});
-    return bS-aS;
-  });
+  allLetters.sort(function(a,b){var aS=0,bS=0,aT=((a.full_text||"")+(a.description||"")).toLowerCase(),bT=((b.full_text||"")+(b.description||"")).toLowerCase();terms.forEach(function(t){if(aT.indexOf(t)>=0)aS++;if(bT.indexOf(t)>=0)bS++;});return bS-aS;});
   return allLetters.slice(0,limit);
 }
 
-// ── Main search dispatcher ───────────────────────────────────────────────────
 async function searchDatabase(question){
   var limit = parseInt(document.getElementById("letterSlider").value)||30;
-
   if(vectorSearchAvailable){
     try{
       var vecResults = await vectorSearch(question, limit);
-
-      // Hybrid boost: if vector returns fewer than half the limit,
-      // supplement with keyword results for any extra coverage
       if(vecResults.length < Math.floor(limit/2)){
         var kwResults = await keywordSearch(question, limit);
         var seen = new Set(vecResults.map(function(l){return l.id;}));
-        kwResults.forEach(function(l){
-          if(!seen.has(l.id)){seen.add(l.id);vecResults.push(l);}
-        });
+        kwResults.forEach(function(l){if(!seen.has(l.id)){seen.add(l.id);vecResults.push(l);}});
         setSearchBadge("hybrid");
-      } else {
-        setSearchBadge("vector");
-      }
+      } else {setSearchBadge("vector");}
       return vecResults.slice(0, limit);
-    }catch(err){
-      console.warn("Vector search failed, falling back to keyword:", err);
-      setSearchBadge("keyword");
-      return await keywordSearch(question, limit);
-    }
-  } else {
-    setSearchBadge("keyword");
-    return await keywordSearch(question, limit);
-  }
+    }catch(err){setSearchBadge("keyword");return await keywordSearch(question, limit);}
+  } else {setSearchBadge("keyword");return await keywordSearch(question, limit);}
 }
 
 var lastSearchMode = "keyword";
@@ -402,7 +389,6 @@ function setSearchBadge(mode){
   else{el.textContent="● Keyword search";el.className="search-mode keyword";}
 }
 
-// ── People lookup ─────────────────────────────────────────────────────────────
 async function loadPeopleNames(letters){
   var ids=new Set();
   letters.forEach(function(l){if(l.author_id)ids.add(l.author_id);if(l.recipient_id)ids.add(l.recipient_id);});
@@ -455,23 +441,41 @@ function buildMemoryContext(){
 // ── Claude API call ───────────────────────────────────────────────────────────
 async function askClaude(question,letters,names,useWeb,useMemory){
   var dss = isDSSQuery(question);
-  var sys = "You are a research assistant specializing in papyri and biblical manuscript acquisition, trafficking, and provenance. You have access to private correspondence between dealers, scholars, collectors, and institutions.\n\nYour role:\n1. Analyze primary source letters carefully\n2. Cross-reference with scholarly knowledge\n3. Identify contradictions or challenges to established narratives\n4. Cite specific letters by sender, recipient, and date\n5. Quote significant passages directly\n6. Be honest about uncertainty\n7. Think like a historian\n\nFORMATTING: You may use HTML in your responses including <table>, <tr>, <th>, <td>, <ul>, <ol>, <li>, <strong>, <em>, <h3>, <h4>, <blockquote>. Use tables when comparing multiple items or presenting structured data. Use headers to organize long responses.\n\n";
+  var sys = "You are a research assistant specializing in papyri and biblical manuscript acquisition, trafficking, and provenance. You have access to private correspondence between dealers, scholars, collectors, and institutions.\n\nYour role:\n1. Analyze primary source letters carefully\n2. Cross-reference with scholarly knowledge\n3. Identify contradictions or challenges to established narratives\n4. Cite specific letters by sender, recipient, and date\n5. Quote significant passages directly\n6. Be honest about uncertainty\n7. Think like a historian\n\nFORMATTING: You may use HTML in your responses including <table>, <tr>, <th>, <td>, <ul>, <ol>, <li>, <strong>, <em>, <h3>, <h4>, <blockquote>.\n\n";
   if(dss)sys += DSS_SYSTEM_KNOWLEDGE+"\n";
   if(useMemory&&loadedMemory.length>0)sys += buildMemoryContext();
 
-  var user = "RESEARCH QUESTION:\n"+question+"\n\n";
-  if(activeArticle)user += "SCHOLARLY ARTICLE (provided by researcher):\n"+activeArticle+"\n\n";
+  var userText = "RESEARCH QUESTION:\n"+question+"\n\n";
+  if(activeArticle)userText += "SCHOLARLY ARTICLE (provided by researcher):\n"+activeArticle+"\n\n";
   if(letters.length>0){
     var searchMode = lastSearchMode==="vector"?"semantic similarity":"keyword";
-    user += "PRIMARY SOURCES ("+letters.length+" relevant documents, retrieved via "+searchMode+" search):\n\n"+formatLetters(letters,names)+"\n\n";
-    user += "Please provide a thorough research analysis. ";
+    userText += "PRIMARY SOURCES ("+letters.length+" relevant documents, retrieved via "+searchMode+" search):\n\n"+formatLetters(letters,names)+"\n\n";
+    userText += "Please provide a thorough research analysis. ";
   } else {
-    user += "No matching documents found in the database. Please provide analysis based on your knowledge.\n\n";
+    userText += "No matching documents found in the database. Please provide analysis based on your knowledge.\n\n";
   }
-  if(useWeb)user += "Draw on scholarly literature and public record. Identify tensions between private correspondence and public narrative.";
+  if(useWeb)userText += "Draw on scholarly literature and public record. Identify tensions between private correspondence and public narrative.";
 
-  sessionHistory.push({role:"user",content:user});
+  // Build content — include file attachment if present
+  var userContent;
+  if(attachedFile){
+    userContent = [];
+    if(attachedFile.mimeType === 'application/pdf'){
+      userContent.push({type:'document',source:{type:'base64',media_type:'application/pdf',data:attachedFile.base64}});
+    } else {
+      userContent.push({type:'image',source:{type:'base64',media_type:attachedFile.mimeType,data:attachedFile.base64}});
+    }
+    userContent.push({type:'text',text:userText});
+    // Store text-only version in history so it doesn't balloon
+    sessionHistory.push({role:'user',content:userText+'\n[Attached file: '+attachedFile.name+']'});
+  } else {
+    userContent = userText;
+    sessionHistory.push({role:'user',content:userText});
+  }
+
+  // Send history but replace the last entry with full content (including file if any)
   var historyToSend = sessionHistory.slice(-6);
+  historyToSend[historyToSend.length-1] = {role:'user', content: userContent};
 
   var r = await fetch("/api/chat",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({"model":"claude-sonnet-4-5","max_tokens":4096,"system":sys,"messages":historyToSend})});
   var data = await r.json();
@@ -479,6 +483,9 @@ async function askClaude(question,letters,names,useWeb,useMemory){
   if(data.content&&data.content[0])reply = data.content[0].text;
   else if(data.error)reply = "Error: "+data.error.message;
   sessionHistory.push({role:"assistant",content:reply});
+
+  // Clear attachment after sending
+  clearAttachment();
   return reply;
 }
 
@@ -486,7 +493,8 @@ async function askClaude(question,letters,names,useWeb,useMemory){
 async function sendQuestion(){
   var input    = document.getElementById("questionInput");
   var question = input.value.trim();
-  if(!question)return;
+  if(!question && !attachedFile)return;
+  if(!question) question = "Please analyze the attached document.";
   var useDB     = document.getElementById("useDB").checked;
   var useWeb    = document.getElementById("useWeb").checked;
   var useMemory = document.getElementById("useMemory").checked;
@@ -494,22 +502,29 @@ async function sendQuestion(){
   document.getElementById("sendBtn").disabled = true;
 
   var dss = isDSSQuery(question);
-  addMessage("user", question+(dss?' <span class="dss-badge">DSS Mode</span>':""));
+  var fileNote = attachedFile ? ' <span style="background:#1a4a2a;color:#7ecfa0;font-size:10px;padding:2px 6px;border-radius:4px;margin-left:6px">📎 '+attachedFile.name+'</span>' : '';
+  addMessage("user", question+(dss?' <span class="dss-badge">DSS Mode</span>':"")+fileNote);
 
   var searchLabel = vectorSearchAvailable ? "Running semantic search..." : "Searching database...";
   showThinking(searchLabel+(dss?" (DSS mode)":"")+"...");
 
   try{
     var letters=[],names={};
-    if(useDB){
+    if(useDB && !attachedFile){
       letters = await searchDatabase(question);
       names   = await loadPeopleNames(letters);
+    } else if(useDB && attachedFile){
+      // Still search if there's a question alongside the file
+      if(question !== "Please analyze the attached document."){
+        letters = await searchDatabase(question);
+        names   = await loadPeopleNames(letters);
+      }
     }
     hideThinking();
 
     var sliderVal = document.getElementById("letterSlider").value;
     var modeBadge = lastSearchMode==="vector"?'<span class="vec-badge">semantic</span>':lastSearchMode==="hybrid"?'<span class="hybrid-badge">hybrid</span>':"";
-    var sd = addMessage("system","Found <strong>"+letters.length+"</strong> relevant documents "+modeBadge+" (limit: "+sliderVal+")"+(dss?" (DSS mode)":"")+(activeArticle?" + article context":"")+". Analyzing with Claude...");
+    var sd = addMessage("system","Found <strong>"+letters.length+"</strong> relevant documents "+modeBadge+(attachedFile?" + attached file":"")+(dss?" (DSS mode)":"")+(activeArticle?" + article context":"")+". Analyzing with Claude...");
 
     showThinking("Claude is reading and synthesizing...");
     var answer = await askClaude(question,letters,names,useWeb,useMemory);
@@ -532,6 +547,7 @@ async function sendQuestion(){
   }catch(e){
     hideThinking();
     addMessage("assistant","Error: "+e.message);
+    clearAttachment();
   }
   document.getElementById("sendBtn").disabled=false;
 }
@@ -568,26 +584,15 @@ async function startSaveSession(){
 
 function addToSummary(){
   var addition = prompt("What would you like to add to the summary?");
-  if(addition&&addition.trim()){
-    pendingSummary = pendingSummary+"\n\nAdditional note: "+addition.trim();
-    addMessage("system","Added to summary: "+addition.trim());
-  }
+  if(addition&&addition.trim()){pendingSummary = pendingSummary+"\n\nAdditional note: "+addition.trim();addMessage("system","Added to summary: "+addition.trim());}
 }
 
 async function confirmSave(){
   if(!pendingSummary)return;
   try{
-    var r = await fetch(SUPABASE_URL+"/research_memory",{
-      method:"POST",
-      headers:Object.assign({},SH,{"Content-Type":"application/json","Prefer":"return=representation"}),
-      body:JSON.stringify({summary:pendingSummary,confirmed_findings:pendingSummary,ai_source:"claude"})
-    });
+    var r = await fetch(SUPABASE_URL+"/research_memory",{method:"POST",headers:Object.assign({},SH,{"Content-Type":"application/json","Prefer":"return=representation"}),body:JSON.stringify({summary:pendingSummary,confirmed_findings:pendingSummary,ai_source:"claude"})});
     var data = await r.json();
-    if(Array.isArray(data)&&data.length>0){
-      addMessage("system","&#x2705; Session saved to memory! Future sessions will build on these findings.");
-      loadedMemory.unshift(data[0]);
-      pendingSummary = null;
-    }
+    if(Array.isArray(data)&&data.length>0){addMessage("system","&#x2705; Session saved to memory!");loadedMemory.unshift(data[0]);pendingSummary=null;}
   }catch(e){addMessage("system","Error saving: "+e.message);}
 }
 function cancelSave(){pendingSummary=null;addMessage("system","Save cancelled.");}
@@ -601,9 +606,7 @@ function doLogin(){
     document.getElementById("login-screen").style.display="none";
     var app = document.getElementById("main-app");
     app.style.display="flex";app.style.flexDirection="column";app.style.minHeight="100vh";
-  } else {
-    document.getElementById("login-error").textContent="Incorrect password.";
-  }
+  } else {document.getElementById("login-error").textContent="Incorrect password.";}
 }
 </script>
 </body>
