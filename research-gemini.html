@@ -6,122 +6,108 @@
   <title>Papyrates — Gemini Research Portal</title>
   <style>
     :root {
-      --bg:          #1a1025;
-      --surface:     #231534;
-      --surface2:    #2d1f42;
-      --border:      #4a3268;
-      --accent:      #a855f7;
-      --accent-dim:  #7c3aed;
-      --accent-glow: rgba(168,85,247,0.18);
-      --text:        #e9d5ff;
-      --text-dim:    #9d7ec9;
-      --user-bg:     #2d1f42;
-      --ai-bg:       #1e1030;
-      --font:        Georgia, 'Times New Roman', serif;
-      --mono:        'Courier New', monospace;
+      --bg:#1a1025;--surface:#231534;--surface2:#2d1f42;--border:#4a3268;
+      --accent:#a855f7;--accent-dim:#7c3aed;--accent-glow:rgba(168,85,247,0.18);
+      --text:#e9d5ff;--text-dim:#9d7ec9;--user-bg:#2d1f42;--ai-bg:#1e1030;
+      --font:Georgia,'Times New Roman',serif;--mono:'Courier New',monospace;
     }
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { background: var(--bg); color: var(--text); font-family: var(--font); height: 100dvh; display: flex; flex-direction: column; }
-
-    header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 12px 20px; display: flex; align-items: center; gap: 14px; flex-shrink: 0; }
-    .home-btn { color: var(--text-dim); text-decoration: none; font-size: 1.1rem; opacity: 0.7; transition: opacity .2s; }
-    .home-btn:hover { opacity: 1; }
-    .logo { font-size: 1.35rem; font-weight: bold; color: var(--accent); letter-spacing: .02em; }
-    .badge { background: var(--accent-dim); color: #fff; font-family: var(--mono); font-size: .68rem; padding: 2px 8px; border-radius: 20px; letter-spacing: .05em; }
-    .search-mode { margin-left: auto; font-family: var(--mono); font-size: .75rem; color: var(--text-dim); }
-
-    .layout { display: flex; flex: 1; overflow: hidden; }
-
-    .sidebar { width: 260px; min-width: 260px; background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; }
-    .sidebar-header { padding: 12px 16px 8px; font-size: .7rem; text-transform: uppercase; letter-spacing: .1em; color: var(--text-dim); border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 8px; }
-    #memory-search { background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-family: var(--font); font-size: .8rem; padding: 6px 10px; margin: 10px 12px 6px; width: calc(100% - 24px); outline: none; }
-    #memory-search::placeholder { color: var(--text-dim); }
-    #memory-search:focus { border-color: var(--accent); }
-    .memory-list { flex: 1; overflow-y: auto; padding: 4px 0; }
-    .memory-item { padding: 10px 14px; cursor: pointer; border-bottom: 1px solid rgba(74,50,104,.4); transition: background .15s; }
-    .memory-item:hover { background: var(--surface2); }
-    .memory-item.active { background: var(--accent-glow); border-left: 3px solid var(--accent); }
-    .memory-title { font-size: .82rem; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .memory-date { font-size: .68rem; color: var(--text-dim); margin-top: 2px; }
-    .sidebar-actions { padding: 10px 12px; border-top: 1px solid var(--border); display: flex; gap: 8px; }
-    .btn-sm { flex: 1; background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; color: var(--text-dim); font-family: var(--font); font-size: .75rem; padding: 6px 0; cursor: pointer; transition: all .2s; }
-    .btn-sm:hover { border-color: var(--accent); color: var(--accent); }
-
-    .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
-
-    .context-bar { background: var(--surface2); border-bottom: 1px solid var(--border); padding: 10px 20px; font-size: .78rem; color: var(--text-dim); display: none; gap: 8px; flex-wrap: wrap; align-items: center; }
-    .context-bar.visible { display: flex; }
-    .context-pill { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 3px 10px; font-size: .72rem; cursor: pointer; transition: border-color .15s; }
-    .context-pill:hover { border-color: var(--accent); }
-
-    .messages { flex: 1; overflow-y: auto; padding: 24px 20px; display: flex; flex-direction: column; gap: 18px; }
-    .msg { display: flex; gap: 12px; max-width: 820px; width: 100%; }
-    .msg.user { align-self: flex-end; flex-direction: row-reverse; }
-    .msg.ai   { align-self: flex-start; }
-    .avatar { width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: .8rem; font-weight: bold; }
-    .avatar.user { background: var(--accent-dim); color: #fff; }
-    .avatar.ai   { background: var(--surface2); color: var(--accent); border: 1px solid var(--border); }
-    .bubble { padding: 12px 16px; border-radius: 12px; line-height: 1.65; font-size: .92rem; max-width: calc(100% - 50px); }
-    .msg.user .bubble { background: var(--user-bg); border: 1px solid var(--border); border-top-right-radius: 3px; }
-    .msg.ai .bubble   { background: var(--ai-bg);   border: 1px solid var(--border); border-top-left-radius: 3px; }
-    .bubble p + p { margin-top: .6em; }
-    .bubble ul, .bubble ol { padding-left: 1.4em; margin: .5em 0; }
-    .bubble li { margin-bottom: .3em; }
-    .bubble strong { color: var(--accent); font-weight: 600; }
-    .bubble em { color: var(--text-dim); }
-    .bubble code { background: rgba(168,85,247,.12); padding: 1px 5px; border-radius: 4px; font-family: var(--mono); font-size: .85em; }
-
-    .typing { display: flex; gap: 5px; padding: 10px 4px; align-items: center; }
-    .typing span { width: 7px; height: 7px; background: var(--accent); border-radius: 50%; animation: bounce .9s infinite; }
-    .typing span:nth-child(2) { animation-delay: .2s; }
-    .typing span:nth-child(3) { animation-delay: .4s; }
-    @keyframes bounce { 0%,80%,100% { transform: translateY(0); opacity:.5; } 40% { transform: translateY(-6px); opacity:1; } }
-
-    .input-area { border-top: 1px solid var(--border); padding: 14px 20px; display: flex; gap: 10px; align-items: flex-end; background: var(--surface); flex-shrink: 0; }
-    #user-input { flex: 1; background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; color: var(--text); font-family: var(--font); font-size: .92rem; padding: 10px 14px; resize: none; outline: none; min-height: 44px; max-height: 180px; line-height: 1.5; transition: border-color .2s; }
-    #user-input:focus { border-color: var(--accent); }
-    #user-input::placeholder { color: var(--text-dim); }
-    .send-btn { background: var(--accent-dim); border: none; border-radius: 10px; color: #fff; font-size: 1.1rem; width: 44px; height: 44px; cursor: pointer; transition: background .2s; flex-shrink: 0; }
-    .send-btn:hover { background: var(--accent); }
-    .send-btn:disabled { background: var(--border); cursor: not-allowed; }
-
-    .control-btn { background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; color: var(--text-dim); font-family: var(--font); font-size: .75rem; padding: 4px 10px; cursor: pointer; transition: all .2s; }
-    .control-btn:hover { border-color: var(--accent); color: var(--accent); }
-    .control-btn.active { background: var(--accent-glow); border-color: var(--accent); color: var(--accent); }
-
-    ::-webkit-scrollbar { width: 6px; }
-    ::-webkit-scrollbar-track { background: transparent; }
-    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
-
-    .welcome { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; color: var(--text-dim); text-align: center; padding: 40px; }
-    .welcome .gem { font-size: 3rem; opacity: .5; }
-    .welcome h2 { font-size: 1.2rem; color: var(--accent); }
-    .welcome p { font-size: .88rem; max-width: 380px; line-height: 1.6; }
-    .suggestion-chips { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 8px; }
-    .chip { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 6px 14px; font-size: .8rem; cursor: pointer; transition: all .2s; color: var(--text-dim); }
-    .chip:hover { border-color: var(--accent); color: var(--accent); }
-
-    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.6); z-index: 100; align-items: center; justify-content: center; }
-    .modal-overlay.open { display: flex; }
-    .modal { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 28px; width: 440px; max-width: 90vw; }
-    .modal h3 { color: var(--accent); margin-bottom: 14px; font-size: 1rem; }
-    .modal input, .modal textarea { width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-family: var(--font); font-size: .88rem; padding: 8px 12px; margin-bottom: 12px; outline: none; resize: vertical; }
-    .modal input:focus, .modal textarea:focus { border-color: var(--accent); }
-    .modal-actions { display: flex; gap: 10px; justify-content: flex-end; }
-    .btn-primary { background: var(--accent-dim); border: none; border-radius: 8px; color: #fff; font-family: var(--font); font-size: .88rem; padding: 8px 18px; cursor: pointer; transition: background .2s; }
-    .btn-primary:hover { background: var(--accent); }
-    .btn-cancel { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; color: var(--text-dim); font-family: var(--font); font-size: .88rem; padding: 8px 18px; cursor: pointer; }
-    .btn-cancel:hover { border-color: var(--accent); }
-
-    .letter-panel { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.7); z-index: 90; align-items: center; justify-content: center; }
-    .letter-panel.open { display: flex; }
-    .letter-inner { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 28px; width: 620px; max-width: 92vw; max-height: 80vh; overflow-y: auto; }
-    .letter-inner h3 { color: var(--accent); margin-bottom: 10px; }
-    .letter-meta { font-size: .8rem; color: var(--text-dim); margin-bottom: 14px; }
-    .letter-body { font-size: .88rem; line-height: 1.7; white-space: pre-wrap; }
-    .letter-close { float: right; background: none; border: none; color: var(--text-dim); font-size: 1.3rem; cursor: pointer; margin-top: -6px; }
-
-    @media (max-width: 700px) { .sidebar { display: none; } }
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{background:var(--bg);color:var(--text);font-family:var(--font);height:100dvh;display:flex;flex-direction:column;}
+    header{background:var(--surface);border-bottom:1px solid var(--border);padding:12px 20px;display:flex;align-items:center;gap:14px;flex-shrink:0;}
+    .home-btn{color:var(--text-dim);text-decoration:none;font-size:1.1rem;opacity:0.7;transition:opacity .2s;}
+    .home-btn:hover{opacity:1;}
+    .logo{font-size:1.35rem;font-weight:bold;color:var(--accent);letter-spacing:.02em;}
+    .badge{background:var(--accent-dim);color:#fff;font-family:var(--mono);font-size:.68rem;padding:2px 8px;border-radius:20px;letter-spacing:.05em;}
+    .search-mode{margin-left:auto;font-family:var(--mono);font-size:.75rem;color:var(--text-dim);}
+    .layout{display:flex;flex:1;overflow:hidden;}
+    .sidebar{width:260px;min-width:260px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;}
+    .sidebar-header{padding:12px 16px 8px;font-size:.7rem;text-transform:uppercase;letter-spacing:.1em;color:var(--text-dim);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;}
+    #memory-search{background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:var(--font);font-size:.8rem;padding:6px 10px;margin:10px 12px 6px;width:calc(100% - 24px);outline:none;}
+    #memory-search::placeholder{color:var(--text-dim);}
+    #memory-search:focus{border-color:var(--accent);}
+    .memory-list{flex:1;overflow-y:auto;padding:4px 0;}
+    .memory-item{padding:10px 14px;cursor:pointer;border-bottom:1px solid rgba(74,50,104,.4);transition:background .15s;}
+    .memory-item:hover{background:var(--surface2);}
+    .memory-item.active{background:var(--accent-glow);border-left:3px solid var(--accent);}
+    .memory-title{font-size:.82rem;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    .memory-date{font-size:.68rem;color:var(--text-dim);margin-top:2px;}
+    .sidebar-actions{padding:10px 12px;border-top:1px solid var(--border);display:flex;gap:8px;}
+    .btn-sm{flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text-dim);font-family:var(--font);font-size:.75rem;padding:6px 0;cursor:pointer;transition:all .2s;}
+    .btn-sm:hover{border-color:var(--accent);color:var(--accent);}
+    .main{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+    .context-bar{background:var(--surface2);border-bottom:1px solid var(--border);padding:10px 20px;font-size:.78rem;color:var(--text-dim);display:none;gap:8px;flex-wrap:wrap;align-items:center;}
+    .context-bar.visible{display:flex;}
+    .context-pill{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:3px 10px;font-size:.72rem;cursor:pointer;transition:border-color .15s;}
+    .context-pill:hover{border-color:var(--accent);}
+    .messages{flex:1;overflow-y:auto;padding:24px 20px;display:flex;flex-direction:column;gap:18px;}
+    .msg{display:flex;gap:12px;max-width:820px;width:100%;}
+    .msg.user{align-self:flex-end;flex-direction:row-reverse;}
+    .msg.ai{align-self:flex-start;}
+    .avatar{width:32px;height:32px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:.8rem;font-weight:bold;}
+    .avatar.user{background:var(--accent-dim);color:#fff;}
+    .avatar.ai{background:var(--surface2);color:var(--accent);border:1px solid var(--border);}
+    .bubble{padding:12px 16px;border-radius:12px;line-height:1.65;font-size:.92rem;max-width:calc(100% - 50px);}
+    .msg.user .bubble{background:var(--user-bg);border:1px solid var(--border);border-top-right-radius:3px;}
+    .msg.ai .bubble{background:var(--ai-bg);border:1px solid var(--border);border-top-left-radius:3px;}
+    .bubble p+p{margin-top:.6em;}
+    .bubble ul,.bubble ol{padding-left:1.4em;margin:.5em 0;}
+    .bubble li{margin-bottom:.3em;}
+    .bubble strong{color:var(--accent);font-weight:600;}
+    .bubble em{color:var(--text-dim);}
+    .bubble code{background:rgba(168,85,247,.12);padding:1px 5px;border-radius:4px;font-family:var(--mono);font-size:.85em;}
+    .typing{display:flex;gap:5px;padding:10px 4px;align-items:center;}
+    .typing span{width:7px;height:7px;background:var(--accent);border-radius:50%;animation:bounce .9s infinite;}
+    .typing span:nth-child(2){animation-delay:.2s;}
+    .typing span:nth-child(3){animation-delay:.4s;}
+    @keyframes bounce{0%,80%,100%{transform:translateY(0);opacity:.5;}40%{transform:translateY(-6px);opacity:1;}}
+    .input-area{border-top:1px solid var(--border);padding:14px 20px;display:flex;flex-direction:column;gap:8px;background:var(--surface);flex-shrink:0;}
+    .input-row{display:flex;gap:10px;align-items:flex-end;}
+    #user-input{flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-family:var(--font);font-size:.92rem;padding:10px 14px;resize:none;outline:none;min-height:44px;max-height:180px;line-height:1.5;transition:border-color .2s;}
+    #user-input:focus{border-color:var(--accent);}
+    #user-input::placeholder{color:var(--text-dim);}
+    .send-btn{background:var(--accent-dim);border:none;border-radius:10px;color:#fff;font-size:1.1rem;width:44px;height:44px;cursor:pointer;transition:background .2s;flex-shrink:0;}
+    .send-btn:hover{background:var(--accent);}
+    .send-btn:disabled{background:var(--border);cursor:not-allowed;}
+    /* Attach button */
+    .attach-btn{background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text-dim);font-size:1.1rem;width:44px;height:44px;cursor:pointer;transition:all .2s;flex-shrink:0;display:flex;align-items:center;justify-content:center;}
+    .attach-btn:hover{border-color:var(--accent);color:var(--accent);}
+    /* File badge */
+    .file-badge{display:none;align-items:center;gap:8px;background:rgba(168,85,247,0.1);border:1px solid var(--border);border-radius:6px;padding:5px 10px;}
+    .file-badge span{color:var(--accent);font-size:.78rem;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+    .file-badge button{background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:14px;padding:0 2px;}
+    .file-badge button:hover{color:#f08080;}
+    .control-btn{background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text-dim);font-family:var(--font);font-size:.75rem;padding:4px 10px;cursor:pointer;transition:all .2s;}
+    .control-btn:hover{border-color:var(--accent);color:var(--accent);}
+    .control-btn.active{background:var(--accent-glow);border-color:var(--accent);color:var(--accent);}
+    ::-webkit-scrollbar{width:6px;}
+    ::-webkit-scrollbar-track{background:transparent;}
+    ::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}
+    .welcome{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;color:var(--text-dim);text-align:center;padding:40px;}
+    .welcome .gem{font-size:3rem;opacity:.5;}
+    .welcome h2{font-size:1.2rem;color:var(--accent);}
+    .welcome p{font-size:.88rem;max-width:380px;line-height:1.6;}
+    .suggestion-chips{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:8px;}
+    .chip{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:6px 14px;font-size:.8rem;cursor:pointer;transition:all .2s;color:var(--text-dim);}
+    .chip:hover{border-color:var(--accent);color:var(--accent);}
+    .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:100;align-items:center;justify-content:center;}
+    .modal-overlay.open{display:flex;}
+    .modal{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:28px;width:440px;max-width:90vw;}
+    .modal h3{color:var(--accent);margin-bottom:14px;font-size:1rem;}
+    .modal input,.modal textarea{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:var(--font);font-size:.88rem;padding:8px 12px;margin-bottom:12px;outline:none;resize:vertical;}
+    .modal input:focus,.modal textarea:focus{border-color:var(--accent);}
+    .modal-actions{display:flex;gap:10px;justify-content:flex-end;}
+    .btn-primary{background:var(--accent-dim);border:none;border-radius:8px;color:#fff;font-family:var(--font);font-size:.88rem;padding:8px 18px;cursor:pointer;transition:background .2s;}
+    .btn-primary:hover{background:var(--accent);}
+    .btn-cancel{background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text-dim);font-family:var(--font);font-size:.88rem;padding:8px 18px;cursor:pointer;}
+    .btn-cancel:hover{border-color:var(--accent);}
+    .letter-panel{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:90;align-items:center;justify-content:center;}
+    .letter-panel.open{display:flex;}
+    .letter-inner{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:28px;width:620px;max-width:92vw;max-height:80vh;overflow-y:auto;}
+    .letter-inner h3{color:var(--accent);margin-bottom:10px;}
+    .letter-meta{font-size:.8rem;color:var(--text-dim);margin-bottom:14px;}
+    .letter-body{font-size:.88rem;line-height:1.7;white-space:pre-wrap;}
+    .letter-close{float:right;background:none;border:none;color:var(--text-dim);font-size:1.3rem;cursor:pointer;margin-top:-6px;}
+    @media(max-width:700px){.sidebar{display:none;}}
   </style>
 </head>
 <body>
@@ -129,7 +115,7 @@
 <header>
   <a href="/" class="home-btn">⌂</a>
   <div class="logo">☽ Papyrates</div>
-  <span class="badge">GEMINI 1.5 PRO</span>
+  <span class="badge">GEMINI</span>
   <div class="search-mode" id="search-mode-label">● Keyword</div>
 </header>
 
@@ -150,12 +136,11 @@
     <div class="context-bar" id="context-bar">
       <span style="color:var(--accent);font-weight:600;">📜 Context:</span>
     </div>
-
     <div class="messages" id="messages">
       <div class="welcome" id="welcome">
         <div class="gem">✦</div>
         <h2>Gemini Research Portal</h2>
-        <p>Ask questions about the Papyrates archive. Gemini will search relevant letters and synthesize an answer.</p>
+        <p>Ask questions about the Papyrates archive, or attach a PDF/image with the 📎 button.</p>
         <div class="suggestion-chips">
           <div class="chip" onclick="sendSuggestion(this)">What letters discuss manuscript authentication?</div>
           <div class="chip" onclick="sendSuggestion(this)">Who were the most active correspondents?</div>
@@ -169,10 +154,19 @@
       <button class="control-btn active" id="btn-search" onclick="toggleSearch()">🔍 Search letters</button>
       <button class="control-btn" id="btn-semantic" onclick="toggleSemantic()">⚡ Semantic mode</button>
     </div>
+    <!-- Hidden file input — Gemini supports PDFs and images -->
+    <input type="file" id="fileInput" accept=".pdf,image/*" style="display:none" onchange="handleFileSelect(event)">
     <div class="input-area">
-      <textarea id="user-input" placeholder="Ask about the archive…" rows="1"
-        onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
-      <button class="send-btn" id="send-btn" onclick="sendMessage()">➤</button>
+      <div class="input-row">
+        <button class="attach-btn" onclick="document.getElementById('fileInput').click()" title="Attach PDF or image">📎</button>
+        <textarea id="user-input" placeholder="Ask about the archive, or attach a PDF/image…" rows="1"
+          onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
+        <button class="send-btn" id="send-btn" onclick="sendMessage()">➤</button>
+      </div>
+      <div class="file-badge" id="fileBadge">
+        <span id="fileName"></span>
+        <button onclick="clearAttachment()" title="Remove attachment">✕</button>
+      </div>
     </div>
   </div>
 </div>
@@ -211,41 +205,55 @@ let memories       = [];
 let activeMemoryId = null;
 let searchEnabled  = true;
 let semanticMode   = false;
+let attachedFile   = null; // { name, mimeType, base64 }
 
 document.addEventListener('DOMContentLoaded', () => {
   loadMemories();
   document.getElementById('memory-search').addEventListener('input', filterMemories);
 });
 
-function autoResize(el) {
-  el.style.height = 'auto';
-  el.style.height = Math.min(el.scrollHeight, 180) + 'px';
+function autoResize(el){el.style.height='auto';el.style.height=Math.min(el.scrollHeight,180)+'px';}
+function handleKey(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMessage();}}
+function toggleSearch(){searchEnabled=!searchEnabled;document.getElementById('btn-search').classList.toggle('active',searchEnabled);}
+function toggleSemantic(){semanticMode=!semanticMode;document.getElementById('btn-semantic').classList.toggle('active',semanticMode);}
+
+// ── File attachment ───────────────────────────────────────────────────────────
+function handleFileSelect(event) {
+  var file = event.target.files[0];
+  if (!file) return;
+  if (file.size > 15 * 1024 * 1024) { alert('File too large. Please keep files under 15MB.'); event.target.value=''; return; }
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    var base64 = e.target.result.split(',')[1];
+    attachedFile = { name: file.name, mimeType: file.type, base64: base64 };
+    document.getElementById('fileBadge').style.display = 'flex';
+    document.getElementById('fileName').textContent = '📎 ' + file.name;
+  };
+  reader.readAsDataURL(file);
+  event.target.value = '';
 }
 
-function handleKey(e) {
-  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+function clearAttachment() {
+  attachedFile = null;
+  document.getElementById('fileBadge').style.display = 'none';
+  document.getElementById('fileName').textContent = '';
 }
 
-function toggleSearch() {
-  searchEnabled = !searchEnabled;
-  document.getElementById('btn-search').classList.toggle('active', searchEnabled);
-}
-
-function toggleSemantic() {
-  semanticMode = !semanticMode;
-  document.getElementById('btn-semantic').classList.toggle('active', semanticMode);
-}
-
+// ── Send message ──────────────────────────────────────────────────────────────
 async function sendMessage() {
   const input = document.getElementById('user-input');
-  const query = input.value.trim();
-  if (!query) return;
+  let query = input.value.trim();
+  if (!query && !attachedFile) return;
+  if (!query) query = 'Please analyze the attached document.';
 
   const welcome = document.getElementById('welcome');
   if (welcome) welcome.remove();
 
-  appendMessage('user', query);
-  chatHistory.push({ role: 'user', content: query });
+  const fileNote = attachedFile ? ` <span style="background:rgba(168,85,247,0.2);color:var(--accent);font-size:.7rem;padding:2px 8px;border-radius:10px;margin-left:6px">📎 ${attachedFile.name}</span>` : '';
+  appendMessage('user', query + fileNote);
+
+  // Store text version in history (not base64)
+  chatHistory.push({ role: 'user', content: query + (attachedFile ? `\n[Attached: ${attachedFile.name}]` : '') });
 
   input.value = '';
   input.style.height = 'auto';
@@ -255,17 +263,36 @@ async function sendMessage() {
 
   try {
     let fetchedLetters = [];
-    if (searchEnabled) {
+    if (searchEnabled && query !== 'Please analyze the attached document.') {
       fetchedLetters = await searchLetters(query);
       updateContextBar(fetchedLetters);
     }
 
     const systemPrompt = buildSystemPrompt(fetchedLetters);
 
+    // Build the last message content with optional attachment
+    let lastMessageContent;
+    if (attachedFile) {
+      lastMessageContent = {
+        text: query,
+        attachment: { mimeType: attachedFile.mimeType, base64: attachedFile.base64, name: attachedFile.name }
+      };
+    } else {
+      lastMessageContent = query;
+    }
+
+    // Build messages array — history is text, but last message may have attachment
+    const historyToSend = chatHistory.slice(-6).map((m, i, arr) => {
+      if (i === arr.length - 1 && attachedFile) {
+        return { role: m.role, content: lastMessageContent };
+      }
+      return m;
+    });
+
     const response = await fetch('/api/chat-gemini', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ messages: chatHistory, system: systemPrompt })
+      body: JSON.stringify({ messages: historyToSend, system: systemPrompt })
     });
 
     if (!response.ok) {
@@ -279,114 +306,89 @@ async function sendMessage() {
     removeTyping(typingId);
     appendMessage('ai', aiText);
     chatHistory.push({ role: 'assistant', content: aiText });
+    clearAttachment();
 
   } catch (err) {
     removeTyping(typingId);
     appendMessage('ai', `⚠️ ${err.message}`);
     console.error(err);
+    clearAttachment();
   }
 
   document.getElementById('send-btn').disabled = false;
 }
 
-function sendSuggestion(el) {
-  document.getElementById('user-input').value = el.textContent;
-  sendMessage();
-}
+function sendSuggestion(el){document.getElementById('user-input').value=el.textContent;sendMessage();}
 
 async function searchLetters(query) {
-  try {
-    return semanticMode ? await semanticSearch(query) : await keywordSearch(query);
-  } catch (e) {
-    console.error('Search error:', e);
-    return [];
-  }
+  try { return semanticMode ? await semanticSearch(query) : await keywordSearch(query); }
+  catch(e){ console.error('Search error:',e); return []; }
 }
 
 async function keywordSearch(query) {
   document.getElementById('search-mode-label').textContent = '● Keyword';
-  const term = encodeURIComponent(query.slice(0, 50));
+  const term = encodeURIComponent(query.slice(0,50));
   const res = await fetch(
     `${SUPABASE_URL}/rest/v1/letters?or=(full_text.ilike.*${term}*,description.ilike.*${term}*,title.ilike.*${term}*)&select=id,title,date_of_letter,description,full_text,document_type&limit=6`,
-    { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } }
+    {headers:{apikey:SUPABASE_KEY,Authorization:`Bearer ${SUPABASE_KEY}`}}
   );
-  if (!res.ok) return [];
+  if(!res.ok)return[];
   return await res.json();
 }
 
 async function semanticSearch(query) {
   try {
-    const embedRes = await fetch('/api/embed', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text: query })
-    });
-    if (!embedRes.ok) throw new Error('embed failed');
-    const { embedding } = await embedRes.json();
+    const embedRes = await fetch('/api/embed',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:query})});
+    if(!embedRes.ok)throw new Error('embed failed');
+    const {embedding} = await embedRes.json();
     document.getElementById('search-mode-label').textContent = '⚡ Semantic';
-    const rpcRes = await fetch(`${SUPABASE_URL}/rest/v1/rpc/match_letters`, {
-      method: 'POST',
-      headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query_embedding: embedding, match_count: 6 })
-    });
-    if (!rpcRes.ok) throw new Error('rpc failed');
+    const rpcRes = await fetch(`${SUPABASE_URL}/rest/v1/rpc/match_letters`,{method:'POST',headers:{apikey:SUPABASE_KEY,Authorization:`Bearer ${SUPABASE_KEY}`,'Content-Type':'application/json'},body:JSON.stringify({query_embedding:embedding,match_count:6})});
+    if(!rpcRes.ok)throw new Error('rpc failed');
     return await rpcRes.json();
-  } catch (e) {
-    return await keywordSearch(query);
-  }
+  } catch(e){ return await keywordSearch(query); }
 }
 
 function updateContextBar(letters) {
   contextLetters = letters;
   const bar = document.getElementById('context-bar');
-  if (!letters.length) { bar.classList.remove('visible'); return; }
+  if(!letters.length){bar.classList.remove('visible');return;}
   bar.classList.add('visible');
-  while (bar.children.length > 1) bar.removeChild(bar.lastChild);
-  letters.forEach(l => {
-    const pill = document.createElement('div');
-    pill.className = 'context-pill';
-    const label = l.title ? l.title.slice(0, 40) : (l.description ? l.description.slice(0, 40) : `Letter #${l.id}`);
-    pill.textContent = label + (label.length >= 40 ? '…' : '');
-    if (l.similarity) pill.textContent += ` (${Math.round(l.similarity * 100)}%)`;
-    pill.onclick = () => openLetterPanel(l);
+  while(bar.children.length>1)bar.removeChild(bar.lastChild);
+  letters.forEach(l=>{
+    const pill=document.createElement('div');pill.className='context-pill';
+    const label=l.title?l.title.slice(0,40):(l.description?l.description.slice(0,40):`Letter #${l.id}`);
+    pill.textContent=label+(label.length>=40?'…':'');
+    if(l.similarity)pill.textContent+=` (${Math.round(l.similarity*100)}%)`;
+    pill.onclick=()=>openLetterPanel(l);
     bar.appendChild(pill);
   });
 }
 
 function buildSystemPrompt(letters) {
-  let prompt = `You are a scholarly research assistant for the Papyrates archive — a database of historical documents including correspondence, manuscripts, financial records, scholarly works, and institutional records.\n\nBe precise, analytical, and cite specific details from the provided documents when relevant. Today's date: ${new Date().toLocaleDateString('en-US', {year:'numeric',month:'long',day:'numeric'})}.`;
-  if (letters.length) {
-    prompt += '\n\n--- RELEVANT ARCHIVE DOCUMENTS ---\n';
-    letters.forEach((l, i) => {
-      prompt += `\n[Document ${i+1}]`;
-      if (l.title)          prompt += `\nTitle: ${l.title}`;
-      if (l.document_type)  prompt += `\nType: ${l.document_type}`;
-      if (l.date_of_letter) prompt += `\nDate: ${l.date_of_letter}`;
-      if (l.description)    prompt += `\nDescription: ${l.description}`;
-      if (l.full_text)      prompt += `\nText (excerpt): ${l.full_text.slice(0, 600)}`;
-      prompt += '\n';
+  let prompt = `You are a scholarly research assistant for the Papyrates archive — a database of historical documents including correspondence, manuscripts, financial records, scholarly works, and institutional records.\n\nBe precise, analytical, and cite specific details from the provided documents when relevant. Today's date: ${new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'})}.`;
+  if(letters.length){
+    prompt+='\n\n--- RELEVANT ARCHIVE DOCUMENTS ---\n';
+    letters.forEach((l,i)=>{
+      prompt+=`\n[Document ${i+1}]`;
+      if(l.title)prompt+=`\nTitle: ${l.title}`;
+      if(l.document_type)prompt+=`\nType: ${l.document_type}`;
+      if(l.date_of_letter)prompt+=`\nDate: ${l.date_of_letter}`;
+      if(l.description)prompt+=`\nDescription: ${l.description}`;
+      if(l.full_text)prompt+=`\nText (excerpt): ${l.full_text.slice(0,600)}`;
+      prompt+='\n';
     });
-    prompt += '\n--- END DOCUMENTS ---\n\nBase your answer primarily on these documents.';
-  } else {
-    prompt += '\n\nNo specific archive documents were retrieved for this query. Answer based on your general knowledge and note that no direct matches were found.';
-  }
+    prompt+='\n--- END DOCUMENTS ---\n\nBase your answer primarily on these documents.';
+  }else{prompt+='\n\nNo specific archive documents were retrieved. Answer based on general knowledge and note no direct matches were found.';}
   return prompt;
 }
 
 function appendMessage(role, text) {
-  const msgs = document.getElementById('messages');
-  const div = document.createElement('div');
-  div.className = `msg ${role}`;
-  const avatar = document.createElement('div');
-  avatar.className = `avatar ${role}`;
-  avatar.textContent = role === 'user' ? 'U' : '✦';
-  const bubble = document.createElement('div');
-  bubble.className = 'bubble';
-  bubble.innerHTML = formatText(text);
-  div.appendChild(avatar);
-  div.appendChild(bubble);
-  msgs.appendChild(div);
-  msgs.scrollTop = msgs.scrollHeight;
+  const msgs=document.getElementById('messages');
+  const div=document.createElement('div');div.className=`msg ${role}`;
+  const avatar=document.createElement('div');avatar.className=`avatar ${role}`;avatar.textContent=role==='user'?'U':'✦';
+  const bubble=document.createElement('div');bubble.className='bubble';
+  bubble.innerHTML=role==='user'?text.replace(/&(?![a-z#0-9]+;)/g,'&amp;'):formatText(text);
+  div.appendChild(avatar);div.appendChild(bubble);msgs.appendChild(div);msgs.scrollTop=msgs.scrollHeight;
 }
 
 function formatText(text) {
@@ -402,127 +404,63 @@ function formatText(text) {
     .replace(/\n/g,'<br>');
 }
 
-function showTyping() {
-  const id = 'typing-' + Date.now();
-  const msgs = document.getElementById('messages');
-  const div = document.createElement('div');
-  div.className = 'msg ai';
-  div.id = id;
-  div.innerHTML = `<div class="avatar ai">✦</div><div class="bubble"><div class="typing"><span></span><span></span><span></span></div></div>`;
-  msgs.appendChild(div);
-  msgs.scrollTop = msgs.scrollHeight;
-  return id;
-}
+function showTyping(){const id='typing-'+Date.now();const msgs=document.getElementById('messages');const div=document.createElement('div');div.className='msg ai';div.id=id;div.innerHTML=`<div class="avatar ai">✦</div><div class="bubble"><div class="typing"><span></span><span></span><span></span></div></div>`;msgs.appendChild(div);msgs.scrollTop=msgs.scrollHeight;return id;}
+function removeTyping(id){const el=document.getElementById(id);if(el)el.remove();}
 
-function removeTyping(id) {
-  const el = document.getElementById(id);
-  if (el) el.remove();
-}
-
-function clearChat() {
-  chatHistory = [];
-  contextLetters = [];
-  document.getElementById('messages').innerHTML = `
-    <div class="welcome" id="welcome">
-      <div class="gem">✦</div>
-      <h2>Gemini Research Portal</h2>
-      <p>Ask questions about the Papyrates archive. Gemini will search relevant letters and synthesize an answer.</p>
-    </div>`;
+function clearChat(){
+  chatHistory=[];contextLetters=[];clearAttachment();
+  document.getElementById('messages').innerHTML=`<div class="welcome" id="welcome"><div class="gem">✦</div><h2>Gemini Research Portal</h2><p>Ask questions about the Papyrates archive, or attach a PDF/image with the 📎 button.</p></div>`;
   document.getElementById('context-bar').classList.remove('visible');
 }
 
-function openLetterPanel(letter) {
-  document.getElementById('lp-title').textContent = letter.title || `Document #${letter.id}`;
-  document.getElementById('lp-meta').textContent = [letter.document_type, letter.date_of_letter].filter(Boolean).join(' · ');
-  document.getElementById('lp-body').textContent = letter.full_text || letter.description || '(no text available)';
+function openLetterPanel(letter){
+  document.getElementById('lp-title').textContent=letter.title||`Document #${letter.id}`;
+  document.getElementById('lp-meta').textContent=[letter.document_type,letter.date_of_letter].filter(Boolean).join(' · ');
+  document.getElementById('lp-body').textContent=letter.full_text||letter.description||'(no text available)';
   document.getElementById('letter-panel').classList.add('open');
 }
+function closeLetterPanel(e){if(e.target===document.getElementById('letter-panel'))document.getElementById('letter-panel').classList.remove('open');}
 
-function closeLetterPanel(e) {
-  if (e.target === document.getElementById('letter-panel'))
-    document.getElementById('letter-panel').classList.remove('open');
+async function loadMemories(){
+  try{
+    const res=await fetch(`${SUPABASE_URL}/rest/v1/research_memory?ai_source=eq.${AI_SOURCE}&order=created_at.desc&select=id,title,summary,created_at`,{headers:{apikey:SUPABASE_KEY,Authorization:`Bearer ${SUPABASE_KEY}`}});
+    if(!res.ok)throw new Error('fetch failed');
+    memories=await res.json();renderMemories(memories);
+  }catch(e){document.getElementById('memory-list').innerHTML='<div style="padding:12px;color:var(--text-dim);font-size:.78rem;">Could not load memories.</div>';}
 }
 
-async function loadMemories() {
-  try {
-    const res = await fetch(
-      `${SUPABASE_URL}/rest/v1/research_memory?ai_source=eq.${AI_SOURCE}&order=created_at.desc&select=id,title,summary,created_at`,
-      { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } }
-    );
-    if (!res.ok) throw new Error('fetch failed');
-    memories = await res.json();
-    renderMemories(memories);
-  } catch (e) {
-    document.getElementById('memory-list').innerHTML =
-      '<div style="padding:12px;color:var(--text-dim);font-size:.78rem;">Could not load memories.</div>';
-  }
+function renderMemories(list){
+  const container=document.getElementById('memory-list');
+  if(!list.length){container.innerHTML='<div style="padding:12px;color:var(--text-dim);font-size:.78rem;">No saved sessions yet.</div>';return;}
+  container.innerHTML=list.map(m=>`<div class="memory-item ${m.id===activeMemoryId?'active':''}" data-id="${m.id}" onclick="loadMemory(${m.id})"><div class="memory-title">${escHtml(m.title)}</div><div class="memory-date">${new Date(m.created_at).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}</div></div>`).join('');
 }
 
-function renderMemories(list) {
-  const container = document.getElementById('memory-list');
-  if (!list.length) {
-    container.innerHTML = '<div style="padding:12px;color:var(--text-dim);font-size:.78rem;">No saved sessions yet.</div>';
-    return;
-  }
-  container.innerHTML = list.map(m => `
-    <div class="memory-item ${m.id === activeMemoryId ? 'active' : ''}" data-id="${m.id}" onclick="loadMemory(${m.id})">
-      <div class="memory-title">${escHtml(m.title)}</div>
-      <div class="memory-date">${new Date(m.created_at).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}</div>
-    </div>`).join('');
+function filterMemories(){const q=document.getElementById('memory-search').value.toLowerCase();renderMemories(memories.filter(m=>m.title.toLowerCase().includes(q)||(m.summary||'').toLowerCase().includes(q)));}
+
+function loadMemory(id){
+  const mem=memories.find(m=>m.id===id);if(!mem)return;
+  activeMemoryId=id;renderMemories(memories);
+  const welcome=document.getElementById('welcome');if(welcome)welcome.remove();
+  appendMessage('ai',`📖 **Loaded memory: ${mem.title}**\n\n${mem.summary}\n\n*Continue the research below.*`);
+  chatHistory=[{role:'user',content:`[Loaded memory context]\n${mem.summary}`},{role:'assistant',content:`Memory loaded. I have context from your previous session: "${mem.title}". How would you like to continue?`}];
 }
 
-function filterMemories() {
-  const q = document.getElementById('memory-search').value.toLowerCase();
-  renderMemories(memories.filter(m => m.title.toLowerCase().includes(q) || (m.summary||'').toLowerCase().includes(q)));
-}
+function openSaveModal(){const lastAi=[...chatHistory].reverse().find(m=>m.role==='assistant');document.getElementById('mem-summary').value=lastAi?lastAi.content.slice(0,500):'';document.getElementById('save-modal').classList.add('open');}
+function closeSaveModal(){document.getElementById('save-modal').classList.remove('open');}
 
-function loadMemory(id) {
-  const mem = memories.find(m => m.id === id);
-  if (!mem) return;
-  activeMemoryId = id;
-  renderMemories(memories);
-  const welcome = document.getElementById('welcome');
-  if (welcome) welcome.remove();
-  appendMessage('ai', `📖 **Loaded memory: ${mem.title}**\n\n${mem.summary}\n\n*Continue the research below.*`);
-  chatHistory = [
-    { role: 'user',      content: `[Loaded memory context]\n${mem.summary}` },
-    { role: 'assistant', content: `Memory loaded. I have context from your previous session: "${mem.title}". How would you like to continue?` }
-  ];
-}
-
-function openSaveModal() {
-  const lastAi = [...chatHistory].reverse().find(m => m.role === 'assistant');
-  document.getElementById('mem-summary').value = lastAi ? lastAi.content.slice(0, 500) : '';
-  document.getElementById('save-modal').classList.add('open');
-}
-
-function closeSaveModal() {
-  document.getElementById('save-modal').classList.remove('open');
-}
-
-async function saveMemory() {
-  const title   = document.getElementById('mem-title').value.trim();
-  const summary = document.getElementById('mem-summary').value.trim();
-  if (!title) { alert('Please enter a title.'); return; }
-  try {
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/research_memory`, {
-      method: 'POST',
-      headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json', Prefer: 'return=representation' },
-      body: JSON.stringify({ title, summary, ai_source: AI_SOURCE })
-    });
-    if (!res.ok) throw new Error('save failed');
-    closeSaveModal();
-    document.getElementById('mem-title').value = '';
-    document.getElementById('mem-summary').value = '';
+async function saveMemory(){
+  const title=document.getElementById('mem-title').value.trim();
+  const summary=document.getElementById('mem-summary').value.trim();
+  if(!title){alert('Please enter a title.');return;}
+  try{
+    const res=await fetch(`${SUPABASE_URL}/rest/v1/research_memory`,{method:'POST',headers:{apikey:SUPABASE_KEY,Authorization:`Bearer ${SUPABASE_KEY}`,'Content-Type':'application/json',Prefer:'return=representation'},body:JSON.stringify({title,summary,ai_source:AI_SOURCE})});
+    if(!res.ok)throw new Error('save failed');
+    closeSaveModal();document.getElementById('mem-title').value='';document.getElementById('mem-summary').value='';
     await loadMemories();
-  } catch (e) {
-    alert('Failed to save memory: ' + e.message);
-  }
+  }catch(e){alert('Failed to save memory: '+e.message);}
 }
 
-function escHtml(str) {
-  return (str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-}
+function escHtml(str){return(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 </script>
 </body>
 </html>
