@@ -17,8 +17,7 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'messages array required' });
     }
 
-    // Gemini requires strictly alternating user/model turns.
-    // Merge consecutive same-role messages to be safe.
+    // Gemini requires strictly alternating user/model turns
     const rawContents = messages.map(msg => ({
       role: msg.role === 'assistant' ? 'model' : 'user',
       parts: [{ text: msg.content }]
@@ -34,7 +33,6 @@ export default async function handler(req, res) {
       }
     }
 
-    // Must start with a user turn
     if (geminiContents.length === 0 || geminiContents[0].role !== 'user') {
       return res.status(400).json({ error: 'Conversation must start with a user message' });
     }
@@ -53,16 +51,18 @@ export default async function handler(req, res) {
       };
     }
 
-    // Try models in order of preference
+    // Try models in order — use v1 (stable) not v1beta
     const models = [
-      'gemini-2.0-flash',
-      'gemini-1.5-pro-latest',
-      'gemini-1.5-flash',
+      { version: 'v1',     name: 'gemini-2.0-flash' },
+      { version: 'v1',     name: 'gemini-1.5-pro-001' },
+      { version: 'v1',     name: 'gemini-1.5-flash-001' },
+      { version: 'v1beta', name: 'gemini-2.0-flash' },
+      { version: 'v1beta', name: 'gemini-2.0-flash-lite' },
     ];
 
     let lastError = null;
-    for (const model of models) {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`;
+    for (const { version, name } of models) {
+      const url = `https://generativelanguage.googleapis.com/${version}/models/${name}:generateContent?key=${GEMINI_API_KEY}`;
       const geminiRes = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -72,16 +72,16 @@ export default async function handler(req, res) {
       if (geminiRes.ok) {
         const data = await geminiRes.json();
         const content = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-        console.log(`Gemini responded using model: ${model}`);
-        return res.status(200).json({ content, model });
+        console.log(`Gemini responded using ${version}/${name}`);
+        return res.status(200).json({ content, model: name });
       }
 
       const errText = await geminiRes.text();
-      console.error(`Model ${model} failed (${geminiRes.status}):`, errText);
-      lastError = `${model}: ${geminiRes.status} — ${errText}`;
+      console.error(`${version}/${name} failed (${geminiRes.status}):`, errText);
+      lastError = `${name}: ${geminiRes.status} — ${errText}`;
 
-      // Don't try fallbacks for auth errors
-      if (geminiRes.status === 400 || geminiRes.status === 403) break;
+      // Stop on auth errors
+      if (geminiRes.status === 403) break;
     }
 
     return res.status(500).json({ error: `All Gemini models failed. Last error: ${lastError}` });
