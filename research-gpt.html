@@ -370,8 +370,9 @@ async function askGPT(question,letters,names,useWeb,useMemory){
   var r=await fetch("/api/chat-gpt",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({"model":"gpt-4o","max_tokens":4096,"system":sys,"messages":historyToSend})});
   var data=await r.json();
   var reply="No response received.";
-  if(data.content&&data.content[0])reply=data.content[0].text;
-  else if(data.error)reply="Error: "+data.error.message;
+  if(data.content&&data.content[0])reply=data.content[0].text;                          // Anthropic-wrapped format
+  else if(data.choices&&data.choices[0])reply=data.choices[0].message.content;          // OpenAI native format
+  else if(data.error)reply="Error: "+(data.error.message||data.error||JSON.stringify(data));
   sessionHistory.push({role:"assistant",content:reply});
   clearAttachment();
   return reply;
