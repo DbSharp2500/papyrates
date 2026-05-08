@@ -323,12 +323,12 @@ async function sendMessage() {
 
     // Show documents analyzed list (matching Claude/GPT portals)
     if (fetchedLetters && fetchedLetters.length > 0) {
-      const docLines = fetchedLetters.slice(0, 30).map(l => {
+      const docLines = fetchedLetters.map((l, i) => {
         const author = l.author_name || '';
         const recipient = l.recipient_name || '';
         const date = l.date_of_letter ? new Date(l.date_of_letter).toLocaleDateString() : '';
         const arrow = author && recipient ? `${author} → ${recipient}` : (l.title || `Document #${l.id}`);
-        return `<div class="doc-item">${arrow}${date ? ` (${date})` : ''}</div>`;
+        return `<div class="doc-item"><span style="color:#888;font-size:11px;margin-right:6px;font-weight:600;">${i+1}.</span>${arrow}${date ? ` (${date})` : ''}</div>`;
       }).join('');
       appendMessage('ai', `<div class="docs-analyzed"><strong>Documents analyzed (${fetchedLetters.length}):</strong>${docLines}</div>`);
     }
