@@ -101,7 +101,26 @@ body{font-family:Arial,sans-serif;background:#1a1a2e;min-height:100vh;display:fl
 .plan-step{background:#2d4a8a;color:white;padding:2px 9px;border-radius:99px;font-size:11px;font-weight:600;}
 .plan-tags{display:flex;flex-wrap:wrap;gap:6px;}
 .plan-tag{background:rgba(255,255,255,0.06);border:1px solid #2a3a5a;padding:2px 9px;border-radius:99px;font-size:11px;color:#aaa;}
+/* ── Charts ── */
+.chart-container{background:#0d1b2e;border:1px solid #1a3a5a;border-radius:12px;padding:20px;margin:16px 0;position:relative;}
+.chart-container h4{color:#7a9fd4;font-size:14px;margin:0 0 16px;font-weight:600;letter-spacing:0.02em;}
+.chart-canvas-wrap{position:relative;width:100%;max-height:380px;}
+.chart-canvas-wrap canvas{max-height:360px;}
+.network-svg{width:100%;height:420px;background:#080f1a;border-radius:8px;}
+.network-svg .node circle{stroke-width:2;cursor:pointer;}
+.network-svg .node text{font-size:11px;fill:#ccc;pointer-events:none;}
+.network-svg .link{stroke:#2a4a6a;stroke-opacity:0.6;}
+.chart-error{color:#e07070;font-size:13px;padding:12px;}
+.timeline-wrap{overflow-x:auto;padding-bottom:8px;}
+.timeline-track{display:flex;flex-direction:column;gap:0;min-width:600px;}
+.timeline-item{display:flex;gap:16px;align-items:flex-start;padding:8px 0;border-left:2px solid #2a4a8a;padding-left:16px;position:relative;}
+.timeline-item::before{content:'';position:absolute;left:-5px;top:14px;width:8px;height:8px;border-radius:50%;background:#5a8ad4;}
+.timeline-date{color:#5a8ad4;font-size:11px;font-weight:600;min-width:80px;padding-top:2px;}
+.timeline-label{color:#ccc;font-size:13px;}
+.timeline-desc{color:#888;font-size:12px;margin-top:2px;}
 </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
 </head>
 <body>
 
@@ -452,7 +471,7 @@ function buildMemoryContext(){
 // ── Claude API call ───────────────────────────────────────────────────────────
 async function askClaude(question,letters,names,useWeb,useMemory){
   var dss = isDSSQuery(question);
-  var sys = "You are a research assistant specializing in papyri and biblical manuscript acquisition, trafficking, and provenance. You have access to private correspondence between dealers, scholars, collectors, and institutions.\n\nYour role:\n1. Analyze primary source letters carefully\n2. Cross-reference with scholarly knowledge\n3. Identify contradictions or challenges to established narratives\n4. Cite specific letters by sender, recipient, and date\n5. Quote significant passages directly\n6. Be honest about uncertainty\n7. Think like a historian\n\nFORMATTING: You may use HTML in your responses including <table>, <tr>, <th>, <td>, <ul>, <ol>, <li>, <strong>, <em>, <h3>, <h4>, <blockquote>.\n\n";
+  var sys = "You are a research assistant specializing in papyri and biblical manuscript acquisition, trafficking, and provenance. You have access to private correspondence between dealers, scholars, collectors, and institutions.\n\nYour role:\n1. Analyze primary source letters carefully\n2. Cross-reference with scholarly knowledge\n3. Identify contradictions or challenges to established narratives\n4. Cite specific letters by sender, recipient, and date\n5. Quote significant passages directly\n6. Be honest about uncertainty\n7. Think like a historian\n\nFORMATTING: You may use HTML in your responses including <table>, <tr>, <th>, <td>, <ul>, <ol>, <li>, <strong>, <em>, <h3>, <h4>, <blockquote>.\n\nDATA VISUALIZATION: When your answer contains data that would benefit from a chart or graph, include a <chart> JSON block anywhere in your response. The portal will render it automatically. Choose the best type for the data:\n\n- Bar/line/pie chart:\n<chart>{\"type\":\"bar\",\"title\":\"Letters by Year\",\"labels\":[\"1950\",\"1955\",\"1960\"],\"datasets\":[{\"label\":\"Letters\",\"data\":[3,7,12]}]}</chart>\n\n- Network graph (people connections):\n<chart>{\"type\":\"network\",\"title\":\"Correspondence Network\",\"nodes\":[{\"id\":\"Abdul Wahab\",\"group\":\"dealer\"},{\"id\":\"Bongard\",\"group\":\"collector\"}],\"links\":[{\"source\":\"Abdul Wahab\",\"target\":\"Bongard\",\"value\":6}]}</chart>\n\n- Timeline:\n<chart>{\"type\":\"timeline\",\"title\":\"Key Events\",\"events\":[{\"date\":\"1950-01-04\",\"label\":\"Beatty letter\",\"description\":\"Mentions meeting Wahab\"}]}</chart>\n\n- Pie/doughnut chart:\n<chart>{\"type\":\"pie\",\"title\":\"Document Types\",\"labels\":[\"Letters\",\"Telegrams\",\"Receipts\"],\"datasets\":[{\"data\":[45,12,8]}]}</chart>\n\nUse charts proactively when: asked about frequencies, timelines, who worked with whom, quantities, comparisons, or network relationships. You can include multiple charts in one response. Always include the chart JSON even if the data is approximate — the visual helps researchers.\n\n";
   if(dss)sys += DSS_SYSTEM_KNOWLEDGE+"\n";
   if(useMemory&&loadedMemory.length>0)sys += buildMemoryContext();
 
@@ -594,17 +613,244 @@ async function sendQuestion(){
 }
 
 function formatResponse(answer){
-  if(/(<table|<tr|<td|<ul|<ol|<h[1-6]|<blockquote)/i.test(answer)){
-    return answer.replace(/&(?![a-z#0-9]+;)/g,"&amp;");
+  // Extract chart blocks first, replace with placeholders
+  var charts = [];
+  var chartless = answer.replace(/<chart>([\s\S]*?)<\/chart>/gi, function(match, json) {
+    var id = 'chart-' + Date.now() + '-' + charts.length;
+    charts.push({id: id, json: json.trim()});
+    return '<div id="' + id + '" class="chart-container"><em style="color:#555;font-size:12px">Loading chart...</em></div>';
+  });
+
+  // Format the remaining text
+  var formatted;
+  if(/(<table|<tr|<td|<ul|<ol|<h[1-6]|<blockquote)/i.test(chartless)){
+    formatted = chartless.replace(/&(?![a-z#0-9]+;)/g,"&amp;");
+  } else {
+    formatted = "<p>" + chartless
+      .replace(/&(?![a-z#0-9]+;)/g,"&amp;")
+      .replace(/\*\*(.+?)\*\*/g,"<strong>$1</strong>")
+      .replace(/\*(.+?)\*/g,"<em>$1</em>")
+      .replace(/\n\n/g,"</p><p>")
+      .replace(/\n/g,"<br>") + "</p>";
   }
-  var fmt = answer
-    .replace(/&(?![a-z#0-9]+;)/g,"&amp;")
-    .replace(/\*\*(.+?)\*\*/g,"<strong>$1</strong>")
-    .replace(/\*(.+?)\*/g,"<em>$1</em>")
-    .replace(/\n\n/g,"</p><p>")
-    .replace(/\n/g,"<br>");
-  return "<p>"+fmt+"</p>";
+
+  // Schedule chart rendering after DOM insertion
+  if(charts.length > 0){
+    setTimeout(function(){
+      charts.forEach(function(c){ renderChart(c.id, c.json); });
+    }, 100);
+  }
+
+  return formatted;
 }
+
+// ── Chart renderer ────────────────────────────────────────────────────────────
+var chartInstances = {};
+
+function renderChart(containerId, jsonStr) {
+  var container = document.getElementById(containerId);
+  if (!container) return;
+
+  var spec;
+  try {
+    spec = JSON.parse(jsonStr);
+  } catch(e) {
+    container.innerHTML = '<div class="chart-error">⚠️ Could not parse chart data: ' + e.message + '</div>';
+    return;
+  }
+
+  var title = spec.title || '';
+
+  if (spec.type === 'network') {
+    renderNetworkChart(container, spec, title);
+  } else if (spec.type === 'timeline') {
+    renderTimeline(container, spec, title);
+  } else {
+    renderChartJs(container, spec, title);
+  }
+}
+
+function renderChartJs(container, spec, title) {
+  var COLORS = [
+    '#5a8ad4','#7ecfa0','#e0a040','#e07070','#a070d4',
+    '#40c0d0','#d4705a','#70a4d4','#c0d440','#d470b0'
+  ];
+
+  container.innerHTML =
+    (title ? '<h4>' + title + '</h4>' : '') +
+    '<div class="chart-canvas-wrap"><canvas id="cv-' + container.id + '"></canvas></div>';
+
+  var canvas = document.getElementById('cv-' + container.id);
+  var ctx = canvas.getContext('2d');
+
+  // Destroy previous instance if re-rendered
+  if (chartInstances[container.id]) {
+    chartInstances[container.id].destroy();
+  }
+
+  var datasets = spec.datasets || [];
+  // Auto-color datasets
+  datasets = datasets.map(function(ds, i) {
+    var color = COLORS[i % COLORS.length];
+    if (spec.type === 'pie' || spec.type === 'doughnut') {
+      return Object.assign({}, ds, {
+        backgroundColor: COLORS.slice(0, (ds.data||[]).length),
+        borderColor: '#0d1b2e',
+        borderWidth: 2
+      });
+    }
+    return Object.assign({}, ds, {
+      backgroundColor: spec.type === 'line' ? color + '33' : color + 'cc',
+      borderColor: color,
+      borderWidth: 2,
+      tension: 0.3,
+      fill: spec.type === 'line'
+    });
+  });
+
+  chartInstances[container.id] = new Chart(ctx, {
+    type: spec.type === 'bar' ? 'bar' : spec.type === 'line' ? 'line' : spec.type === 'doughnut' ? 'doughnut' : 'pie',
+    data: { labels: spec.labels || [], datasets: datasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      plugins: {
+        legend: { labels: { color: '#aaa', font: { size: 12 } } },
+        tooltip: { backgroundColor: '#1a2a3a', titleColor: '#fff', bodyColor: '#ccc' }
+      },
+      scales: (spec.type === 'pie' || spec.type === 'doughnut') ? {} : {
+        x: { ticks: { color: '#888' }, grid: { color: '#1a2a3a' } },
+        y: { ticks: { color: '#888' }, grid: { color: '#1a2a3a' } }
+      }
+    }
+  });
+}
+
+function renderNetworkChart(container, spec, title) {
+  var nodes = (spec.nodes || []).map(function(n) { return Object.assign({}, n); });
+  var links = (spec.links || []).map(function(l) { return Object.assign({}, l); });
+
+  container.innerHTML =
+    (title ? '<h4>' + title + '</h4>' : '') +
+    '<svg class="network-svg" id="net-' + container.id + '"></svg>' +
+    '<div style="font-size:11px;color:#556;margin-top:8px;text-align:center">Drag nodes to explore • Scroll to zoom</div>';
+
+  var svg = d3.select('#net-' + container.id);
+  var width = container.offsetWidth - 40;
+  var height = 420;
+
+  svg.attr('viewBox', '0 0 ' + width + ' ' + height);
+
+  var groupColors = {
+    dealer: '#e0a040', collector: '#5a8ad4', scholar: '#7ecfa0',
+    institution: '#a070d4', person: '#40c0d0', default: '#888'
+  };
+
+  var simulation = d3.forceSimulation(nodes)
+    .force('link', d3.forceLink(links).id(function(d){ return d.id; }).distance(100))
+    .force('charge', d3.forceManyBody().strength(-300))
+    .force('center', d3.forceCenter(width / 2, height / 2))
+    .force('collision', d3.forceCollide(40));
+
+  // Links
+  var link = svg.append('g').selectAll('line')
+    .data(links).enter().append('line')
+    .attr('class', 'link')
+    .attr('stroke-width', function(d){ return Math.sqrt(d.value || 1) * 1.5; });
+
+  // Link labels (letter count)
+  var linkLabel = svg.append('g').selectAll('text')
+    .data(links.filter(function(l){ return (l.value||0) > 1; }))
+    .enter().append('text')
+    .attr('font-size', 9).attr('fill', '#446').attr('text-anchor', 'middle')
+    .text(function(d){ return d.value || ''; });
+
+  // Node groups
+  var node = svg.append('g').selectAll('g')
+    .data(nodes).enter().append('g')
+    .attr('class', 'node')
+    .call(d3.drag()
+      .on('start', function(event, d){
+        if (!event.active) simulation.alphaTarget(0.3).restart();
+        d.fx = d.x; d.fy = d.y;
+      })
+      .on('drag', function(event, d){ d.fx = event.x; d.fy = event.y; })
+      .on('end', function(event, d){
+        if (!event.active) simulation.alphaTarget(0);
+        d.fx = null; d.fy = null;
+      })
+    );
+
+  node.append('circle')
+    .attr('r', function(d){ return 14 + (d.weight || 0) * 2; })
+    .attr('fill', function(d){ return groupColors[d.group] || groupColors.default; })
+    .attr('stroke', '#0d1b2e');
+
+  node.append('text')
+    .attr('dy', '0.35em').attr('text-anchor', 'middle')
+    .attr('font-size', 10).attr('fill', '#fff').attr('font-weight', '600')
+    .text(function(d){ return (d.id||'').split(' ').pop().substring(0,10); });
+
+  node.append('title').text(function(d){ return d.id + (d.group ? ' (' + d.group + ')' : ''); });
+
+  // Tooltip on hover
+  node.on('mouseover', function(event, d){
+    d3.select(this).select('circle').attr('r', function(){ return 18 + (d.weight||0)*2; });
+  }).on('mouseout', function(event, d){
+    d3.select(this).select('circle').attr('r', function(){ return 14 + (d.weight||0)*2; });
+  });
+
+  // Legend
+  var groups = [...new Set(nodes.map(function(n){ return n.group; }).filter(Boolean))];
+  var legend = svg.append('g').attr('transform', 'translate(10, 10)');
+  groups.forEach(function(g, i){
+    legend.append('circle').attr('cx', 6).attr('cy', i*18+6).attr('r', 5)
+      .attr('fill', groupColors[g] || groupColors.default);
+    legend.append('text').attr('x', 15).attr('y', i*18+10)
+      .attr('font-size', 10).attr('fill', '#aaa').text(g);
+  });
+
+  simulation.on('tick', function(){
+    link
+      .attr('x1', function(d){ return d.source.x; })
+      .attr('y1', function(d){ return d.source.y; })
+      .attr('x2', function(d){ return d.target.x; })
+      .attr('y2', function(d){ return d.target.y; });
+    linkLabel
+      .attr('x', function(d){ return (d.source.x + d.target.x) / 2; })
+      .attr('y', function(d){ return (d.source.y + d.target.y) / 2; });
+    node.attr('transform', function(d){
+      d.x = Math.max(20, Math.min(width-20, d.x));
+      d.y = Math.max(20, Math.min(height-20, d.y));
+      return 'translate(' + d.x + ',' + d.y + ')';
+    });
+  });
+
+  // Zoom
+  svg.call(d3.zoom().scaleExtent([0.3, 3]).on('zoom', function(event){
+    svg.selectAll('g').attr('transform', event.transform);
+  }));
+}
+
+function renderTimeline(container, spec, title) {
+  var events = (spec.events || []).sort(function(a,b){
+    return new Date(a.date) - new Date(b.date);
+  });
+
+  var html = (title ? '<h4>' + title + '</h4>' : '') + '<div class="timeline-wrap"><div class="timeline-track">';
+  events.forEach(function(ev){
+    var d = ev.date ? new Date(ev.date).toLocaleDateString('en-US',{year:'numeric',month:'short',day:'numeric'}) : ev.date;
+    html += '<div class="timeline-item">' +
+      '<div class="timeline-date">' + (d||'') + '</div>' +
+      '<div><div class="timeline-label">' + (ev.label||'') + '</div>' +
+      (ev.description ? '<div class="timeline-desc">' + ev.description + '</div>' : '') +
+      '</div></div>';
+  });
+  html += '</div></div>';
+  container.innerHTML = html;
+}
+
+// ── Old formatResponse removed, replaced above ────────────────────────────────
 
 // ── Save session ──────────────────────────────────────────────────────────────
 async function startSaveSession(){
