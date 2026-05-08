@@ -48,9 +48,9 @@ Also include in person_names any well-known associates of the people mentioned â
 Include in keywords any organisation names, place names, or object names relevant to the question.`;
 
   const GEMINI_MODELS = [
-    'gemini-2.0-flash-001',
-    'gemini-1.5-pro-001',
-    'gemini-1.5-flash-001',
+    'gemini-2.0-flash',
+    'gemini-1.5-pro',
+    'gemini-1.5-flash',
   ];
 
   const body = {
