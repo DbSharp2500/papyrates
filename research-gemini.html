@@ -108,9 +108,20 @@
     .letter-body{font-size:.88rem;line-height:1.7;white-space:pre-wrap;}
     .letter-close{float:right;background:none;border:none;color:var(--text-dim);font-size:1.3rem;cursor:pointer;margin-top:-6px;}
     @media(max-width:700px){.sidebar{display:none;}}
+    /* Query Plan Panel */
+    .plan-panel{border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin:6px 0;background:rgba(139,92,246,0.08);font-size:13px;}
+    .plan-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
+    .plan-model{font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:0.05em;color:var(--accent);}
+    .plan-focus{font-size:12px;color:var(--text-dim);}
+    .plan-reasoning{margin:0 0 10px;line-height:1.5;color:var(--text-dim);}
+    .plan-steps{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;}
+    .plan-step{background:var(--accent);color:white;padding:2px 9px;border-radius:99px;font-size:11px;font-weight:600;}
+    .plan-tags{display:flex;flex-wrap:wrap;gap:6px;}
+    .plan-tag{background:var(--surface2);border:1px solid var(--border);padding:2px 9px;border-radius:99px;font-size:11px;color:var(--text-dim);}
   </style>
 </head>
 <body>
+<script src="/query-plan-executor.js"></script>
 
 <header>
   <a href="/" class="home-btn">⌂</a>
@@ -264,7 +275,7 @@ async function sendMessage() {
   try {
     let fetchedLetters = [];
     if (searchEnabled && query !== 'Please analyze the attached document.') {
-      fetchedLetters = await searchLetters(query);
+      fetchedLetters = await getContextLetters(query);
       updateContextBar(fetchedLetters);
     }
 
@@ -319,6 +330,33 @@ async function sendMessage() {
 }
 
 function sendSuggestion(el){document.getElementById('user-input').value=el.textContent;sendMessage();}
+
+async function getContextLetters(query) {
+  try {
+    const planRes = await fetch('/api/query-plan-gemini', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({question: query})
+    });
+    const planData = await planRes.json();
+    const plan = planData.plan;
+    if (plan) {
+      const steps = (plan.strategy||[]).map(s=>`<span class="plan-step">${s.replace(/_/g,' ')}</span>`).join('');
+      const tags = [
+        ...(plan.person_names||[]).map(n=>`👤 ${n}`),
+        ...(plan.keywords||[]).map(k=>`🔑 ${k}`)
+      ].map(t=>`<span class="plan-tag">${t}</span>`).join('');
+      appendMessage('ai', `<div class="plan-panel"><div class="plan-header"><span class="plan-model">✦ Gemini Query Plan</span><span class="plan-focus">Focus: <strong>${plan.primary_focus||'unknown'}</strong></span></div><p class="plan-reasoning">${plan.reasoning||''}</p><div class="plan-steps">${steps}</div>${tags?`<div class="plan-tags">${tags}</div>`:''}</div>`);
+      const result = await QueryPlanExecutor.runQueryPlan(plan, {
+        supabaseUrl: SUPABASE_URL,
+        supabaseKey: SUPABASE_KEY,
+        embedFn: null
+      });
+      if (result.letters && result.letters.length > 0) return result.letters.slice(0, 30);
+    }
+  } catch(e) { console.warn('Query planner failed, falling back:', e); }
+  return await searchLetters(query);
+}
 
 async function searchLetters(query) {
   try { return semanticMode ? await semanticSearch(query) : await keywordSearch(query); }
