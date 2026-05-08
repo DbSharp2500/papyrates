@@ -85,6 +85,10 @@ export default async function handler(req, res) {
 
       const errText = await geminiRes.text();
       console.error(`${version}/${name} failed (${geminiRes.status}):`, errText);
+      // Detect quota/billing exhaustion
+      if (geminiRes.status === 429 && errText.includes('RESOURCE_EXHAUSTED')) {
+        return res.status(402).json({ error: '💳 BILLING_EXHAUSTED', billingUrl: 'https://console.cloud.google.com/billing' });
+      }
       lastError = `${name}: ${geminiRes.status} — ${errText}`;
       if (geminiRes.status === 403) break;
     }
