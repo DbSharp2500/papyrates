@@ -65,6 +65,11 @@ export default async function handler(req, res) {
     if (!response.ok) {
       const err = await response.json();
       console.error('OpenAI error:', err);
+      const code = err.error?.code || '';
+      const type = err.error?.type || '';
+      if (code === 'insufficient_quota' || code === 'billing_hard_limit_reached' || type === 'insufficient_quota') {
+        return res.status(402).json({ error: '💳 BILLING_EXHAUSTED', billingUrl: 'https://platform.openai.com/settings/organization/billing' });
+      }
       return res.status(response.status).json({ error: err.error?.message || 'OpenAI API error' });
     }
 
