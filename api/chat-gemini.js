@@ -55,7 +55,7 @@ export default async function handler(req, res) {
 
     const requestBody = {
       contents: geminiContents,
-      generationConfig: { maxOutputTokens: 2048, temperature: 0.7 }
+      generationConfig: { maxOutputTokens: 4096, temperature: 0.7 }
     };
 
     if (system) {
