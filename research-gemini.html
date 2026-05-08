@@ -425,7 +425,7 @@ function appendMessage(role, text) {
   const div=document.createElement('div');div.className=`msg ${role}`;
   const avatar=document.createElement('div');avatar.className=`avatar ${role}`;avatar.textContent=role==='user'?'U':'✦';
   const bubble=document.createElement('div');bubble.className='bubble';
-  bubble.innerHTML=role==='user'?text.replace(/&(?![a-z#0-9]+;)/g,'&amp;'):formatText(text);
+  bubble.innerHTML=role==='user'?text.replace(/&(?![a-z#0-9]+;)/g,'&amp;'):(text.trimStart().startsWith('<')?text:formatText(text));
   div.appendChild(avatar);div.appendChild(bubble);msgs.appendChild(div);msgs.scrollTop=msgs.scrollHeight;
 }
 
