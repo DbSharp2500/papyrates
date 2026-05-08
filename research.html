@@ -575,13 +575,12 @@ async function sendQuestion(){
     var src = "";
     if(letters.length>0){
       src = '<div class="sources"><strong>Documents analyzed ('+letters.length+'):</strong>';
-      letters.slice(0,15).forEach(function(l){
+      letters.forEach(function(l, i){
         var dn=getDisplayName(l,names);
         var desc=l.description?' &mdash; '+l.description.substring(0,60):"";
         var sim=l.similarity?' <span style="color:#aaa;font-size:10px">('+Math.round(l.similarity*100)+'% match)</span>':"";
-        src+='<div class="source-item">'+dn+desc+sim+'</div>';
+        src+='<div class="source-item"><span style="color:#888;font-size:11px;margin-right:6px;font-weight:600;">'+(i+1)+'.</span>'+dn+desc+sim+'</div>';
       });
-      if(letters.length>15)src+='<div style="color:#888;font-size:11px;margin-top:4px">...and '+(letters.length-15)+' more</div>';
       src+='</div>';
     }
     addMessage("assistant","<h3>Research Analysis</h3>"+fmt+src);
