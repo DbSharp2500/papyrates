@@ -14,6 +14,8 @@
     *{box-sizing:border-box;margin:0;padding:0;}
     body{background:var(--bg);color:var(--text);font-family:var(--font);height:100dvh;display:flex;flex-direction:column;}
     header{background:var(--surface);border-bottom:1px solid var(--border);padding:12px 20px;display:flex;align-items:center;gap:14px;flex-shrink:0;}
+    .hbtn{background:rgba(255,255,255,0.12);color:white;border:1px solid rgba(255,255,255,0.25);padding:6px 12px;border-radius:6px;cursor:pointer;font-size:12px;}
+    .hbtn:hover{background:rgba(255,255,255,0.22);}
     .home-btn{color:var(--text-dim);text-decoration:none;font-size:1.1rem;opacity:0.7;transition:opacity .2s;}
     .home-btn:hover{opacity:1;}
     .logo{font-size:1.35rem;font-weight:bold;color:var(--accent);letter-spacing:.02em;}
@@ -131,6 +133,10 @@
   <div class="logo">☽ Papyrates</div>
   <span class="badge">GEMINI</span>
   <div class="search-mode" id="search-mode-label">● Keyword</div>
+  <div style="margin-left:auto;display:flex;gap:8px;align-items:center;">
+    <button class="hbtn" onclick="document.querySelector('.sidebar').classList.toggle('open')">🧠 Memory</button>
+    <button class="hbtn" onclick="openSaveModal()">💾 Save Session</button>
+  </div>
 </header>
 
 <div class="layout">
@@ -141,7 +147,6 @@
       <div style="padding:16px;color:var(--text-dim);font-size:.8rem;">Loading memories…</div>
     </div>
     <div class="sidebar-actions">
-      <button class="btn-sm" onclick="openSaveModal()">💾 Save Session</button>
       <button class="btn-sm" onclick="clearChat()">🗑 Clear Chat</button>
     </div>
   </aside>
