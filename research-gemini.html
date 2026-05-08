@@ -189,7 +189,7 @@
 <div class="modal-overlay" id="save-modal">
   <div class="modal">
     <h3>💾 Save Session Memory</h3>
-    <input type="text" id="mem-title" placeholder="Session title" />
+    <p style="font-size:13px;color:var(--text-dim);margin-bottom:8px;">Gemini will generate a summary of your research findings. You can edit it before saving.</p>
     <textarea id="mem-summary" rows="5" placeholder="Summary of what was discussed…"></textarea>
     <div class="modal-actions">
       <button class="btn-cancel" onclick="closeSaveModal()">Cancel</button>
@@ -485,7 +485,7 @@ function closeLetterPanel(e){if(e.target===document.getElementById('letter-panel
 
 async function loadMemories(){
   try{
-    const res=await fetch(`${SUPABASE_URL}/rest/v1/research_memory?ai_source=eq.${AI_SOURCE}&order=created_at.desc&select=id,title,summary,created_at`,{headers:{apikey:SUPABASE_KEY,Authorization:`Bearer ${SUPABASE_KEY}`}});
+    const res=await fetch(`${SUPABASE_URL}/rest/v1/research_memory?ai_source=eq.${AI_SOURCE}&order=session_date.desc&select=id,session_date,summary,confirmed_findings`,{headers:{apikey:SUPABASE_KEY,Authorization:`Bearer ${SUPABASE_KEY}`}});
     if(!res.ok)throw new Error('fetch failed');
     memories=await res.json();renderMemories(memories);
   }catch(e){document.getElementById('memory-list').innerHTML='<div style="padding:12px;color:var(--text-dim);font-size:.78rem;">Could not load memories.</div>';}
@@ -502,23 +502,41 @@ function filterMemories(){const q=document.getElementById('memory-search').value
 function loadMemory(id){
   const mem=memories.find(m=>m.id===id);if(!mem)return;
   activeMemoryId=id;renderMemories(memories);
+  const content=mem.confirmed_findings||mem.summary||'';
   const welcome=document.getElementById('welcome');if(welcome)welcome.remove();
-  appendMessage('ai',`📖 **Loaded memory: ${mem.title}**\n\n${mem.summary}\n\n*Continue the research below.*`);
-  chatHistory=[{role:'user',content:`[Loaded memory context]\n${mem.summary}`},{role:'assistant',content:`Memory loaded. I have context from your previous session: "${mem.title}". How would you like to continue?`}];
+  appendMessage('ai',`📖 **Loaded previous session memory**\n\n${content}\n\n*Continue the research below.*`);
+  chatHistory=[{role:'user',content:`[Loaded memory context]\n${content}`},{role:'assistant',content:`Memory loaded from a previous Gemini session. How would you like to continue?`}];
 }
 
-function openSaveModal(){const lastAi=[...chatHistory].reverse().find(m=>m.role==='assistant');document.getElementById('mem-summary').value=lastAi?lastAi.content.slice(0,500):'';document.getElementById('save-modal').classList.add('open');}
+async function openSaveModal(){
+  document.getElementById('mem-summary').value='Generating summary...';
+  document.getElementById('save-modal').classList.add('open');
+  try {
+    const summaryPrompt = 'Please summarize the key research findings from our conversation today in 3-5 paragraphs. Focus on: what was discovered about specific people, manuscripts, or transactions; any connections identified; unanswered questions for follow-up; and the most significant letter references. This will be saved as research memory for future sessions.';
+    const tempHistory = [...chatHistory, {role:'user', content: summaryPrompt}];
+    const res = await fetch('/api/chat-gemini', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({messages:tempHistory})
+    });
+    const data = await res.json();
+    document.getElementById('mem-summary').value = data.content || '';
+  } catch(e) {
+    document.getElementById('mem-summary').value = '';
+    alert('Could not auto-generate summary. Please type one manually.');
+  }
+}
 function closeSaveModal(){document.getElementById('save-modal').classList.remove('open');}
 
 async function saveMemory(){
-  const title=document.getElementById('mem-title').value.trim();
   const summary=document.getElementById('mem-summary').value.trim();
-  if(!title){alert('Please enter a title.');return;}
+  if(!summary){alert('Please enter a summary.');return;}
   try{
-    const res=await fetch(`${SUPABASE_URL}/rest/v1/research_memory`,{method:'POST',headers:{apikey:SUPABASE_KEY,Authorization:`Bearer ${SUPABASE_KEY}`,'Content-Type':'application/json',Prefer:'return=representation'},body:JSON.stringify({title,summary,ai_source:AI_SOURCE})});
+    const res=await fetch(`${SUPABASE_URL}/rest/v1/research_memory`,{method:'POST',headers:{apikey:SUPABASE_KEY,Authorization:`Bearer ${SUPABASE_KEY}`,'Content-Type':'application/json',Prefer:'return=representation'},body:JSON.stringify({summary,confirmed_findings:summary,ai_source:AI_SOURCE})});
     if(!res.ok)throw new Error('save failed');
-    closeSaveModal();document.getElementById('mem-title').value='';document.getElementById('mem-summary').value='';
+    closeSaveModal();document.getElementById('mem-summary').value='';
     await loadMemories();
+    appendMessage('ai','✅ Session saved to Gemini memory!');
   }catch(e){alert('Failed to save memory: '+e.message);}
 }
 
