@@ -30,18 +30,11 @@ export default async function handler(req, res) {
       if (content && typeof content === 'object' && content.attachment) {
         const parts = [];
         const att = content.attachment;
-        // Add the file inline
-        parts.push({
-          inlineData: {
-            mimeType: att.mimeType,
-            data: att.base64
-          }
-        });
+        parts.push({ inlineData: { mimeType: att.mimeType, data: att.base64 } });
         if (content.text) parts.push({ text: content.text });
         return { role, parts };
       }
 
-      // Fallback
       return { role, parts: [{ text: String(content) }] };
     });
 
@@ -69,13 +62,11 @@ export default async function handler(req, res) {
       requestBody.systemInstruction = { parts: [{ text: system }] };
     }
 
-    // Try models in order — v1 (stable) first, then v1beta
+    // Paid models only — no free tier fallbacks
     const models = [
-      { version: 'v1',     name: 'gemini-2.0-flash' },
+      { version: 'v1beta', name: 'gemini-2.0-flash-001' },
       { version: 'v1',     name: 'gemini-1.5-pro-001' },
       { version: 'v1',     name: 'gemini-1.5-flash-001' },
-      { version: 'v1beta', name: 'gemini-2.0-flash' },
-      { version: 'v1beta', name: 'gemini-2.0-flash-lite' },
     ];
 
     let lastError = null;
