@@ -370,7 +370,10 @@ async function getContextLetters(query) {
       });
       if (result.letters && result.letters.length > 0) return result.letters.slice(0, 30);
     }
-  } catch(e) { console.warn('Query planner failed, falling back:', e); }
+  } catch(e) {
+    console.warn('Query planner failed, falling back:', e);
+    appendMessage('ai', `<div class="plan-panel" style="border-color:#8a2a2a;background:rgba(138,42,42,0.1)"><strong style="color:#e07070">⚠️ Query planner error — using fallback search</strong><br><small>${e.message}</small></div>`);
+  }
   return await searchLetters(query);
 }
 
@@ -432,7 +435,7 @@ function buildSystemPrompt(letters) {
       prompt+='\n';
     });
     prompt+='\n--- END DOCUMENTS ---\n\nBase your answer primarily on these documents.';
-  }else{prompt+='\n\nNo specific archive documents were retrieved. Answer based on general knowledge and note no direct matches were found.';}
+  }else{prompt+='\n\nNo archive documents were retrieved for this query. You MUST tell the user that no matching documents were found in the Papyrates archive for their query. Do NOT answer from general knowledge or make up information. Suggest they try rephrasing or check if the person/manuscript name is spelled differently in the archive.';}
   return prompt;
 }
 
