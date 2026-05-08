@@ -62,11 +62,9 @@ export default async function handler(req, res) {
       requestBody.systemInstruction = { parts: [{ text: system }] };
     }
 
-    // All on v1beta — systemInstruction only works here
+    // gemini-2.5-flash is the only model confirmed working on this account
     const models = [
-      { version: 'v1beta', name: 'gemini-2.0-flash' },
-      { version: 'v1beta', name: 'gemini-1.5-pro' },
-      { version: 'v1beta', name: 'gemini-1.5-flash' },
+      { version: 'v1beta', name: 'gemini-2.5-flash' },
     ];
 
     let lastError = null;
