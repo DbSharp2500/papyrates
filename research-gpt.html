@@ -102,7 +102,38 @@ body{font-family:Arial,sans-serif;background:#0d1f0d;min-height:100vh;display:fl
 .plan-step{background:#1a5a3a;color:white;padding:2px 9px;border-radius:99px;font-size:11px;font-weight:600;}
 .plan-tags{display:flex;flex-wrap:wrap;gap:6px;}
 .plan-tag{background:rgba(255,255,255,0.06);border:1px solid #2a3a2a;padding:2px 9px;border-radius:99px;font-size:11px;color:#aaa;}
+/* ── Charts ── */
+.chart-container{background:#0d1b2e;border:1px solid #1a3a5a;border-radius:12px;padding:20px;margin:16px 0;position:relative;}
+.chart-container h4{color:#7a9fd4;font-size:14px;margin:0 0 12px;font-weight:600;letter-spacing:0.02em;}
+.chart-toolbar{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap;}
+.chart-btn{background:rgba(90,138,212,0.15);color:#7a9fd4;border:1px solid #2a4a6a;padding:4px 10px;border-radius:6px;cursor:pointer;font-size:11px;font-weight:600;}
+.chart-btn:hover{background:rgba(90,138,212,0.3);}
+.chart-btn.saved{color:#7ecfa0;border-color:#2a5a3a;background:rgba(126,207,160,0.1);}
+.chart-library-panel{background:#0a1520;border:1px solid #1a3a5a;border-radius:10px;padding:16px;margin:12px 0;}
+.chart-library-panel h4{color:#7a9fd4;font-size:13px;margin:0 0 10px;}
+.saved-chart-item{display:flex;justify-content:space-between;align-items:center;padding:8px 10px;border:1px solid #1a3a5a;border-radius:6px;margin-bottom:6px;cursor:pointer;background:#0d1b2e;}
+.saved-chart-item:hover{background:#112030;}
+.saved-chart-title{color:#ccc;font-size:13px;}
+.saved-chart-date{color:#556;font-size:11px;}
+.saved-chart-actions{display:flex;gap:6px;}
+.chart-canvas-wrap{position:relative;width:100%;max-height:380px;}
+.chart-canvas-wrap canvas{max-height:360px;}
+.network-svg{width:100%;height:420px;background:#080f1a;border-radius:8px;}
+.network-svg .node circle{stroke-width:2;cursor:pointer;}
+.network-svg .node text{font-size:11px;fill:#ccc;pointer-events:none;}
+.network-svg .link{stroke:#2a4a6a;stroke-opacity:0.6;}
+.chart-error{color:#e07070;font-size:13px;padding:12px;}
+.timeline-wrap{overflow-x:auto;padding-bottom:8px;}
+.timeline-track{display:flex;flex-direction:column;gap:0;min-width:600px;}
+.timeline-item{display:flex;gap:16px;align-items:flex-start;padding:8px 0;border-left:2px solid #2a4a8a;padding-left:16px;position:relative;}
+.timeline-item::before{content:'';position:absolute;left:-5px;top:14px;width:8px;height:8px;border-radius:50%;background:#5a8ad4;}
+.timeline-date{color:#5a8ad4;font-size:11px;font-weight:600;min-width:80px;padding-top:2px;}
+.timeline-label{color:#ccc;font-size:13px;}
+.timeline-desc{color:#888;font-size:12px;margin-top:2px;}
+
 </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
 </head>
 <body>
 
@@ -350,7 +381,7 @@ function buildMemoryContext(){
 // ── GPT API call ──────────────────────────────────────────────────────────────
 async function askGPT(question,letters,names,useWeb,useMemory){
   var dss=isDSSQuery(question);
-  var sys="You are a research assistant specializing in papyri and biblical manuscript acquisition, trafficking, and provenance. You have access to private correspondence between dealers, scholars, collectors, and institutions.\n\nYour role:\n1. Analyze primary source letters carefully\n2. Cross-reference with scholarly knowledge\n3. Identify contradictions or challenges to established narratives\n4. Cite specific letters by sender, recipient, and date\n5. Quote significant passages directly\n6. Be honest about uncertainty\n7. Think like a historian\n\nFORMATTING: You may use HTML in your responses including <table>, <tr>, <th>, <td>, <ul>, <ol>, <li>, <strong>, <em>, <h3>, <h4>, <blockquote>.\n\n";
+  var sys="You are a research assistant specializing in papyri and biblical manuscript acquisition, trafficking, and provenance. You have access to private correspondence between dealers, scholars, collectors, and institutions.\n\nYour role:\n1. Analyze primary source letters carefully\n2. Cross-reference with scholarly knowledge\n3. Identify contradictions or challenges to established narratives\n4. Cite specific letters by sender, recipient, and date\n5. Quote significant passages directly\n6. Be honest about uncertainty\n7. Think like a historian\n\nFORMATTING: You may use HTML in your responses including <table>, <tr>, <th>, <td>, <ul>, <ol>, <li>, <strong>, <em>, <h3>, <h4>, <blockquote>.\n\nDATA VISUALIZATION: When your answer contains data that would benefit from a chart or graph, include a <chart> JSON block anywhere in your response. The portal will render it automatically.\n\n- Bar/line/pie: <chart>{\"type\":\"bar\",\"title\":\"Title\",\"labels\":[\"A\",\"B\"],\"datasets\":[{\"label\":\"Count\",\"data\":[1,2]}]}</chart>\n\n- Network graph: <chart>{\"type\":\"network\",\"title\":\"Network\",\"nodes\":[{\"id\":\"Person A\",\"group\":\"dealer\"}],\"links\":[{\"source\":\"Person A\",\"target\":\"Person B\",\"value\":3}]}</chart>\n\n- Timeline: <chart>{\"type\":\"timeline\",\"title\":\"Events\",\"events\":[{\"date\":\"1950-01-04\",\"label\":\"Event\",\"description\":\"Details\"}]}</chart>\n\nUse charts proactively for frequencies, timelines, relationships, comparisons.\n\n";
   if(dss)sys+=DSS_SYSTEM_KNOWLEDGE+"\n";
   if(useMemory&&loadedMemory.length>0)sys+=buildMemoryContext();
 
@@ -463,10 +494,446 @@ async function sendQuestion(){
 }
 
 function formatResponse(answer){
-  if(/(<table|<tr|<td|<ul|<ol|<h[1-6]|<blockquote)/i.test(answer)){return answer.replace(/&(?![a-z#0-9]+;)/g,"&amp;");}
-  var fmt=answer.replace(/&(?![a-z#0-9]+;)/g,"&amp;").replace(/\*\*(.+?)\*\*/g,"<strong>$1</strong>").replace(/\*(.+?)\*/g,"<em>$1</em>").replace(/\n\n/g,"</p><p>").replace(/\n/g,"<br>");
-  return "<p>"+fmt+"</p>";
+  // Extract chart blocks first, replace with placeholders
+  var charts = [];
+  var chartless = answer.replace(/<chart>([\s\S]*?)<\/chart>/gi, function(match, json) {
+    var id = 'chart-' + Date.now() + '-' + charts.length;
+    charts.push({id: id, json: json.trim()});
+    return '\n\n__CHART_PLACEHOLDER_' + id + '__\n\n';
+  });
+
+  // Full markdown + HTML formatter
+  var formatted = chartless
+    .replace(/&(?![a-z#0-9]+;)/g, "&amp;")
+    // Headings
+    .replace(/^#### (.+)$/gm, '<h4>$1</h4>')
+    .replace(/^### (.+)$/gm, '<h4>$1</h4>')
+    .replace(/^## (.+)$/gm, '<h3>$1</h3>')
+    .replace(/^# (.+)$/gm, '<h3>$1</h3>')
+    // Horizontal rules
+    .replace(/^---+$/gm, '<hr style="border-color:#1a3a5a;margin:12px 0">')
+    // Bold and italic
+    .replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>')
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+    // Blockquotes
+    .replace(/^&gt; (.+)$/gm, '<blockquote>$1</blockquote>')
+    .replace(/^> (.+)$/gm, '<blockquote>$1</blockquote>')
+    // Lists
+    .replace(/^[-•] (.+)$/gm, '<li>$1</li>')
+    .replace(/^\d+\. (.+)$/gm, '<li>$1</li>')
+    // Paragraphs
+    .replace(/\n\n/g, '</p><p>')
+    .replace(/\n/g, '<br>');
+
+  // Re-inject chart placeholders as real divs
+  formatted = formatted.replace(/__CHART_PLACEHOLDER_(chart-[\d]+-[\d]+)__/g, function(match, id) {
+    return '</p><div id="' + id + '" class="chart-container"><em style="color:#555;font-size:12px">Loading chart...</em></div><p>';
+  });
+
+  // Wrap in paragraph tags if not already HTML
+  if (!/<[hH][1-6]|<table|<ul|<ol/.test(formatted)) {
+    formatted = '<p>' + formatted + '</p>';
+  }
+
+  // Schedule chart rendering after DOM insertion
+  if(charts.length > 0){
+    setTimeout(function(){
+      charts.forEach(function(c){ renderChart(c.id, c.json); });
+    }, 200);
+  }
+
+  return formatted;
 }
+
+// ── Chart renderer ────────────────────────────────────────────────────────────
+var chartInstances = {};
+
+var chartSpecs = {}; // stores raw spec per containerId for export/save
+
+function renderChart(containerId, jsonStr) {
+  var container = document.getElementById(containerId);
+  if (!container) return;
+
+  var spec;
+  try {
+    spec = JSON.parse(jsonStr);
+  } catch(e) {
+    container.innerHTML = '<div class="chart-error">⚠️ Could not parse chart data: ' + e.message + '</div>';
+    return;
+  }
+
+  chartSpecs[containerId] = spec; // store for export
+  var title = spec.title || 'Chart';
+
+  // Build toolbar
+  var isNetwork = spec.type === 'network';
+  var isTimeline = spec.type === 'timeline';
+  var toolbar = '<div class="chart-toolbar">' +
+    '<button class="chart-btn" onclick="exportChartPNG(\'' + containerId + '\')">⬇ PNG</button>' +
+    (isNetwork ? '<button class="chart-btn" onclick="exportNetworkSVG(\'' + containerId + '\')">⬇ SVG</button>' : '') +
+    '<button class="chart-btn" onclick="exportChartData(\'' + containerId + '\')">⬇ JSON</button>' +
+    '<button class="chart-btn" onclick="exportStandaloneHTML(\'' + containerId + '\')">⬇ HTML</button>' +
+    '<button class="chart-btn" id="save-btn-' + containerId + '" onclick="saveChartToLibrary(\'' + containerId + '\')">🗄 Save to Library</button>' +
+    '</div>';
+
+  container.innerHTML = (title ? '<h4>' + title + '</h4>' : '') + toolbar +
+    '<div id="chart-body-' + containerId + '"></div>';
+
+  var body = document.getElementById('chart-body-' + containerId);
+
+  if (isNetwork) {
+    renderNetworkChart(body, spec, '');
+  } else if (isTimeline) {
+    renderTimeline(body, spec, '');
+  } else {
+    renderChartJs(body, spec, '');
+  }
+}
+
+function renderChartJs(container, spec, title) {
+  var COLORS = [
+    '#5a8ad4','#7ecfa0','#e0a040','#e07070','#a070d4',
+    '#40c0d0','#d4705a','#70a4d4','#c0d440','#d470b0'
+  ];
+
+  var canvasId = 'cv-' + container.id;
+  container.innerHTML =
+    (title ? '<h4>' + title + '</h4>' : '') +
+    '<div class="chart-canvas-wrap"><canvas id="' + canvasId + '"></canvas></div>';
+  var canvas = document.getElementById(canvasId);
+  var ctx = canvas.getContext('2d');
+
+  // Destroy previous instance if re-rendered
+  if (chartInstances[canvasId]) {
+    chartInstances[canvasId].destroy();
+  }
+
+  var datasets = spec.datasets || [];
+  // Auto-color datasets
+  datasets = datasets.map(function(ds, i) {
+    var color = COLORS[i % COLORS.length];
+    if (spec.type === 'pie' || spec.type === 'doughnut') {
+      return Object.assign({}, ds, {
+        backgroundColor: COLORS.slice(0, (ds.data||[]).length),
+        borderColor: '#0d1b2e',
+        borderWidth: 2
+      });
+    }
+    return Object.assign({}, ds, {
+      backgroundColor: spec.type === 'line' ? color + '33' : color + 'cc',
+      borderColor: color,
+      borderWidth: 2,
+      tension: 0.3,
+      fill: spec.type === 'line'
+    });
+  });
+
+  chartInstances[canvasId] = new Chart(ctx, {
+    type: spec.type === 'bar' ? 'bar' : spec.type === 'line' ? 'line' : spec.type === 'doughnut' ? 'doughnut' : 'pie',
+    data: { labels: spec.labels || [], datasets: datasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      plugins: {
+        legend: { labels: { color: '#aaa', font: { size: 12 } } },
+        tooltip: { backgroundColor: '#1a2a3a', titleColor: '#fff', bodyColor: '#ccc' }
+      },
+      scales: (spec.type === 'pie' || spec.type === 'doughnut') ? {} : {
+        x: { ticks: { color: '#888' }, grid: { color: '#1a2a3a' } },
+        y: { ticks: { color: '#888' }, grid: { color: '#1a2a3a' } }
+      }
+    }
+  });
+}
+
+function renderNetworkChart(container, spec, title) {
+  var nodes = (spec.nodes || []).map(function(n) { return Object.assign({}, n); });
+  var links = (spec.links || []).map(function(l) { return Object.assign({}, l); });
+
+  container.innerHTML =
+    (title ? '<h4>' + title + '</h4>' : '') +
+    '<svg class="network-svg" id="net-' + container.id + '"></svg>' +
+    '<div style="font-size:11px;color:#556;margin-top:8px;text-align:center">Drag nodes to explore • Scroll to zoom</div>';
+
+  // Wait for layout to settle before measuring width
+  requestAnimationFrame(function(){
+    var svg = d3.select('#net-' + container.id);
+    var width = Math.max(500, container.offsetWidth || 700);
+    var height = 420;
+
+  svg.attr('viewBox', '0 0 ' + width + ' ' + height);
+
+  var groupColors = {
+    dealer: '#e0a040', collector: '#5a8ad4', scholar: '#7ecfa0',
+    institution: '#a070d4', person: '#40c0d0', default: '#888'
+  };
+
+  var simulation = d3.forceSimulation(nodes)
+    .force('link', d3.forceLink(links).id(function(d){ return d.id; }).distance(100))
+    .force('charge', d3.forceManyBody().strength(-300))
+    .force('center', d3.forceCenter(width / 2, height / 2))
+    .force('collision', d3.forceCollide(40));
+
+  // Links
+  var link = svg.append('g').selectAll('line')
+    .data(links).enter().append('line')
+    .attr('class', 'link')
+    .attr('stroke-width', function(d){ return Math.sqrt(d.value || 1) * 1.5; });
+
+  // Link labels (letter count)
+  var linkLabel = svg.append('g').selectAll('text')
+    .data(links.filter(function(l){ return (l.value||0) > 1; }))
+    .enter().append('text')
+    .attr('font-size', 9).attr('fill', '#446').attr('text-anchor', 'middle')
+    .text(function(d){ return d.value || ''; });
+
+  // Node groups
+  var node = svg.append('g').selectAll('g')
+    .data(nodes).enter().append('g')
+    .attr('class', 'node')
+    .call(d3.drag()
+      .on('start', function(event, d){
+        if (!event.active) simulation.alphaTarget(0.3).restart();
+        d.fx = d.x; d.fy = d.y;
+      })
+      .on('drag', function(event, d){ d.fx = event.x; d.fy = event.y; })
+      .on('end', function(event, d){
+        if (!event.active) simulation.alphaTarget(0);
+        d.fx = null; d.fy = null;
+      })
+    );
+
+  node.append('circle')
+    .attr('r', function(d){ return 14 + (d.weight || 0) * 2; })
+    .attr('fill', function(d){ return groupColors[d.group] || groupColors.default; })
+    .attr('stroke', '#0d1b2e');
+
+  node.append('text')
+    .attr('dy', '0.35em').attr('text-anchor', 'middle')
+    .attr('font-size', 10).attr('fill', '#fff').attr('font-weight', '600')
+    .text(function(d){ return (d.id||'').split(' ').pop().substring(0,10); });
+
+  node.append('title').text(function(d){ return d.id + (d.group ? ' (' + d.group + ')' : ''); });
+
+  // Tooltip on hover
+  node.on('mouseover', function(event, d){
+    d3.select(this).select('circle').attr('r', function(){ return 18 + (d.weight||0)*2; });
+  }).on('mouseout', function(event, d){
+    d3.select(this).select('circle').attr('r', function(){ return 14 + (d.weight||0)*2; });
+  });
+
+  // Legend
+  var groups = [...new Set(nodes.map(function(n){ return n.group; }).filter(Boolean))];
+  var legend = svg.append('g').attr('transform', 'translate(10, 10)');
+  groups.forEach(function(g, i){
+    legend.append('circle').attr('cx', 6).attr('cy', i*18+6).attr('r', 5)
+      .attr('fill', groupColors[g] || groupColors.default);
+    legend.append('text').attr('x', 15).attr('y', i*18+10)
+      .attr('font-size', 10).attr('fill', '#aaa').text(g);
+  });
+
+  simulation.on('tick', function(){
+    link
+      .attr('x1', function(d){ return d.source.x; })
+      .attr('y1', function(d){ return d.source.y; })
+      .attr('x2', function(d){ return d.target.x; })
+      .attr('y2', function(d){ return d.target.y; });
+    linkLabel
+      .attr('x', function(d){ return (d.source.x + d.target.x) / 2; })
+      .attr('y', function(d){ return (d.source.y + d.target.y) / 2; });
+    node.attr('transform', function(d){
+      d.x = Math.max(20, Math.min(width-20, d.x));
+      d.y = Math.max(20, Math.min(height-20, d.y));
+      return 'translate(' + d.x + ',' + d.y + ')';
+    });
+  });
+
+  // Zoom
+  svg.call(d3.zoom().scaleExtent([0.3, 3]).on('zoom', function(event){
+    svg.selectAll('g').attr('transform', event.transform);
+  }));
+  }); // end requestAnimationFrame
+}
+
+function renderTimeline(container, spec, title) {
+  var events = (spec.events || []).sort(function(a,b){
+    return new Date(a.date) - new Date(b.date);
+  });
+
+  var html = (title ? '<h4>' + title + '</h4>' : '') + '<div class="timeline-wrap"><div class="timeline-track">';
+  events.forEach(function(ev){
+    var d = ev.date ? new Date(ev.date).toLocaleDateString('en-US',{year:'numeric',month:'short',day:'numeric'}) : ev.date;
+    html += '<div class="timeline-item">' +
+      '<div class="timeline-date">' + (d||'') + '</div>' +
+      '<div><div class="timeline-label">' + (ev.label||'') + '</div>' +
+      (ev.description ? '<div class="timeline-desc">' + ev.description + '</div>' : '') +
+      '</div></div>';
+  });
+  html += '</div></div>';
+  container.innerHTML = html;
+}
+
+// ── Old formatResponse removed, replaced above ────────────────────────────────
+
+// ── Export functions ──────────────────────────────────────────────────────────
+
+function exportChartPNG(containerId) {
+  var body = document.getElementById('chart-body-' + containerId);
+  var spec = chartSpecs[containerId];
+  if (!spec) return;
+
+  if (spec.type === 'network' || spec.type === 'timeline') {
+    // Use html2canvas approach for non-canvas charts
+    var svg = body.querySelector('svg');
+    if (svg) { exportNetworkSVG(containerId); return; }
+    // Timeline — render to canvas via inline SVG
+    var data = new XMLSerializer().serializeToString(body);
+    alert('For timelines, use the HTML export option for best results.');
+    return;
+  }
+
+  // Chart.js — canvas export
+  var canvas = body.querySelector('canvas');
+  if (!canvas) return;
+
+  // Create white-bg version
+  var exportCanvas = document.createElement('canvas');
+  exportCanvas.width = canvas.width;
+  exportCanvas.height = canvas.height;
+  var ctx = exportCanvas.getContext('2d');
+  ctx.fillStyle = '#0d1b2e';
+  ctx.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
+  ctx.drawImage(canvas, 0, 0);
+
+  var link = document.createElement('a');
+  link.download = (spec.title || 'chart').replace(/\s+/g,'-').toLowerCase() + '.png';
+  link.href = exportCanvas.toDataURL('image/png');
+  link.click();
+}
+
+function exportNetworkSVG(containerId) {
+  var body = document.getElementById('chart-body-' + containerId);
+  var spec = chartSpecs[containerId];
+  var svg = body.querySelector('svg');
+  if (!svg) return;
+
+  // Add CSS inline for standalone SVG
+  var svgClone = svg.cloneNode(true);
+  svgClone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+  svgClone.style.background = '#080f1a';
+
+  var svgData = new XMLSerializer().serializeToString(svgClone);
+  var blob = new Blob([svgData], {type: 'image/svg+xml'});
+  var url = URL.createObjectURL(blob);
+  var link = document.createElement('a');
+  link.download = (spec.title || 'network').replace(/\s+/g,'-').toLowerCase() + '.svg';
+  link.href = url;
+  link.click();
+  setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
+}
+
+function exportChartData(containerId) {
+  var spec = chartSpecs[containerId];
+  if (!spec) return;
+  var blob = new Blob([JSON.stringify(spec, null, 2)], {type: 'application/json'});
+  var url = URL.createObjectURL(blob);
+  var link = document.createElement('a');
+  link.download = (spec.title || 'chart').replace(/\s+/g,'-').toLowerCase() + '.json';
+  link.href = url;
+  link.click();
+  setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
+}
+
+function exportStandaloneHTML(containerId) {
+  var spec = chartSpecs[containerId];
+  if (!spec) return;
+
+  var specJson = JSON.stringify(spec);
+  var html = '<!DOCTYPE html><html><head><meta charset="utf-8">' +
+    '<title>' + (spec.title || 'Papyrates Chart') + '</title>' +
+    '<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"><\/script>' +
+    '<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"><\/script>' +
+    '<style>body{background:#0d1b2e;color:#ccc;font-family:Arial,sans-serif;padding:30px;margin:0;}' +
+    'h2{color:#7a9fd4;margin-bottom:20px;}' +
+    '.network-svg{width:100%;height:500px;background:#080f1a;border-radius:8px;}' +
+    '.timeline-item{display:flex;gap:16px;padding:8px 0;border-left:2px solid #2a4a8a;padding-left:16px;position:relative;margin-bottom:4px;}' +
+    '.timeline-item::before{content:"";position:absolute;left:-5px;top:14px;width:8px;height:8px;border-radius:50%;background:#5a8ad4;}' +
+    '.timeline-date{color:#5a8ad4;font-size:12px;font-weight:600;min-width:100px;}' +
+    '.timeline-label{color:#ccc;font-size:14px;}' +
+    '.timeline-desc{color:#888;font-size:12px;}' +
+    '.node circle{stroke-width:2;cursor:pointer;}' +
+    '.node text{font-size:11px;fill:#ccc;}' +
+    '.link{stroke:#2a4a6a;stroke-opacity:0.6;}' +
+    '</style></head><body>' +
+    '<h2>' + (spec.title || 'Chart') + '</h2>' +
+    '<div id="chart-root"></div>' +
+    '<p style="color:#445;font-size:11px;margin-top:20px;">Exported from Papyrates Research Platform</p>' +
+    '<script>var spec=' + specJson + ';' +
+    'var root=document.getElementById("chart-root");' +
+    'if(spec.type==="network"){' +
+    '  root.innerHTML="<svg class=\'network-svg\' id=\'net\'></svg>";' +
+    '  var nodes=spec.nodes.map(function(n){return Object.assign({},n)});' +
+    '  var links=spec.links.map(function(l){return Object.assign({},l)});' +
+    '  var svg=d3.select("#net"),w=root.offsetWidth-40,h=500;' +
+    '  svg.attr("viewBox","0 0 "+w+" "+h);' +
+    '  var gc={"dealer":"#e0a040","collector":"#5a8ad4","scholar":"#7ecfa0","institution":"#a070d4","person":"#40c0d0","default":"#888"};' +
+    '  var sim=d3.forceSimulation(nodes).force("link",d3.forceLink(links).id(function(d){return d.id}).distance(100)).force("charge",d3.forceManyBody().strength(-300)).force("center",d3.forceCenter(w/2,h/2)).force("collision",d3.forceCollide(40));' +
+    '  var link=svg.append("g").selectAll("line").data(links).enter().append("line").attr("class","link").attr("stroke-width",function(d){return Math.sqrt(d.value||1)*1.5});' +
+    '  var node=svg.append("g").selectAll("g").data(nodes).enter().append("g").attr("class","node").call(d3.drag().on("start",function(e,d){if(!e.active)sim.alphaTarget(0.3).restart();d.fx=d.x;d.fy=d.y}).on("drag",function(e,d){d.fx=e.x;d.fy=e.y}).on("end",function(e,d){if(!e.active)sim.alphaTarget(0);d.fx=null;d.fy=null}));' +
+    '  node.append("circle").attr("r",16).attr("fill",function(d){return gc[d.group]||gc.default}).attr("stroke","#0d1b2e");' +
+    '  node.append("text").attr("dy","0.35em").attr("text-anchor","middle").attr("font-size",10).attr("fill","#fff").text(function(d){return(d.id||"").split(" ").pop().substring(0,10)});' +
+    '  node.append("title").text(function(d){return d.id});' +
+    '  sim.on("tick",function(){link.attr("x1",function(d){return d.source.x}).attr("y1",function(d){return d.source.y}).attr("x2",function(d){return d.target.x}).attr("y2",function(d){return d.target.y});node.attr("transform",function(d){return"translate("+d.x+","+d.y+")"})});' +
+    '  svg.call(d3.zoom().scaleExtent([0.3,3]).on("zoom",function(e){svg.selectAll("g").attr("transform",e.transform)}));' +
+    '} else if(spec.type==="timeline"){' +
+    '  var html="<div style=\'border-left:2px solid #2a4a8a;padding-left:16px\'>";' +
+    '  (spec.events||[]).sort(function(a,b){return new Date(a.date)-new Date(b.date)}).forEach(function(ev){' +
+    '    var d=ev.date?new Date(ev.date).toLocaleDateString("en-US",{year:"numeric",month:"short",day:"numeric"}):ev.date;' +
+    '    html+="<div class=\'timeline-item\'><div class=\'timeline-date\'>"+d+"</div><div><div class=\'timeline-label\'>"+ev.label+"</div>"+(ev.description?"<div class=\'timeline-desc\'>"+ev.description+"</div>":"")+"</div></div>";' +
+    '  });root.innerHTML=html+"</div>";' +
+    '} else {' +
+    '  root.innerHTML="<canvas id=\'cv\'></canvas>";' +
+    '  var colors=["#5a8ad4","#7ecfa0","#e0a040","#e07070","#a070d4","#40c0d0"];' +
+    '  var datasets=(spec.datasets||[]).map(function(ds,i){var c=colors[i%colors.length];return Object.assign({},ds,{backgroundColor:spec.type==="pie"||spec.type==="doughnut"?colors.slice(0,(ds.data||[]).length):c+"cc",borderColor:c,borderWidth:2,tension:0.3})});' +
+    '  new Chart(document.getElementById("cv").getContext("2d"),{type:spec.type==="bar"?"bar":spec.type==="line"?"line":spec.type==="doughnut"?"doughnut":"pie",data:{labels:spec.labels||[],datasets:datasets},options:{plugins:{legend:{labels:{color:"#aaa"}}},scales:(spec.type==="pie"||spec.type==="doughnut")?{}:{x:{ticks:{color:"#888"}},y:{ticks:{color:"#888"}}}}});' +
+    '}<\/script></body></html>';
+
+  var blob = new Blob([html], {type: 'text/html'});
+  var url = URL.createObjectURL(blob);
+  var link = document.createElement('a');
+  link.download = (spec.title || 'chart').replace(/\s+/g,'-').toLowerCase() + '.html';
+  link.href = url;
+  link.click();
+  setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
+}
+
+// ── Chart Library (Supabase) ──────────────────────────────────────────────────
+
+async function saveChartToLibrary(containerId) {
+  var spec = chartSpecs[containerId];
+  if (!spec) return;
+  var btn = document.getElementById('save-btn-' + containerId);
+  if (btn) btn.textContent = '⏳ Saving...';
+
+  try {
+    var r = await fetch(SUPABASE_URL + '/research_memory', {
+      method: 'POST',
+      headers: Object.assign({}, SH, {'Content-Type':'application/json','Prefer':'return=representation'}),
+      body: JSON.stringify({
+        summary: JSON.stringify(spec),
+        confirmed_findings: '[CHART] ' + (spec.title || 'Untitled chart'),
+        ai_source: 'chart',
+        session_date: new Date().toISOString()
+      })
+    });
+    if (!r.ok) throw new Error('Save failed');
+    if (btn) { btn.textContent = '✅ Saved!'; btn.classList.add('saved'); }
+    setTimeout(function(){ if(btn){ btn.textContent='🗄 Save to Library'; btn.classList.remove('saved'); }}, 3000);
+  } catch(e) {
+    if (btn) btn.textContent = '❌ Failed';
+    setTimeout(function(){ if(btn) btn.textContent='🗄 Save to Library'; }, 3000);
+  }
 
 async function startSaveSession(){
   if(sessionHistory.length===0){addMessage("system","No conversation to save yet.");return;}
