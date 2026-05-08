@@ -92,6 +92,16 @@ body{font-family:Arial,sans-serif;background:#0d1f0d;min-height:100vh;display:fl
 .search-mode.vector{color:#1a8a4a;}
 .search-mode.hybrid{color:#7a6aaa;}
 .search-mode.keyword{color:#8a6a2a;}
+/* Query Plan Panel */
+.plan-panel{border:1px solid #2a3a2a;border-radius:10px;padding:14px 16px;margin-bottom:4px;background:rgba(30,74,50,0.15);font-size:13px;}
+.plan-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
+.plan-model{font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:0.05em;color:#7ecfa0;}
+.plan-focus{font-size:12px;color:#aaa;}
+.plan-reasoning{margin:0 0 10px;line-height:1.5;color:#ccc;}
+.plan-steps{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;}
+.plan-step{background:#1a5a3a;color:white;padding:2px 9px;border-radius:99px;font-size:11px;font-weight:600;}
+.plan-tags{display:flex;flex-wrap:wrap;gap:6px;}
+.plan-tag{background:rgba(255,255,255,0.06);border:1px solid #2a3a2a;padding:2px 9px;border-radius:99px;font-size:11px;color:#aaa;}
 </style>
 </head>
 <body>
@@ -182,6 +192,7 @@ body{font-family:Arial,sans-serif;background:#0d1f0d;min-height:100vh;display:fl
 
 </div>
 
+<script src="/query-plan-executor.js"></script>
 <script>
 var SUPABASE_URL = "https://vzfwobsnfqnnqvnsfksq.supabase.co/rest/v1";
 var SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ6ZndvYnNuZnFubnF2bnNma3NxIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3Njg4ODA3MCwiZXhwIjoyMDkyNDY0MDcwfQ.J_TE4qWj9r6TIvGeptM58r2WtI6ytOe9zg7BBe29wHI";
@@ -378,6 +389,34 @@ async function askGPT(question,letters,names,useWeb,useMemory){
   return reply;
 }
 
+// ── Query Planner ─────────────────────────────────────────────────────────────
+async function getContextLetters(question) {
+  try {
+    var planRes = await fetch('/api/query-plan-gpt', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({question: question})
+    });
+    var planData = await planRes.json();
+    var plan = planData.plan;
+    if (plan) {
+      var steps = (plan.strategy||[]).map(function(s){return '<span class="plan-step">'+s.replace(/_/g,' ')+'</span>';}).join('');
+      var tags = [].concat(
+        (plan.person_names||[]).map(function(n){return '👤 '+n;}),
+        (plan.keywords||[]).map(function(k){return '🔑 '+k;})
+      ).map(function(t){return '<span class="plan-tag">'+t+'</span>';}).join('');
+      addMessage('system', '<div class="plan-panel"><div class="plan-header"><span class="plan-model">🟢 GPT-4o Query Plan</span><span class="plan-focus">Focus: <strong>'+(plan.primary_focus||'unknown')+'</strong></span></div><p class="plan-reasoning">'+(plan.reasoning||'')+'</p><div class="plan-steps">'+steps+'</div>'+(tags?'<div class="plan-tags">'+tags+'</div>':'')+'</div>');
+      var result = await QueryPlanExecutor.runQueryPlan(plan, {
+        supabaseUrl: 'https://vzfwobsnfqnnqvnsfksq.supabase.co',
+        supabaseKey: SUPABASE_KEY,
+        embedFn: null
+      });
+      if (result.letters && result.letters.length > 0) return result.letters.slice(0, parseInt(document.getElementById('letterSlider').value)||30);
+    }
+  } catch(e) { console.warn('Query planner failed, falling back:', e); }
+  return await searchDatabase(question);
+}
+
 // ── Send question ─────────────────────────────────────────────────────────────
 async function sendQuestion(){
   var input=document.getElementById("questionInput");
@@ -398,7 +437,7 @@ async function sendQuestion(){
 
   try{
     var letters=[],names={};
-    if(useDB&&question!=="Please analyze the attached image."){letters=await searchDatabase(question);names=await loadPeopleNames(letters);}
+    if(useDB&&question!=="Please analyze the attached image."){letters=await getContextLetters(question);names=await loadPeopleNames(letters);}
     hideThinking();
 
     var sliderVal=document.getElementById("letterSlider").value;
