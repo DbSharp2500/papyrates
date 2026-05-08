@@ -629,27 +629,48 @@ function formatResponse(answer){
   var chartless = answer.replace(/<chart>([\s\S]*?)<\/chart>/gi, function(match, json) {
     var id = 'chart-' + Date.now() + '-' + charts.length;
     charts.push({id: id, json: json.trim()});
-    return '<div id="' + id + '" class="chart-container"><em style="color:#555;font-size:12px">Loading chart...</em></div>';
+    return '\n\n__CHART_PLACEHOLDER_' + id + '__\n\n';
   });
 
-  // Format the remaining text
-  var formatted;
-  if(/(<table|<tr|<td|<ul|<ol|<h[1-6]|<blockquote)/i.test(chartless)){
-    formatted = chartless.replace(/&(?![a-z#0-9]+;)/g,"&amp;");
-  } else {
-    formatted = "<p>" + chartless
-      .replace(/&(?![a-z#0-9]+;)/g,"&amp;")
-      .replace(/\*\*(.+?)\*\*/g,"<strong>$1</strong>")
-      .replace(/\*(.+?)\*/g,"<em>$1</em>")
-      .replace(/\n\n/g,"</p><p>")
-      .replace(/\n/g,"<br>") + "</p>";
+  // Full markdown + HTML formatter
+  var formatted = chartless
+    .replace(/&(?![a-z#0-9]+;)/g, "&amp;")
+    // Headings
+    .replace(/^#### (.+)$/gm, '<h4>$1</h4>')
+    .replace(/^### (.+)$/gm, '<h4>$1</h4>')
+    .replace(/^## (.+)$/gm, '<h3>$1</h3>')
+    .replace(/^# (.+)$/gm, '<h3>$1</h3>')
+    // Horizontal rules
+    .replace(/^---+$/gm, '<hr style="border-color:#1a3a5a;margin:12px 0">')
+    // Bold and italic
+    .replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>')
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+    // Blockquotes
+    .replace(/^&gt; (.+)$/gm, '<blockquote>$1</blockquote>')
+    .replace(/^> (.+)$/gm, '<blockquote>$1</blockquote>')
+    // Lists
+    .replace(/^[-•] (.+)$/gm, '<li>$1</li>')
+    .replace(/^\d+\. (.+)$/gm, '<li>$1</li>')
+    // Paragraphs
+    .replace(/\n\n/g, '</p><p>')
+    .replace(/\n/g, '<br>');
+
+  // Re-inject chart placeholders as real divs
+  formatted = formatted.replace(/__CHART_PLACEHOLDER_(chart-[\d]+-[\d]+)__/g, function(match, id) {
+    return '</p><div id="' + id + '" class="chart-container"><em style="color:#555;font-size:12px">Loading chart...</em></div><p>';
+  });
+
+  // Wrap in paragraph tags if not already HTML
+  if (!/<[hH][1-6]|<table|<ul|<ol/.test(formatted)) {
+    formatted = '<p>' + formatted + '</p>';
   }
 
   // Schedule chart rendering after DOM insertion
   if(charts.length > 0){
     setTimeout(function(){
       charts.forEach(function(c){ renderChart(c.id, c.json); });
-    }, 100);
+    }, 200);
   }
 
   return formatted;
@@ -765,9 +786,11 @@ function renderNetworkChart(container, spec, title) {
     '<svg class="network-svg" id="net-' + container.id + '"></svg>' +
     '<div style="font-size:11px;color:#556;margin-top:8px;text-align:center">Drag nodes to explore • Scroll to zoom</div>';
 
-  var svg = d3.select('#net-' + container.id);
-  var width = container.offsetWidth - 40;
-  var height = 420;
+  // Wait for layout to settle before measuring width
+  requestAnimationFrame(function(){
+    var svg = d3.select('#net-' + container.id);
+    var width = Math.max(500, container.offsetWidth || 700);
+    var height = 420;
 
   svg.attr('viewBox', '0 0 ' + width + ' ' + height);
 
@@ -860,6 +883,7 @@ function renderNetworkChart(container, spec, title) {
   svg.call(d3.zoom().scaleExtent([0.3, 3]).on('zoom', function(event){
     svg.selectAll('g').attr('transform', event.transform);
   }));
+  }); // end requestAnimationFrame
 }
 
 function renderTimeline(container, spec, title) {
