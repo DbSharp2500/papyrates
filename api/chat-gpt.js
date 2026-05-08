@@ -1,4 +1,4 @@
-// api/chat-gemini.js — Gemini research portal serverless function
+// api/chat-gpt.js — GPT research portal serverless function
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -7,92 +7,72 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-  if (!GEMINI_API_KEY) return res.status(500).json({ error: 'GEMINI_API_KEY not configured' });
+  const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+  if (!OPENAI_API_KEY) return res.status(500).json({ error: 'OPENAI_API_KEY not configured' });
 
   try {
-    const { messages, system } = req.body;
+    const { model, max_tokens, system, messages } = req.body;
     if (!messages || !Array.isArray(messages)) {
       return res.status(400).json({ error: 'messages array required' });
     }
 
-    // Convert messages to Gemini format.
-    // Content can be a plain string OR { text, attachment: { mimeType, base64 } }
-    const rawContents = messages.map(msg => {
-      const role = msg.role === 'assistant' ? 'model' : 'user';
-      const content = msg.content;
-
-      if (typeof content === 'string') {
-        return { role, parts: [{ text: content }] };
-      }
-
-      // Content with attachment
-      if (content && typeof content === 'object' && content.attachment) {
-        const parts = [];
-        const att = content.attachment;
-        parts.push({ inlineData: { mimeType: att.mimeType, data: att.base64 } });
-        if (content.text) parts.push({ text: content.text });
-        return { role, parts };
-      }
-
-      return { role, parts: [{ text: String(content) }] };
-    });
-
-    // Gemini requires strictly alternating user/model turns — merge consecutive same-role messages
-    const geminiContents = [];
-    for (const turn of rawContents) {
-      const last = geminiContents[geminiContents.length - 1];
-      if (last && last.role === turn.role) {
-        last.parts = last.parts.concat(turn.parts);
-      } else {
-        geminiContents.push(turn);
-      }
+    // Build messages array — prepend system message if provided
+    const openaiMessages = [];
+    if (system) {
+      openaiMessages.push({ role: 'system', content: system });
     }
 
-    if (geminiContents.length === 0 || geminiContents[0].role !== 'user') {
-      return res.status(400).json({ error: 'Conversation must start with a user message' });
+    // Convert messages — handle content that may include image attachments
+    for (const msg of messages) {
+      const content = msg.content;
+      if (typeof content === 'string') {
+        openaiMessages.push({ role: msg.role, content });
+      } else if (Array.isArray(content)) {
+        // Already in OpenAI content-parts format
+        openaiMessages.push({ role: msg.role, content });
+      } else if (content && typeof content === 'object' && content.attachment) {
+        // Attachment format from the portal
+        const parts = [];
+        if (content.text) parts.push({ type: 'text', text: content.text });
+        const att = content.attachment;
+        if (att.mimeType && att.mimeType.startsWith('image/')) {
+          parts.push({
+            type: 'image_url',
+            image_url: { url: `data:${att.mimeType};base64,${att.base64}` }
+          });
+        }
+        openaiMessages.push({ role: msg.role, content: parts });
+      } else {
+        openaiMessages.push({ role: msg.role, content: String(content) });
+      }
     }
 
     const requestBody = {
-      contents: geminiContents,
-      generationConfig: { maxOutputTokens: 2048, temperature: 0.7 }
+      model: model || 'gpt-4o',
+      max_tokens: max_tokens || 4096,
+      messages: openaiMessages,
     };
 
-    if (system) {
-      requestBody.systemInstruction = { parts: [{ text: system }] };
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${OPENAI_API_KEY}`,
+      },
+      body: JSON.stringify(requestBody),
+    });
+
+    if (!response.ok) {
+      const err = await response.json();
+      console.error('OpenAI error:', err);
+      return res.status(response.status).json({ error: err.error?.message || 'OpenAI API error' });
     }
 
-    // gemini-2.5-flash is the only model confirmed working on this account
-    const models = [
-      { version: 'v1beta', name: 'gemini-2.5-flash' },
-    ];
-
-    let lastError = null;
-    for (const { version, name } of models) {
-      const url = `https://generativelanguage.googleapis.com/${version}/models/${name}:generateContent?key=${GEMINI_API_KEY}`;
-      const geminiRes = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(requestBody)
-      });
-
-      if (geminiRes.ok) {
-        const data = await geminiRes.json();
-        const content = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-        console.log(`Gemini responded using ${version}/${name}`);
-        return res.status(200).json({ content, model: name });
-      }
-
-      const errText = await geminiRes.text();
-      console.error(`${version}/${name} failed (${geminiRes.status}):`, errText);
-      lastError = `${name}: ${geminiRes.status} — ${errText}`;
-      if (geminiRes.status === 403) break;
-    }
-
-    return res.status(500).json({ error: `All Gemini models failed. Last error: ${lastError}` });
+    const data = await response.json();
+    return res.status(200).json(data);
 
   } catch (err) {
-    console.error('chat-gemini error:', err);
+    console.error('chat-gpt error:', err);
     return res.status(500).json({ error: err.message });
   }
 }
