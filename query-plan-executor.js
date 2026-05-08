@@ -54,6 +54,9 @@ const QueryPlanExecutor = (() => {
               // Fetch letters linked to each person found
               for (const person of people) {
                 const pid = person.id;
+                const personLabel = `${person.first_name || ''} ${person.last_name || ''}`.trim();
+
+                // 1. Letters where person is author or recipient (FK lookup)
                 const lResp = await fetch(
                   `${supabaseUrl}/rest/v1/letters?select=id,title,date_of_letter,document_type,full_text,author_id,recipient_id&or=(author_id.eq.${pid},recipient_id.eq.${pid})&limit=50`,
                   { headers }
@@ -61,12 +64,31 @@ const QueryPlanExecutor = (() => {
                 const letters = await lResp.json();
                 if (Array.isArray(letters)) {
                   letters.forEach(l => {
-                    if (!letterMap.has(l.id)) {
-                      letterMap.set(l.id, { ...l, _sources: [], _score: null });
-                    }
-                    letterMap.get(l.id)._sources.push(`person:${person.first_name} ${person.last_name}`);
+                    if (!letterMap.has(l.id)) letterMap.set(l.id, { ...l, _sources: [], _score: null });
+                    letterMap.get(l.id)._sources.push(`person_linked:${personLabel}`);
                   });
                   sources['person_lookup'] = (sources['person_lookup'] || 0) + letters.length;
+                }
+
+                // 2. Letters that *mention* the person's name in the text (catches references, not just FK)
+                const searchName = encodeURIComponent(person.last_name || person.first_name || '');
+                if (searchName) {
+                  const mResp = await fetch(
+                    `${supabaseUrl}/rest/v1/letters?select=id,title,date_of_letter,document_type,full_text,author_id,recipient_id&full_text=ilike.*${searchName}*&limit=40`,
+                    { headers }
+                  );
+                  const mentioned = await mResp.json();
+                  if (Array.isArray(mentioned)) {
+                    let newMentions = 0;
+                    mentioned.forEach(l => {
+                      if (!letterMap.has(l.id)) {
+                        letterMap.set(l.id, { ...l, _sources: [], _score: null });
+                        newMentions++;
+                      }
+                      letterMap.get(l.id)._sources.push(`person_mention:${personLabel}`);
+                    });
+                    sources['person_mention'] = (sources['person_mention'] || 0) + newMentions;
+                  }
                 }
               }
             }
