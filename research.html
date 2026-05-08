@@ -492,7 +492,8 @@ async function askClaude(question,letters,names,useWeb,useMemory){
   var data = await r.json();
   var reply = "No response received.";
   if(data.content&&data.content[0])reply = data.content[0].text;
-  else if(data.error)reply = "Error: "+data.error.message;
+  else if(data.error === '💳 BILLING_EXHAUSTED') reply = `⚠️ <strong>Anthropic credits exhausted.</strong> Please top up your account to continue using this portal.<br><a href="${data.billingUrl}" target="_blank" style="color:#7a9fd4">→ Go to Anthropic Billing</a>`;
+  else if(data.error)reply = "Error: "+(data.error.message||data.error);
   sessionHistory.push({role:"assistant",content:reply});
 
   // Clear attachment after sending
