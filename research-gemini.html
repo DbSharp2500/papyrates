@@ -499,7 +499,12 @@ async function loadMemories(){
 function renderMemories(list){
   const container=document.getElementById('memory-list');
   if(!list.length){container.innerHTML='<div style="padding:12px;color:var(--text-dim);font-size:.78rem;">No saved sessions yet.</div>';return;}
-  container.innerHTML=list.map(m=>`<div class="memory-item ${m.id===activeMemoryId?'active':''}" data-id="${m.id}" onclick="loadMemory(${m.id})"><div class="memory-title">${escHtml(m.title)}</div><div class="memory-date">${new Date(m.created_at).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}</div></div>`).join('');
+  container.innerHTML=list.map(m=>{
+    const label=(m.confirmed_findings||m.summary||'Untitled session').substring(0,60);
+    const d=m.session_date?new Date(m.session_date):null;
+    const dateStr=d&&!isNaN(d)?d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}):'No date';
+    return`<div class="memory-item ${m.id===activeMemoryId?'active':''}" data-id="${m.id}" onclick="loadMemory(${m.id})"><div class="memory-title">${escHtml(label)}</div><div class="memory-date">${dateStr}</div></div>`;
+  }).join('');
 }
 
 function filterMemories(){const q=document.getElementById('memory-search').value.toLowerCase();renderMemories(memories.filter(m=>m.title.toLowerCase().includes(q)||(m.summary||'').toLowerCase().includes(q)));}
@@ -537,7 +542,7 @@ async function saveMemory(){
   const summary=document.getElementById('mem-summary').value.trim();
   if(!summary){alert('Please enter a summary.');return;}
   try{
-    const res=await fetch(`${SUPABASE_URL}/rest/v1/research_memory`,{method:'POST',headers:{apikey:SUPABASE_KEY,Authorization:`Bearer ${SUPABASE_KEY}`,'Content-Type':'application/json',Prefer:'return=representation'},body:JSON.stringify({summary,confirmed_findings:summary,ai_source:AI_SOURCE})});
+    const res=await fetch(`${SUPABASE_URL}/rest/v1/research_memory`,{method:'POST',headers:{apikey:SUPABASE_KEY,Authorization:`Bearer ${SUPABASE_KEY}`,'Content-Type':'application/json',Prefer:'return=representation'},body:JSON.stringify({summary,confirmed_findings:summary,ai_source:AI_SOURCE,session_date:new Date().toISOString()})});
     if(!res.ok)throw new Error('save failed');
     closeSaveModal();document.getElementById('mem-summary').value='';
     await loadMemories();
