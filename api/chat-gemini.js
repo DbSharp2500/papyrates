@@ -62,11 +62,11 @@ export default async function handler(req, res) {
       requestBody.systemInstruction = { parts: [{ text: system }] };
     }
 
-    // Paid models only — no free tier fallbacks
+    // All on v1beta — systemInstruction is only supported on v1beta
     const models = [
       { version: 'v1beta', name: 'gemini-2.0-flash-001' },
-      { version: 'v1',     name: 'gemini-1.5-pro-001' },
-      { version: 'v1',     name: 'gemini-1.5-flash-001' },
+      { version: 'v1beta', name: 'gemini-1.5-pro-001' },
+      { version: 'v1beta', name: 'gemini-1.5-flash-001' },
     ];
 
     let lastError = null;
