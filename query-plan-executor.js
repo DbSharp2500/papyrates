@@ -56,38 +56,64 @@ const QueryPlanExecutor = (() => {
                 const pid = person.id;
                 const personLabel = `${person.first_name || ''} ${person.last_name || ''}`.trim();
 
-                // 1. Letters where person is author or recipient (FK lookup)
+                // SOURCE 1: Letters where person is author or recipient (FK on letters table)
                 const lResp = await fetch(
-                  `${supabaseUrl}/rest/v1/letters?select=id,title,date_of_letter,document_type,full_text,author_id,recipient_id&or=(author_id.eq.${pid},recipient_id.eq.${pid})&limit=50`,
+                  `${supabaseUrl}/rest/v1/letters?select=id,title,date_of_letter,document_type,full_text,description,author_id,recipient_id&or=(author_id.eq.${pid},recipient_id.eq.${pid})&limit=50`,
                   { headers }
                 );
-                const letters = await lResp.json();
-                if (Array.isArray(letters)) {
-                  letters.forEach(l => {
+                const fkLetters = await lResp.json();
+                if (Array.isArray(fkLetters)) {
+                  fkLetters.forEach(l => {
                     if (!letterMap.has(l.id)) letterMap.set(l.id, { ...l, _sources: [], _score: null });
-                    letterMap.get(l.id)._sources.push(`person_linked:${personLabel}`);
+                    letterMap.get(l.id)._sources.push(`author_recipient:${personLabel}`);
                   });
-                  sources['person_lookup'] = (sources['person_lookup'] || 0) + letters.length;
+                  sources['person_lookup'] = (sources['person_lookup'] || 0) + fkLetters.length;
                 }
 
-                // 2. Letters that *mention* the person's name in the text (catches references, not just FK)
-                const searchName = encodeURIComponent(person.last_name || person.first_name || '');
-                if (searchName) {
-                  const mResp = await fetch(
-                    `${supabaseUrl}/rest/v1/letters?select=id,title,date_of_letter,document_type,full_text,author_id,recipient_id&full_text=ilike.*${searchName}*&limit=40`,
+                // SOURCE 2: Letters where person is mentioned (letter_people junction table)
+                const mentionResp = await fetch(
+                  `${supabaseUrl}/rest/v1/letter_people?select=letter_id,role&person_id=eq.${pid}&limit=100`,
+                  { headers }
+                );
+                const mentionRows = await mentionResp.json();
+                if (Array.isArray(mentionRows) && mentionRows.length > 0) {
+                  const mentionIds = mentionRows.map(r => r.letter_id).join(',');
+                  const mLetterResp = await fetch(
+                    `${supabaseUrl}/rest/v1/letters?select=id,title,date_of_letter,document_type,full_text,description,author_id,recipient_id&id=in.(${mentionIds})&limit=100`,
                     { headers }
                   );
-                  const mentioned = await mResp.json();
-                  if (Array.isArray(mentioned)) {
+                  const mLetters = await mLetterResp.json();
+                  if (Array.isArray(mLetters)) {
                     let newMentions = 0;
-                    mentioned.forEach(l => {
+                    mLetters.forEach(l => {
                       if (!letterMap.has(l.id)) {
                         letterMap.set(l.id, { ...l, _sources: [], _score: null });
                         newMentions++;
                       }
-                      letterMap.get(l.id)._sources.push(`person_mention:${personLabel}`);
+                      letterMap.get(l.id)._sources.push(`mentioned_in:${personLabel}`);
                     });
-                    sources['person_mention'] = (sources['person_mention'] || 0) + newMentions;
+                    sources['letter_people'] = (sources['letter_people'] || 0) + newMentions;
+                  }
+                }
+
+                // SOURCE 3: Letters that mention the person's name in full_text or description
+                const searchName = encodeURIComponent(person.last_name || person.first_name || '');
+                if (searchName) {
+                  const tResp = await fetch(
+                    `${supabaseUrl}/rest/v1/letters?select=id,title,date_of_letter,document_type,full_text,description,author_id,recipient_id&or=(full_text.ilike.*${searchName}*,description.ilike.*${searchName}*)&limit=40`,
+                    { headers }
+                  );
+                  const tLetters = await tResp.json();
+                  if (Array.isArray(tLetters)) {
+                    let newText = 0;
+                    tLetters.forEach(l => {
+                      if (!letterMap.has(l.id)) {
+                        letterMap.set(l.id, { ...l, _sources: [], _score: null });
+                        newText++;
+                      }
+                      letterMap.get(l.id)._sources.push(`text_mention:${personLabel}`);
+                    });
+                    sources['text_mention'] = (sources['text_mention'] || 0) + newText;
                   }
                 }
               }
@@ -106,19 +132,58 @@ const QueryPlanExecutor = (() => {
               if (!Array.isArray(manuscripts) || !manuscripts.length) break;
 
               for (const ms of manuscripts) {
+                // SOURCE 1: letters linked via papyri_id on the letters table
                 const lResp = await fetch(
-                  `${supabaseUrl}/rest/v1/letters?select=id,title,date_of_letter,document_type,full_text,author_id,recipient_id&papyri_id=eq.${ms.id}&limit=50`,
+                  `${supabaseUrl}/rest/v1/letters?select=id,title,date_of_letter,document_type,full_text,description,author_id,recipient_id&papyri_id=eq.${ms.id}&limit=50`,
                   { headers }
                 );
-                const letters = await lResp.json();
-                if (Array.isArray(letters)) {
-                  letters.forEach(l => {
-                    if (!letterMap.has(l.id)) {
-                      letterMap.set(l.id, { ...l, _sources: [], _score: null });
-                    }
-                    letterMap.get(l.id)._sources.push(`manuscript:${ms.name}`);
+                const directLetters = await lResp.json();
+                if (Array.isArray(directLetters)) {
+                  directLetters.forEach(l => {
+                    if (!letterMap.has(l.id)) letterMap.set(l.id, { ...l, _sources: [], _score: null });
+                    letterMap.get(l.id)._sources.push(`manuscript_direct:${ms.name}`);
                   });
-                  sources['manuscript_lookup'] = (sources['manuscript_lookup'] || 0) + letters.length;
+                  sources['manuscript_lookup'] = (sources['manuscript_lookup'] || 0) + directLetters.length;
+                }
+
+                // SOURCE 2: letters linked via letter_manuscripts junction table
+                const jResp = await fetch(
+                  `${supabaseUrl}/rest/v1/letter_manuscripts?select=letter_id&manuscript_id=eq.${ms.id}&limit=100`,
+                  { headers }
+                );
+                const jRows = await jResp.json();
+                if (Array.isArray(jRows) && jRows.length > 0) {
+                  const jIds = jRows.map(r => r.letter_id).join(',');
+                  const jLetterResp = await fetch(
+                    `${supabaseUrl}/rest/v1/letters?select=id,title,date_of_letter,document_type,full_text,description,author_id,recipient_id&id=in.(${jIds})&limit=100`,
+                    { headers }
+                  );
+                  const jLetters = await jLetterResp.json();
+                  if (Array.isArray(jLetters)) {
+                    let newJunction = 0;
+                    jLetters.forEach(l => {
+                      if (!letterMap.has(l.id)) {
+                        letterMap.set(l.id, { ...l, _sources: [], _score: null });
+                        newJunction++;
+                      }
+                      letterMap.get(l.id)._sources.push(`manuscript_mentioned:${ms.name}`);
+                    });
+                    sources['letter_manuscripts'] = (sources['letter_manuscripts'] || 0) + newJunction;
+                  }
+                }
+
+                // SOURCE 3: letters mentioning the manuscript name in full_text or description
+                const mName = encodeURIComponent(name);
+                const tResp = await fetch(
+                  `${supabaseUrl}/rest/v1/letters?select=id,title,date_of_letter,document_type,full_text,description,author_id,recipient_id&or=(full_text.ilike.*${mName}*,description.ilike.*${mName}*)&limit=30`,
+                  { headers }
+                );
+                const tLetters = await tResp.json();
+                if (Array.isArray(tLetters)) {
+                  tLetters.forEach(l => {
+                    if (!letterMap.has(l.id)) letterMap.set(l.id, { ...l, _sources: [], _score: null });
+                    letterMap.get(l.id)._sources.push(`manuscript_text:${ms.name}`);
+                  });
                 }
               }
             }
@@ -137,7 +202,7 @@ const QueryPlanExecutor = (() => {
 
               for (const inst of institutions) {
                 const lResp = await fetch(
-                  `${supabaseUrl}/rest/v1/letters?select=id,title,date_of_letter,document_type,full_text,author_id,recipient_id&institution_id=eq.${inst.id}&limit=50`,
+                  `${supabaseUrl}/rest/v1/letters?select=id,title,date_of_letter,document_type,full_text,description,author_id,recipient_id&institution_id=eq.${inst.id}&limit=50`,
                   { headers }
                 );
                 const letters = await lResp.json();
@@ -158,7 +223,7 @@ const QueryPlanExecutor = (() => {
           case 'date_filter': {
             const { start, end } = plan.date_range || {};
             if (!start && !end) break;
-            let q = `${supabaseUrl}/rest/v1/letters?select=id,title,date_of_letter,document_type,full_text,author_id,recipient_id`;
+            let q = `${supabaseUrl}/rest/v1/letters?select=id,title,date_of_letter,document_type,full_text,description,author_id,recipient_id`;
             if (start) q += `&date_of_letter=gte.${encodeURIComponent(start)}`;
             if (end)   q += `&date_of_letter=lte.${encodeURIComponent(end)}`;
             q += '&limit=50';
@@ -183,7 +248,7 @@ const QueryPlanExecutor = (() => {
             if (!kw.trim()) break;
 
             const kResp = await fetch(
-              `${supabaseUrl}/rest/v1/letters?select=id,title,date_of_letter,document_type,full_text,author_id,recipient_id&full_text=fts.${encodeURIComponent(kw)}&limit=30`,
+              `${supabaseUrl}/rest/v1/letters?select=id,title,date_of_letter,document_type,full_text,description,author_id,recipient_id&or=(full_text.ilike.*${encodeURIComponent(kw)}*,description.ilike.*${encodeURIComponent(kw)}*)&limit=30`,
               { headers }
             );
             const letters = await kResp.json();
@@ -240,7 +305,7 @@ const QueryPlanExecutor = (() => {
             if (!idMatch) break;
             const lid = idMatch[1];
             const lResp = await fetch(
-              `${supabaseUrl}/rest/v1/letters?select=id,title,date_of_letter,document_type,full_text,author_id,recipient_id&id=eq.${lid}`,
+              `${supabaseUrl}/rest/v1/letters?select=id,title,date_of_letter,document_type,full_text,description,author_id,recipient_id&id=eq.${lid}`,
               { headers }
             );
             const letters = await lResp.json();
