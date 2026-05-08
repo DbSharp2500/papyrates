@@ -311,6 +311,11 @@ async function sendMessage() {
 
     if (!response.ok) {
       const errData = await response.json().catch(() => ({}));
+      if (errData.error === '💳 BILLING_EXHAUSTED') {
+        removeTyping(typingId);
+        appendMessage('ai', `<div style="padding:12px;border:1px solid #8a4a2a;border-radius:8px;background:rgba(138,74,42,0.15)">⚠️ <strong>Google Gemini credits exhausted.</strong> Please top up your account to continue using this portal.<br><a href="${errData.billingUrl}" target="_blank" style="color:#c09060">→ Go to Google Cloud Billing</a></div>`);
+        return;
+      }
       throw new Error(errData.error || `API error: ${response.status}`);
     }
 
