@@ -43,10 +43,12 @@ Strategy steps must be chosen from:
 - "letter_by_id" — fetch a specific letter by id if the question mentions one
 
 Always include semantic_search or keyword_search as a final fallback step.
-Extract ALL person names mentioned in the question, even partial names.`;
+Extract ALL person names mentioned in the question, even partial names.
+Also include in person_names any well-known associates of the people mentioned — for example, if asked about a dealer, include known colleagues or institutional contacts if you know them.
+Include in keywords any organisation names, place names, or object names relevant to the question.`;
 
   const GEMINI_MODELS = [
-    'gemini-2.0-flash',
+    'gemini-2.0-flash-001',
     'gemini-1.5-pro-001',
     'gemini-1.5-flash-001',
   ];
