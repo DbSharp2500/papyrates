@@ -80,14 +80,8 @@ body{font-family:Arial,sans-serif;background:#0d1f0d;min-height:100vh;display:fl
 .save-bar{background:#0f2010;border-top:1px solid #2a4a2a;padding:10px 24px;display:none;justify-content:space-between;align-items:center;max-width:900px;width:100%;margin:0 auto;}
 .save-bar.visible{display:flex;}
 .save-bar span{color:#7ecfa0;font-size:13px;}
-#login-screen{display:flex;align-items:center;justify-content:center;min-height:100vh;background:#0d1f0d;}
-.login-box{background:#0a1a0a;border:1px solid #2a3a5a;border-radius:12px;padding:32px;text-align:center;max-width:320px;width:90%;}
-.login-box h1{color:#7ecfa0;font-size:22px;margin-bottom:8px;}
 .login-box p{color:#888;font-size:13px;margin-bottom:20px;}
-.login-box input{width:100%;padding:10px;background:#0f2210;border:1px solid #2a6a3a;border-radius:6px;font-size:14px;color:white;margin-bottom:12px;text-align:center;}
 .login-box button{width:100%;background:#1a4d2e;color:white;border:none;padding:10px;border-radius:6px;cursor:pointer;font-size:14px;}
-.login-box button:hover{background:#1f5c36;}
-.login-error{color:#f08080;font-size:12px;margin-top:6px;}
 .search-mode{font-size:11px;color:#556;margin-left:8px;}
 .search-mode.vector{color:#1a8a4a;}
 .search-mode.hybrid{color:#7a6aaa;}
@@ -137,17 +131,10 @@ body{font-family:Arial,sans-serif;background:#0d1f0d;min-height:100vh;display:fl
 </head>
 <body>
 
-<div id="login-screen">
-  <div class="login-box">
-    <h1>&#x1F9EC; Papyrates Research</h1>
-    <p>Enter password to access</p>
-    <input type="password" id="pwd-input" placeholder="Password">
-    <button id="login-btn-r">Enter</button>
-    <div class="login-error" id="login-error"></div>
   </div>
 </div>
 
-<div id="main-app" style="display:none;flex-direction:column;min-height:100vh;">
+<div id="main-app" style="display:flex;flex-direction:column;min-height:100vh;">
 
   <div class="header">
     <div>
@@ -897,7 +884,12 @@ function exportStandaloneHTML(containerId) {
     '  var colors=["#5a8ad4","#7ecfa0","#e0a040","#e07070","#a070d4","#40c0d0"];' +
     '  var datasets=(spec.datasets||[]).map(function(ds,i){var c=colors[i%colors.length];return Object.assign({},ds,{backgroundColor:spec.type==="pie"||spec.type==="doughnut"?colors.slice(0,(ds.data||[]).length):c+"cc",borderColor:c,borderWidth:2,tension:0.3})});' +
     '  new Chart(document.getElementById("cv").getContext("2d"),{type:spec.type==="bar"?"bar":spec.type==="line"?"line":spec.type==="doughnut"?"doughnut":"pie",data:{labels:spec.labels||[],datasets:datasets},options:{plugins:{legend:{labels:{color:"#aaa"}}},scales:(spec.type==="pie"||spec.type==="doughnut")?{}:{x:{ticks:{color:"#888"}},y:{ticks:{color:"#888"}}}}});' +
-    '}<\/script></body></html>';
+    '}<\/script><script src="/papyrates-auth.js"></script>
+<script>
+  // Only admins can access research portals
+  requireAuth('admin');
+</script>
+</body></html>';
 
   var blob = new Blob([html], {type: 'text/html'});
   var url = URL.createObjectURL(blob);
@@ -960,13 +952,13 @@ async function confirmSave(){
 }
 function cancelSave(){pendingSummary=null;addMessage("system","Save cancelled.");}
 
-document.getElementById("login-btn-r").addEventListener("click",doLogin);
-document.getElementById("pwd-input").addEventListener("keydown",function(e){if(e.key==="Enter")doLogin();});
-function doLogin(){
-  var val=document.getElementById("pwd-input").value.trim();
-  if(val==="papyrates2024"){document.getElementById("login-screen").style.display="none";var app=document.getElementById("main-app");app.style.display="flex";app.style.flexDirection="column";app.style.minHeight="100vh";}
   else{document.getElementById("login-error").textContent="Incorrect password.";}
 }
+</script>
+<script src="/papyrates-auth.js"></script>
+<script>
+  // Only admins can access research portals
+  requireAuth('admin');
 </script>
 </body>
 </html>
