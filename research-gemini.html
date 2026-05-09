@@ -964,7 +964,12 @@ function exportStandaloneHTML(containerId) {
     '  var colors=["#5a8ad4","#7ecfa0","#e0a040","#e07070","#a070d4","#40c0d0"];' +
     '  var datasets=(spec.datasets||[]).map(function(ds,i){var c=colors[i%colors.length];return Object.assign({},ds,{backgroundColor:spec.type==="pie"||spec.type==="doughnut"?colors.slice(0,(ds.data||[]).length):c+"cc",borderColor:c,borderWidth:2,tension:0.3})});' +
     '  new Chart(document.getElementById("cv").getContext("2d"),{type:spec.type==="bar"?"bar":spec.type==="line"?"line":spec.type==="doughnut"?"doughnut":"pie",data:{labels:spec.labels||[],datasets:datasets},options:{plugins:{legend:{labels:{color:"#aaa"}}},scales:(spec.type==="pie"||spec.type==="doughnut")?{}:{x:{ticks:{color:"#888"}},y:{ticks:{color:"#888"}}}}});' +
-    '}<\/script></body></html>';
+    '}<\/script><script src="/papyrates-auth.js"></script>
+<script>
+  // Only admins can access research portals
+  requireAuth('admin');
+</script>
+</body></html>';
 
   var blob = new Blob([html], {type: 'text/html'});
   var url = URL.createObjectURL(blob);
@@ -1002,6 +1007,11 @@ async function saveChartToLibrary(containerId) {
     setTimeout(function(){ if(btn) btn.textContent='🗄 Save to Library'; }, 3000);
   }
 
+</script>
+<script src="/papyrates-auth.js"></script>
+<script>
+  // Only admins can access research portals
+  requireAuth('admin');
 </script>
 </body>
 </html>
