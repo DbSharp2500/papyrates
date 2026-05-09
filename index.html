@@ -262,6 +262,12 @@ function showMain(tier) {
   badge.textContent = labels[tier] || tier;
   badge.className = "tier-badge " + tier;
 
+  // Hide all sections first
+  ["section-research", "section-browse", "section-edit"].forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) el.style.display = "none";
+  });
+
   // Show sections based on tier
   if (tier === "admin") {
     show("section-research");
@@ -270,7 +276,6 @@ function showMain(tier) {
     show("section-browse");
     show("section-edit");
   } else {
-    // readonly
     show("section-browse");
   }
 }
