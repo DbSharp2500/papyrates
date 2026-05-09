@@ -738,7 +738,7 @@ function renderDetail(){
   var hasPdf=l.sharing_link&&l.sharing_link.trim();
   var html='<div class="detail-header"><button class="back-btn" onclick="goBack()">&#8592; Back</button>'
     +'<span style="font-size:16px;font-weight:500">Letter Detail</span>'
-    +'<button class="edit-btn" onclick="openEdit()">&#9998; Edit</button>'
+    +(getPapyratesTier()==='readonly'?'<span style="width:80px"></span>':'<button class="edit-btn" onclick="openEdit()">&#9998; Edit</button>')
     +'</div>';
   html+='<div class="detail-body">';
   html+='<div class="field-label">Author</div><div class="field-value"><span class="tag" onclick="openPerson('+l.author_id+')">'+(pname(l.author_id)||l.title||"Unknown")+'</span></div>';
@@ -1027,7 +1027,7 @@ function renderDuplicates(){
     } else {
       html+='<button class="dup-keep-btn" style="flex:2;opacity:0.5" disabled>'+(isKeeper?"&#10003; Kept":"Deleted")+'</button>';
     }
-    html+='<button class="dup-edit-btn" onclick="openLetterById('+l.id+')">&#9998; Edit</button>';
+    if(getPapyratesTier()!=='readonly') html+='<button class="dup-edit-btn" onclick="openLetterById('+l.id+')">&#9998; Edit</button>';
     html+='</div></div>';
   });
   html+='</div>';
