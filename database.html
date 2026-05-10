@@ -8,15 +8,12 @@
 *{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:Arial,sans-serif;background:#f0f3fa;min-height:100vh;}
 .app{max-width:700px;margin:0 auto;padding:0 0 2rem;}
-/* Header */
 .header{background:#2d4a8a;color:white;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;}
 .header h1{font-size:18px;font-weight:500;}
 .header-right{display:flex;align-items:center;gap:10px;}
 .header .count{font-size:13px;opacity:0.85;}
-
 .home-btn{background:rgba(255,255,255,0.15);color:white;border:1px solid rgba(255,255,255,0.3);padding:6px 12px;border-radius:6px;cursor:pointer;font-size:13px;text-decoration:none;white-space:nowrap;}
 .home-btn:hover{background:rgba(255,255,255,0.25);}
-/* Filters */
 .filters{background:#3a5ba0;padding:12px 16px;display:flex;flex-direction:column;gap:8px;}
 .filter-row{display:flex;gap:8px;align-items:center;}
 .filter-label{color:rgba(255,255,255,0.9);font-size:13px;min-width:80px;flex-shrink:0;}
@@ -44,8 +41,6 @@ body{font-family:Arial,sans-serif;background:#f0f3fa;min-height:100vh;}
 .nodesc-btn{background:rgba(255,200,50,0.18);color:white;border:1px solid rgba(255,200,50,0.45);padding:7px 10px;border-radius:6px;cursor:pointer;font-size:11px;white-space:nowrap;}
 .nodesc-btn:hover{background:rgba(255,200,50,0.3);}
 .nodesc-btn.active{background:rgba(255,200,50,0.45);border-color:rgba(255,200,50,0.8);font-weight:600;}
-/* No-description filter button */
-/* Results */
 .results-header{background:#e8ecf5;padding:10px 16px;border-bottom:1px solid #d0d8ec;}
 .results-count{font-size:13px;color:#3a5ba0;font-weight:500;}
 .col-headers{display:grid;grid-template-columns:1fr 1fr 100px 24px;padding:8px 16px;background:#f0f3fa;border-bottom:1px solid #d0d8ec;font-size:12px;color:#3a5ba0;font-weight:bold;}
@@ -56,13 +51,11 @@ body{font-family:Arial,sans-serif;background:#f0f3fa;min-height:100vh;}
 .arrow{color:#3a5ba0;font-size:16px;text-align:right;}
 .no-results{padding:32px;text-align:center;color:#888;font-size:14px;}
 .loading{padding:32px;text-align:center;color:#3a5ba0;font-size:14px;}
-/* Pagination */
 .pagination{display:flex;align-items:center;justify-content:center;gap:12px;padding:12px 16px;border-top:1px solid #e0e0e0;background:white;}
 .page-btn{background:none;border:1px solid #3a5ba0;color:#3a5ba0;padding:6px 14px;border-radius:6px;cursor:pointer;font-size:13px;}
 .page-btn:disabled{opacity:0.4;cursor:default;}
 .page-btn:not(:disabled):hover{background:#e8ecf5;}
 .page-info{font-size:13px;color:#555;}
-/* Detail view */
 .detail-header{background:#2d4a8a;color:white;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;}
 .back-btn{background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);color:white;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:13px;}
 .back-btn:hover{background:rgba(255,255,255,0.25);}
@@ -75,19 +68,19 @@ body{font-family:Arial,sans-serif;background:#f0f3fa;min-height:100vh;}
 .divider{height:1px;background:#eee;margin:14px 0;}
 .tag{display:inline-block;background:#e8ecf5;color:#2d4a8a;padding:4px 10px;border-radius:12px;font-size:13px;cursor:pointer;margin:2px;}
 .tag:hover{background:#d0d8ec;}
+.doc-type-badge{display:inline-block;background:#2d4a8a;color:white;padding:4px 12px;border-radius:12px;font-size:12px;letter-spacing:0.5px;}
 .pdf-btn{display:inline-block;background:#2d4a8a;color:white;padding:8px 14px;border-radius:6px;font-size:13px;text-decoration:none;}
 .pdf-btn:hover{background:#3a5ba0;}
 .no-pdf{color:#888;font-size:13px;padding:8px 14px;}
 .fulltext-toggle{background:none;border:1px solid #3a5ba0;color:#3a5ba0;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:12px;margin-bottom:8px;}
 .fulltext-toggle:hover{background:#e8ecf5;}
 .fulltext-content{font-size:12px;color:#555;line-height:1.7;background:#f8f8f8;padding:12px;border-radius:6px;border:1px solid #e0e0e0;white-space:pre-wrap;max-height:300px;overflow-y:auto;}
-/* Section titles (person/manuscript) */
 .section-title{font-size:13px;font-weight:bold;color:#2d4a8a;padding:10px 0 6px;border-bottom:1px solid #eee;margin-bottom:8px;}
 .mini-letter{display:flex;justify-content:space-between;align-items:flex-start;padding:8px 0;border-bottom:1px solid #f0f0f0;cursor:pointer;}
 .mini-letter:hover{background:#f8f9fc;margin:0 -4px;padding-left:4px;padding-right:4px;}
 .mini-letter-info{font-size:13px;color:#333;flex:1;}
 .mini-letter-date{font-size:12px;color:#888;white-space:nowrap;margin-left:8px;}
-/* Edit / Add form */
+/* Edit form */
 .edit-body{background:white;padding:16px;}
 .form-field{margin-bottom:14px;}
 .form-label{font-size:11px;color:#888;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:5px;display:block;}
@@ -111,6 +104,15 @@ body{font-family:Arial,sans-serif;background:#f0f3fa;min-height:100vh;}
 .save-msg{padding:10px 14px;border-radius:6px;font-size:13px;margin-top:10px;text-align:center;}
 .save-msg.success{background:#e8f5e9;color:#2e7d32;border:1px solid #a5d6a7;}
 .save-msg.error{background:#fdecea;color:#c62828;border:1px solid #ef9a9a;}
+/* Role person tags */
+.role-tags{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px;min-height:4px;}
+.role-person-tag{display:inline-flex;align-items:center;gap:4px;background:#e8ecf5;color:#2d4a8a;padding:4px 8px 4px 10px;border-radius:12px;font-size:12px;}
+.role-person-tag.mentioned{background:#eaf3e8;color:#2a5a20;}
+.role-person-tag.manuscript{background:#f5f0e8;color:#6a4010;}
+.remove-tag{background:none;border:none;color:#7a9ad0;cursor:pointer;font-size:15px;padding:0 0 0 2px;line-height:1;display:flex;align-items:center;}
+.remove-tag:hover{color:#c62828;}
+.add-person-row{display:flex;gap:6px;align-items:flex-start;margin-top:4px;}
+.add-person-row .form-ac-wrap{flex:1;}
 /* Duplicate review */
 .dup-header{background:#7a3a00;color:white;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;}
 .dup-progress{background:#fff3e0;padding:10px 16px;font-size:13px;color:#555;border-bottom:1px solid #ffe0b2;}
@@ -139,9 +141,7 @@ body{font-family:Arial,sans-serif;background:#f0f3fa;min-height:100vh;}
 .dup-nav-btn:disabled{opacity:0.4;cursor:default;}
 .dup-nav-btn:not(:disabled):hover{background:#fff3e0;}
 .dup-notice{background:#fff8e1;border:1px solid #ffe082;border-radius:6px;padding:10px 14px;font-size:12px;color:#5d4037;margin:10px 0;}
-
-
-/* ── Manuscript sidebar ─────────────────────────────────────────────── */
+/* Manuscript sidebar */
 .page-wrap{display:flex;gap:0;width:100%;max-width:700px;margin:0 auto;transition:max-width 0.3s;}
 .page-wrap.with-sidebar{max-width:1060px;align-items:flex-start;}
 .app{flex:0 0 700px;min-width:0;}
@@ -158,7 +158,6 @@ body{font-family:Arial,sans-serif;background:#f0f3fa;min-height:100vh;}
 .ms-inst-item{font-size:12px;padding:5px 8px;background:#f0f3fa;border-radius:5px;margin-bottom:5px;color:#2d4a8a;}
 .ms-inst-notes{font-size:11px;color:#666;margin-top:2px;}
 .ms-sidebar-count{background:#e8ecf5;color:#2d4a8a;padding:4px 10px;border-radius:12px;font-size:12px;font-weight:500;}
-/* Only show sidebar on wide screens */
 @media (max-width:1080px){
   .page-wrap.with-sidebar{max-width:700px;}
   .page-wrap.with-sidebar .ms-sidebar{display:none;}
@@ -169,16 +168,12 @@ body{font-family:Arial,sans-serif;background:#f0f3fa;min-height:100vh;}
 <script>requireAuth('readonly');</script>
 </head>
 <body>
-
-
-
 <div id="main-app" style="display:block">
   <div class="page-wrap" id="page-wrap">
     <div class="app" id="app"></div>
     <div class="ms-sidebar" id="ms-sidebar"></div>
   </div>
 </div>
-
 <script>
 
 var SURL = "https://vzfwobsnfqnnqvnsfksq.supabase.co/rest/v1";
@@ -191,25 +186,57 @@ var institutions = {};
 var allAuthorOpts = [];
 var allRecipOpts = [];
 var allManuscriptOpts = [];
+var allInstitutionOpts = [];
 var viewStack = [];
 
-var state = {
-  view: "list",
-  authorId: "", recipientId: "",
-  authorText: "", recipientText: "",
-  dateFrom: "", dateTo: "",
-  language: "", descSearch: "", textSearch: "", docType: "", noDesc: false, notype: false,
-  manuscriptId: "", manuscriptText: "", manuscriptLetterIds: null, msInfo: null,
+// ── Document type configuration ───────────────────────────────────────────────
+var DOC_TYPES = [
+  "Correspondence",
+  "Financial Document",
+  "Legal Document",
+  "Scholarly Work",
+  "Literary Manuscript",
+  "Journal / Diary",
+  "Interview / Oral History",
+  "Press / Media",
+  "Institutional Record",
+  "Manuscript Image"
+];
 
-  letters: [], totalCount: 0, filteredCount: 0,
-  page: 0, pageSize: 50,
-  loading: true,
-  selected: null, showFT: false,
-  selectedPeople: [], selectedManuscripts: [],
-  personView: null, manuscriptView: null,
-  editForm: null, editSaving: false, editMsg: ""
+var TYPE_CONFIG = {
+  "Correspondence":          {showAuthor:true,  authorLabel:"Author / Sender",  showRecipient:true,  recipientLabel:"Recipient",             showDate:true,  showDateRange:false, showInstitution:false, showPublication:false, showFinancial:false, showImageFields:false},
+  "Financial Document":      {showAuthor:true,  authorLabel:"Author / Creator", showRecipient:true,  recipientLabel:"Recipient",             showDate:true,  showDateRange:false, showInstitution:false, showPublication:false, showFinancial:true,  showImageFields:false},
+  "Legal Document":          {showAuthor:true,  authorLabel:"Author / Creator", showRecipient:true,  recipientLabel:"Recipient",             showDate:true,  showDateRange:false, showInstitution:false, showPublication:false, showFinancial:false, showImageFields:false},
+  "Scholarly Work":          {showAuthor:true,  authorLabel:"Author / Creator", showRecipient:false, recipientLabel:"",                     showDate:true,  showDateRange:false, showInstitution:false, showPublication:true,  showFinancial:false, showImageFields:false},
+  "Literary Manuscript":     {showAuthor:true,  authorLabel:"Author / Creator", showRecipient:false, recipientLabel:"",                     showDate:true,  showDateRange:false, showInstitution:false, showPublication:false, showFinancial:false, showImageFields:false},
+  "Journal / Diary":         {showAuthor:true,  authorLabel:"Author / Creator", showRecipient:false, recipientLabel:"",                     showDate:false, showDateRange:true,  showInstitution:false, showPublication:false, showFinancial:false, showImageFields:false},
+  "Interview / Oral History":{showAuthor:true,  authorLabel:"Interviewer",      showRecipient:true,  recipientLabel:"Subject / Interviewee", showDate:true,  showDateRange:false, showInstitution:false, showPublication:false, showFinancial:false, showImageFields:false},
+  "Press / Media":           {showAuthor:true,  authorLabel:"Author / Creator", showRecipient:false, recipientLabel:"",                     showDate:true,  showDateRange:false, showInstitution:false, showPublication:true,  showFinancial:false, showImageFields:false},
+  "Institutional Record":    {showAuthor:true,  authorLabel:"Author / Creator", showRecipient:false, recipientLabel:"",                     showDate:true,  showDateRange:false, showInstitution:true,  showPublication:false, showFinancial:false, showImageFields:false},
+  "Manuscript Image":        {showAuthor:false, authorLabel:"",                 showRecipient:false, recipientLabel:"",                     showDate:true,  showDateRange:false, showInstitution:false, showPublication:false, showFinancial:false, showImageFields:true}
 };
 
+var LANGS = ["English","French","German","Latin","Italian","Spanish","Coptic","Greek","Arabic","Dutch","Hebrew"];
+var PUB_STAGES = ["Draft","Submitted","Published","Unpublished","Unknown"];
+
+var state = {
+  view:"list",
+  authorId:"", recipientId:"",
+  authorText:"", recipientText:"",
+  dateFrom:"", dateTo:"",
+  language:"", descSearch:"", textSearch:"", docType:"", noDesc:false, notype:false,
+  manuscriptId:"", manuscriptText:"", manuscriptLetterIds:null, msInfo:null,
+  letters:[], totalCount:0, filteredCount:0,
+  page:0, pageSize:50,
+  loading:true,
+  selected:null, showFT:false,
+  selectedPeople:[], selectedManuscripts:[],
+  roleAuthors:[], roleRecipients:[], roleSubjects:[],
+  personView:null, manuscriptView:null,
+  editForm:null, editSaving:false, editMsg:""
+};
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
 function sq(path){
   return fetch(SURL+"/"+path,{headers:SH}).then(function(r){return r.ok?r.json():[];}).catch(function(){return[];});
 }
@@ -231,7 +258,11 @@ function fdate(d){
   var p=d.split("-");if(p.length!==3)return d;
   return parseInt(p[1])+"/"+parseInt(p[2])+"/"+p[0];
 }
+function esc(v){return(v||"").replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
+function escText(v){return(v||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
+function escHtml(v){return(v||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
 
+// ── Data loading ──────────────────────────────────────────────────────────────
 function loadPeople(){
   var all=[],offset=0;
   function fetchBatch(){
@@ -255,10 +286,59 @@ function loadManuscripts(){
 }
 function loadInstitutions(){
   return sq("institutions?select=id,name,location,notes&limit=2000").then(function(rows){
-    if(Array.isArray(rows))rows.forEach(function(i){institutions[String(i.id)]=i;});
+    if(Array.isArray(rows)){
+      rows.forEach(function(i){institutions[String(i.id)]=i;});
+      allInstitutionOpts=rows.map(function(i){return{id:i.id,name:i.name||""};}).filter(function(x){return x.name;}).sort(function(a,b){return a.name.localeCompare(b.name);});
+    }
   });
 }
 
+// ── Query builders ────────────────────────────────────────────────────────────
+var LETTER_SELECT = "id,author_id,recipient_id,date_of_letter,date_from,date_to,description,translation,language,full_text,sharing_link,title,document_type,institution_id,publication_stage,publication_venue,amount,currency,photographer,image_format,condition_notes";
+
+function buildQ(){
+  var q="letters?select="+LETTER_SELECT;
+  var f=[];
+  if(state.authorId)f.push("author_id=eq."+state.authorId);
+  if(state.recipientId)f.push("recipient_id=eq."+state.recipientId);
+  if(state.dateFrom)f.push("date_of_letter=gte."+state.dateFrom);
+  if(state.dateTo)f.push("date_of_letter=lte."+state.dateTo);
+  if(state.manuscriptLetterIds!==null){
+    if(state.manuscriptLetterIds.length===0)f.push("id=eq.0");
+    else f.push("id=in.("+state.manuscriptLetterIds.join(",")+")");
+  }
+  if(state.language)f.push("language=eq."+encodeURIComponent(state.language));
+  if(state.docType)f.push("document_type=eq."+encodeURIComponent(state.docType));
+  if(state.descSearch)f.push("description=ilike.*"+encodeURIComponent(state.descSearch)+"*");
+  if(state.textSearch)f.push("full_text=ilike.*"+encodeURIComponent(state.textSearch)+"*");
+  if(state.noDesc)f.push("or=(description.is.null,description.eq.)");
+  if(state.notype)f.push("or=(document_type.is.null,document_type.eq.Correspondence)");
+  if(f.length)q+="&"+f.join("&");
+  q+="&order=date_of_letter.asc.nullslast&offset="+(state.page*state.pageSize)+"&limit="+state.pageSize;
+  return q;
+}
+function buildCountQ(){
+  var q="letters?select=id";
+  var f=[];
+  if(state.authorId)f.push("author_id=eq."+state.authorId);
+  if(state.recipientId)f.push("recipient_id=eq."+state.recipientId);
+  if(state.dateFrom)f.push("date_of_letter=gte."+state.dateFrom);
+  if(state.dateTo)f.push("date_of_letter=lte."+state.dateTo);
+  if(state.manuscriptLetterIds!==null){
+    if(state.manuscriptLetterIds.length===0)f.push("id=eq.0");
+    else f.push("id=in.("+state.manuscriptLetterIds.join(",")+")");
+  }
+  if(state.language)f.push("language=eq."+encodeURIComponent(state.language));
+  if(state.docType)f.push("document_type=eq."+encodeURIComponent(state.docType));
+  if(state.descSearch)f.push("description=ilike.*"+encodeURIComponent(state.descSearch)+"*");
+  if(state.textSearch)f.push("full_text=ilike.*"+encodeURIComponent(state.textSearch)+"*");
+  if(state.noDesc)f.push("or=(description.is.null,description.eq.)");
+  if(state.notype)f.push("or=(document_type.is.null,document_type.eq.Correspondence)");
+  if(f.length)q+="&"+f.join("&");
+  return q;
+}
+
+// ── Autocomplete helpers (list view) ──────────────────────────────────────────
 function buildAuthorOpts(){
   var p=state.recipientId?sq("letters?recipient_id=eq."+state.recipientId+"&select=author_id&limit=5000"):sq("letters?select=author_id&limit=5000");
   return p.then(function(rows){
@@ -273,12 +353,44 @@ function buildRecipOpts(){
     allRecipOpts=ids.map(function(id){return{id:id,name:pname(id)};}).filter(function(x){return x.name;}).sort(function(a,b){return a.name.localeCompare(b.name);});
   });
 }
+function filteredAuthorOpts(){if(!state.authorText)return allAuthorOpts;var t=state.authorText.toLowerCase();return allAuthorOpts.filter(function(o){return o.name.toLowerCase().indexOf(t)>=0;});}
+function filteredRecipOpts(){if(!state.recipientText)return allRecipOpts;var t=state.recipientText.toLowerCase();return allRecipOpts.filter(function(o){return o.name.toLowerCase().indexOf(t)>=0;});}
 function filteredManuscriptOpts(){if(!state.manuscriptText)return allManuscriptOpts;var t=state.manuscriptText.toLowerCase();return allManuscriptOpts.filter(function(o){return o.name.toLowerCase().indexOf(t)>=0;});}
+function allPeopleSorted(){
+  return Object.values(people).map(function(p){return{id:p.id,name:pname(p.id)};}).filter(function(x){return x.name&&x.name!=="Unknown";}).sort(function(a,b){return a.name.localeCompare(b.name);});
+}
+
+function selectAuthor(id,name){state.authorId=id;state.authorText=name;state.page=0;var dd=document.getElementById("author-drop");if(dd)dd.classList.remove("open");buildRecipOpts().then(function(){render();loadLetters();});}
+function selectRecip(id,name){state.recipientId=id;state.recipientText=name;state.page=0;var dd=document.getElementById("recip-drop");if(dd)dd.classList.remove("open");buildAuthorOpts().then(function(){render();loadLetters();});}
+function clearAuthor(){state.authorId="";state.authorText="";state.page=0;buildRecipOpts().then(function(){render();loadLetters();});}
+function clearRecip(){state.recipientId="";state.recipientText="";state.page=0;buildAuthorOpts().then(function(){render();loadLetters();});}
+function doSwap(){var aId=state.authorId,aName=state.authorText,rId=state.recipientId,rName=state.recipientText;state.authorId=rId;state.authorText=rName;state.recipientId=aId;state.recipientText=aName;state.page=0;Promise.all([buildAuthorOpts(),buildRecipOpts()]).then(function(){loadLetters();});}
+function doClear(){state.authorId="";state.authorText="";state.recipientId="";state.recipientText="";state.dateFrom="";state.dateTo="";state.language="";state.descSearch="";state.textSearch="";state.docType="";state.noDesc=false;state.notype=false;state.page=0;Promise.all([buildAuthorOpts(),buildRecipOpts()]).then(function(){loadLetters();});}
+function onFilter(k,v){state[k]=v;state.page=0;loadLetters();}
+function toggleNoDesc(){state.noDesc=!state.noDesc;state.page=0;loadLetters();}
+function toggleNotype(){state.notype=!state.notype;state.page=0;loadLetters();}
+var st;function onSearch(k,v){state[k]=v;clearTimeout(st);st=setTimeout(function(){state.page=0;loadLetters();},600);}
+
+function onAuthorInput(v){
+  state.authorText=v;if(!v)state.authorId="";
+  var dd=document.getElementById("author-drop");if(!dd)return;
+  dd.classList.add("open");
+  var opts=filteredAuthorOpts();
+  dd.innerHTML=opts.length===0?'<div class="ac-item" style="color:#999;font-style:italic">No results</div>':opts.map(function(o){return'<div class="ac-item'+(o.id==state.authorId?" selected-item":"")+'" onmousedown="event.preventDefault();selectAuthor(\''+o.id+'\',\''+o.name.replace(/\\/g,"\\\\").replace(/'/g,"\\'")+'\')">'+o.name+'</div>';}).join("");
+}
+function onRecipInput(v){
+  state.recipientText=v;if(!v)state.recipientId="";
+  var dd=document.getElementById("recip-drop");if(!dd)return;
+  dd.classList.add("open");
+  var opts=filteredRecipOpts();
+  dd.innerHTML=opts.length===0?'<div class="ac-item" style="color:#999;font-style:italic">No results</div>':opts.map(function(o){return'<div class="ac-item'+(o.id==state.recipientId?" selected-item":"")+'" onmousedown="event.preventDefault();selectRecip(\''+o.id+'\',\''+o.name.replace(/\\/g,"\\\\").replace(/'/g,"\\'")+'\')">'+o.name+'</div>';}).join("");
+}
+function onAuthorKey(e){if(e.key==="Escape"){var dd=document.getElementById("author-drop");if(dd)dd.classList.remove("open");}if(e.key==="Enter"){var opts=filteredAuthorOpts();if(opts.length>0)selectAuthor(opts[0].id,opts[0].name);}}
+function onRecipKey(e){if(e.key==="Escape"){var dd=document.getElementById("recip-drop");if(dd)dd.classList.remove("open");}if(e.key==="Enter"){var opts=filteredRecipOpts();if(opts.length>0)selectRecip(opts[0].id,opts[0].name);}}
 
 function selectManuscript(id,name){
   state.manuscriptId=String(id);state.manuscriptText=name;state.page=0;state.msInfo=null;
   var dd=document.getElementById("ms-drop");if(dd)dd.classList.remove("open");
-  // Fetch letter IDs and manuscript details in parallel
   Promise.all([
     sq("letter_manuscripts?manuscript_id=eq."+id+"&select=letter_id&limit=5000"),
     sq("manuscripts?id=eq."+id+"&select=id,name,description"),
@@ -301,56 +413,7 @@ function onManuscriptInput(v){
   var dd=document.getElementById("ms-drop");if(!dd)return;
   dd.classList.add("open");
   var opts=filteredManuscriptOpts();
-  dd.innerHTML=opts.length===0?'<div class="ac-item" style="color:#999">No matches</div>':opts.map(function(o){return'<div class="ac-item'+(o.id==state.manuscriptId?" selected-item":"")+'" onmousedown="event.preventDefault();selectManuscript('+o.id+',\''+o.name.replace(/\\/g,"\\\\").replace(/'/g,"\\'")+'\')">'+o.name+'</div>';}).join("");
-}
-
-
-function filteredAuthorOpts(){if(!state.authorText)return allAuthorOpts;var t=state.authorText.toLowerCase();return allAuthorOpts.filter(function(o){return o.name.toLowerCase().indexOf(t)>=0;});}
-function filteredRecipOpts(){if(!state.recipientText)return allRecipOpts;var t=state.recipientText.toLowerCase();return allRecipOpts.filter(function(o){return o.name.toLowerCase().indexOf(t)>=0;});}
-
-// All people sorted for edit dropdowns
-function allPeopleSorted(){
-  return Object.values(people).map(function(p){return{id:p.id,name:pname(p.id)};}).filter(function(x){return x.name&&x.name!=="Unknown";}).sort(function(a,b){return a.name.localeCompare(b.name);});
-}
-
-function buildQ(){
-  var q="letters?select=id,author_id,recipient_id,date_of_letter,description,translation,language,full_text,sharing_link,title";
-  var f=[];
-  if(state.authorId)f.push("author_id=eq."+state.authorId);
-  if(state.recipientId)f.push("recipient_id=eq."+state.recipientId);
-  if(state.dateFrom)f.push("date_of_letter=gte."+state.dateFrom);
-  if(state.dateTo)f.push("date_of_letter=lte."+state.dateTo);
-  if(state.manuscriptLetterIds!==null){
-    if(state.manuscriptLetterIds.length===0)f.push("id=eq.0");
-    else f.push("id=in.("+state.manuscriptLetterIds.join(",")+")"); }
-  if(state.language)f.push("language=eq."+encodeURIComponent(state.language));
-  if(state.docType)f.push("document_type=eq."+encodeURIComponent(state.docType));
-  if(state.descSearch)f.push("description=ilike.*"+encodeURIComponent(state.descSearch)+"*");
-  if(state.textSearch)f.push("full_text=ilike.*"+encodeURIComponent(state.textSearch)+"*");
-  if(state.noDesc)f.push("or=(description.is.null,description.eq.)");
-  if(state.notype)f.push("or=(document_type.is.null,document_type.eq.Correspondence)");
-  if(f.length)q+="&"+f.join("&");
-  q+="&order=date_of_letter.asc.nullslast&offset="+(state.page*state.pageSize)+"&limit="+state.pageSize;
-  return q;
-}
-function buildCountQ(){
-  var q="letters?select=id";
-  var f=[];
-  if(state.authorId)f.push("author_id=eq."+state.authorId);
-  if(state.recipientId)f.push("recipient_id=eq."+state.recipientId);
-  if(state.dateFrom)f.push("date_of_letter=gte."+state.dateFrom);
-  if(state.dateTo)f.push("date_of_letter=lte."+state.dateTo);
-  if(state.manuscriptLetterIds!==null){
-    if(state.manuscriptLetterIds.length===0)f.push("id=eq.0");
-    else f.push("id=in.("+state.manuscriptLetterIds.join(",")+")"); }
-  if(state.language)f.push("language=eq."+encodeURIComponent(state.language));
-  if(state.docType)f.push("document_type=eq."+encodeURIComponent(state.docType));
-  if(state.descSearch)f.push("description=ilike.*"+encodeURIComponent(state.descSearch)+"*");
-  if(state.textSearch)f.push("full_text=ilike.*"+encodeURIComponent(state.textSearch)+"*");
-  if(state.noDesc)f.push("or=(description.is.null,description.eq.)");
-  if(state.notype)f.push("or=(document_type.is.null,document_type.eq.Correspondence)");
-  if(f.length)q+="&"+f.join("&");
-  return q;
+  dd.innerHTML=opts.length===0?'<div class="ac-item" style="color:#999">No matches</div>':opts.map(function(o){return'<div class="ac-item" onmousedown="event.preventDefault();selectManuscript('+o.id+',\''+o.name.replace(/\\/g,"\\\\").replace(/'/g,"\\'")+'\')">'+o.name+'</div>';}).join("");
 }
 
 function loadLetters(){
@@ -362,53 +425,45 @@ function loadLetters(){
   });
 }
 
-function init(){
-  // Handle URL action params from home page
-  var params = new URLSearchParams(window.location.search);
-  var action = params.get("action");
-  if(action === "nodesc"){ state.noDesc = true; }
-  else if(action === "notype"){ state.notype = true; }
-  else if(action === "dupes"){ 
-    Promise.all([loadPeople(),loadManuscripts(),loadInstitutions()]).then(function(){
-      return sqCount("letters?select=id");
-    }).then(function(count){ state.totalCount=count; state.filteredCount=count; return Promise.all([buildAuthorOpts(),buildRecipOpts()]); })
-    .then(function(){ openDuplicates(); });
-    return;
-  }
-  else if(action === "add"){ 
-    Promise.all([loadPeople(),loadManuscripts(),loadInstitutions()]).then(function(){
-      openAddNew();
-    });
-    return;
-  }
-  Promise.all([loadPeople(),loadManuscripts(),loadInstitutions()])
-    .then(function(){return sqCount("letters?select=id");})
-    .then(function(count){state.totalCount=count;state.filteredCount=count;render();return Promise.all([buildAuthorOpts(),buildRecipOpts()]);})
-    .then(function(){return loadLetters();});
+// ── Letter open / navigation ──────────────────────────────────────────────────
+function loadRolePeople(lid){
+  return sq("letter_people?letter_id=eq."+lid+"&select=person_id,role").then(function(rows){
+    rows=rows||[];
+    state.roleAuthors=rows.filter(function(r){return r.role==='author';}).map(function(r){return{id:r.person_id,name:pname(r.person_id)};}).filter(function(x){return x.name;});
+    state.roleRecipients=rows.filter(function(r){return r.role==='recipient';}).map(function(r){return{id:r.person_id,name:pname(r.person_id)};}).filter(function(x){return x.name;});
+    state.roleSubjects=rows.filter(function(r){return r.role==='subject';}).map(function(r){return{id:r.person_id,name:pname(r.person_id)};}).filter(function(x){return x.name;});
+    // Mentioned = null role or 'mentioned'
+    state.selectedPeople=rows.filter(function(r){return !r.role||r.role==='mentioned';}).map(function(r){return{id:r.person_id,name:pname(r.person_id)};}).filter(function(x){return x.name;});
+  });
 }
-
-function selectAuthor(id,name){state.authorId=id;state.authorText=name;state.page=0;var dd=document.getElementById("author-drop");if(dd)dd.classList.remove("open");buildRecipOpts().then(function(){render();loadLetters();});}
-function selectRecip(id,name){state.recipientId=id;state.recipientText=name;state.page=0;var dd=document.getElementById("recip-drop");if(dd)dd.classList.remove("open");buildAuthorOpts().then(function(){render();loadLetters();});}
-function clearAuthor(){state.authorId="";state.authorText="";state.page=0;buildRecipOpts().then(function(){render();loadLetters();});}
-function clearRecip(){state.recipientId="";state.recipientText="";state.page=0;buildAuthorOpts().then(function(){render();loadLetters();});}
-function doSwap(){var aId=state.authorId,aName=state.authorText,rId=state.recipientId,rName=state.recipientText;state.authorId=rId;state.authorText=rName;state.recipientId=aId;state.recipientText=aName;state.page=0;Promise.all([buildAuthorOpts(),buildRecipOpts()]).then(function(){loadLetters();});}
-function doClear(){state.authorId="";state.authorText="";state.recipientId="";state.recipientText="";state.dateFrom="";state.dateTo="";state.language="";state.descSearch="";state.textSearch="";state.docType="";state.noDesc=false;state.notype=false;state.page=0;Promise.all([buildAuthorOpts(),buildRecipOpts()]).then(function(){loadLetters();});}
-function onFilter(k,v){state[k]=v;state.page=0;loadLetters();}
-function toggleNoDesc(){state.noDesc=!state.noDesc;state.page=0;loadLetters();}
-function toggleNotype(){state.notype=!state.notype;state.page=0;loadLetters();}
-var st;function onSearch(k,v){state[k]=v;clearTimeout(st);st=setTimeout(function(){state.page=0;loadLetters();},600);}
 
 function openLetter(idx){
   state.selected=state.letters[idx];
   state.showFT=false;state.selectedPeople=[];state.selectedManuscripts=[];
+  state.roleAuthors=[];state.roleRecipients=[];state.roleSubjects=[];
   viewStack.push(state.view);state.view="detail";render();
   var lid=state.selected.id;
-  Promise.all([sq("letter_people?letter_id=eq."+lid+"&select=person_id"),sq("letter_manuscripts?letter_id=eq."+lid+"&select=manuscript_id")])
+  Promise.all([loadRolePeople(lid),sq("letter_manuscripts?letter_id=eq."+lid+"&select=manuscript_id")])
     .then(function(res){
-      state.selectedPeople=(res[0]||[]).map(function(r){return{id:r.person_id,name:pname(r.person_id)};}).filter(function(x){return x.name;});
       state.selectedManuscripts=(res[1]||[]).map(function(r){var m=manuscripts[String(r.manuscript_id)];return m?{id:r.manuscript_id,name:m.name}:{};}).filter(function(x){return x.name;});
       render();
     });
+}
+
+function openLetterById(id){
+  sq("letters?id=eq."+id+"&select="+LETTER_SELECT).then(function(res){
+    if(res&&res.length>0){
+      state.letters=[res[0]];state.selected=res[0];
+      state.showFT=false;state.selectedPeople=[];state.selectedManuscripts=[];
+      state.roleAuthors=[];state.roleRecipients=[];state.roleSubjects=[];
+      viewStack.push(state.view);state.view="detail";render();
+      Promise.all([loadRolePeople(id),sq("letter_manuscripts?letter_id=eq."+id+"&select=manuscript_id")])
+        .then(function(res){
+          state.selectedManuscripts=(res[1]||[]).map(function(r){var m=manuscripts[String(r.manuscript_id)];return m?{id:r.manuscript_id,name:m.name}:{};}).filter(function(x){return x.name;});
+          render();
+        });
+    }
+  });
 }
 
 function openPerson(personId){
@@ -449,49 +504,69 @@ function openManuscript(manuscriptId){
   });
 }
 
-function openLetterById(id){
-  sq("letters?id=eq."+id+"&select=id,author_id,recipient_id,date_of_letter,description,translation,language,full_text,sharing_link,title")
-    .then(function(res){
-      if(res&&res.length>0){
-        state.letters=[res[0]];state.selected=res[0];
-        state.showFT=false;state.selectedPeople=[];state.selectedManuscripts=[];
-        viewStack.push(state.view);state.view="detail";render();
-        Promise.all([sq("letter_people?letter_id=eq."+id+"&select=person_id"),sq("letter_manuscripts?letter_id=eq."+id+"&select=manuscript_id")])
-          .then(function(r){
-            state.selectedPeople=(r[0]||[]).map(function(x){return{id:x.person_id,name:pname(x.person_id)};}).filter(function(x){return x.name;});
-            state.selectedManuscripts=(r[1]||[]).map(function(x){var m=manuscripts[String(x.manuscript_id)];return m?{id:x.manuscript_id,name:m.name}:{};}).filter(function(x){return x.name;});
-            render();
-          });
-      }
-    });
-}
-
-function goBack(){
-  // Simply navigate back through the view stack.
-  // The Home button handles going back to the home page.
-  // Filters and sorting remain intact when returning to list view.
-  var prev=viewStack.pop();
-  state.view=prev||"list";
-  render();
-}
+function goBack(){var prev=viewStack.pop();state.view=prev||"list";render();}
 function toggleFT(){state.showFT=!state.showFT;render();}
 function changePage(d){state.page+=d;loadLetters();}
 
-// ── EDIT LETTER ──────────────────────────────────────────────────────────────
-
-function openEdit(){
+// ── Edit form ─────────────────────────────────────────────────────────────────
+async function openEdit(){
   var l=state.selected;if(!l)return;
+  // Load role people for this letter
+  var rolePeople=await sq("letter_people?letter_id=eq."+l.id+"&select=person_id,role");
+  rolePeople=rolePeople||[];
+  // Load manuscripts for this letter
+  var lmss=await sq("letter_manuscripts?letter_id=eq."+l.id+"&select=manuscript_id");
+  lmss=lmss||[];
+
+  // Build role arrays, deduplicating author_id/recipient_id from letter_people
+  function buildRoleArr(role){
+    return rolePeople.filter(function(r){return r.role===role;}).map(function(r){return{id:r.person_id,name:pname(r.person_id)};}).filter(function(x){return x.name;});
+  }
+
+  var roleAuthors=buildRoleArr('author');
+  // If no letter_people authors but author_id set, seed from author_id
+  if(roleAuthors.length===0&&l.author_id&&pname(l.author_id)){
+    roleAuthors=[{id:l.author_id,name:pname(l.author_id)}];
+  }
+  var roleRecipients=buildRoleArr('recipient');
+  if(roleRecipients.length===0&&l.recipient_id&&pname(l.recipient_id)){
+    roleRecipients=[{id:l.recipient_id,name:pname(l.recipient_id)}];
+  }
+  var roleSubjects=buildRoleArr('subject');
+  var roleMentioned=rolePeople.filter(function(r){return !r.role||r.role==='mentioned';}).map(function(r){return{id:r.person_id,name:pname(r.person_id)};}).filter(function(x){return x.name;});
+  var roleMss=lmss.map(function(r){var m=manuscripts[String(r.manuscript_id)];return m?{id:r.manuscript_id,name:m.name}:null;}).filter(Boolean);
+
+  var instName="";
+  if(l.institution_id&&institutions[String(l.institution_id)]){
+    instName=institutions[String(l.institution_id)].name||"";
+  }
+
   state.editForm={
     id:l.id,
+    document_type:l.document_type||"Correspondence",
     title:l.title||"",
-    author_id:l.author_id||"",authorText:pname(l.author_id)||"",
-    recipient_id:l.recipient_id||"",recipientText:pname(l.recipient_id)||"",
     date_of_letter:l.date_of_letter||"",
+    date_from:l.date_from||"",
+    date_to:l.date_to||"",
     language:l.language||"",
     description:l.description||"",
     translation:l.translation||"",
     full_text:l.full_text||"",
-    sharing_link:l.sharing_link||""
+    sharing_link:l.sharing_link||"",
+    institution_id:l.institution_id||"",institutionText:instName,
+    publication_stage:l.publication_stage||"",
+    publication_venue:l.publication_venue||"",
+    amount:l.amount||"",
+    currency:l.currency||"",
+    photographer:l.photographer||"",
+    image_format:l.image_format||"",
+    condition_notes:l.condition_notes||"",
+    // Role arrays
+    roleAuthors:roleAuthors,
+    roleRecipients:roleRecipients,
+    roleSubjects:roleSubjects,
+    roleMentioned:roleMentioned,
+    roleMss:roleMss
   };
   state.editMsg="";
   viewStack.push(state.view);
@@ -502,15 +577,15 @@ function openEdit(){
 function openAddNew(){
   state.editForm={
     id:null,
+    document_type:"Correspondence",
     title:"",
-    author_id:"",authorText:"",
-    recipient_id:"",recipientText:"",
-    date_of_letter:"",
-    language:"",
-    description:"",
-    translation:"",
-    full_text:"",
-    sharing_link:""
+    date_of_letter:"",date_from:"",date_to:"",
+    language:"",description:"",translation:"",full_text:"",sharing_link:"",
+    institution_id:"",institutionText:"",
+    publication_stage:"",publication_venue:"",
+    amount:"",currency:"",
+    photographer:"",image_format:"",condition_notes:"",
+    roleAuthors:[],roleRecipients:[],roleSubjects:[],roleMentioned:[],roleMss:[]
   };
   state.editMsg="";
   viewStack.push(state.view);
@@ -518,40 +593,106 @@ function openAddNew(){
   render();
 }
 
-function efUpdate(field,value){
-  if(state.editForm)state.editForm[field]=value;
+function efUpdate(field,value){if(state.editForm)state.editForm[field]=value;}
+
+function efChangeType(val){
+  if(state.editForm)state.editForm.document_type=val;
+  render();
 }
 
-function efSelectPerson(role,id,name){
-  if(!state.editForm)return;
-  if(role==="author"){state.editForm.author_id=id;state.editForm.authorText=name;}
-  else{state.editForm.recipient_id=id;state.editForm.recipientText=name;}
-  var ddId=role==="author"?"eform-author-drop":"eform-recip-drop";
-  var dd=document.getElementById(ddId);if(dd)dd.classList.remove("open");
-  var inp=document.getElementById(role==="author"?"eform-author-inp":"eform-recip-inp");
-  if(inp)inp.value=name;
+// ── Edit form: add/remove role people ─────────────────────────────────────────
+function efRoleArray(role){
+  if(!state.editForm)return[];
+  if(role==='author')return state.editForm.roleAuthors;
+  if(role==='recipient')return state.editForm.roleRecipients;
+  if(role==='subject')return state.editForm.roleSubjects;
+  if(role==='mentioned')return state.editForm.roleMentioned;
+  return[];
 }
 
-function efPersonInput(role,val){
+function efAddRolePerson(role,id,name){
   if(!state.editForm)return;
-  if(role==="author"){state.editForm.authorText=val;if(!val)state.editForm.author_id="";}
-  else{state.editForm.recipientText=val;if(!val)state.editForm.recipient_id="";}
-  var ddId=role==="author"?"eform-author-drop":"eform-recip-drop";
+  var arr=efRoleArray(role);
+  // Avoid duplicate
+  for(var i=0;i<arr.length;i++){if(String(arr[i].id)===String(id))return;}
+  arr.push({id:id,name:name});
+  // Clear the input
+  var inp=document.getElementById("eform-"+role+"-inp");
+  if(inp){inp.value="";}
+  var dd=document.getElementById("eform-"+role+"-drop");
+  if(dd)dd.classList.remove("open");
+  render();
+}
+
+function efRemoveRolePerson(role,idx){
+  if(!state.editForm)return;
+  var arr=efRoleArray(role);
+  arr.splice(idx,1);
+  render();
+}
+
+function efAddPersonInput(role,val){
+  if(!state.editForm)return;
+  var ddId="eform-"+role+"-drop";
   var dd=document.getElementById(ddId);if(!dd)return;
-  var t=val.toLowerCase();
+  var t=(val||"").toLowerCase();
   var allP=allPeopleSorted();
-  var matches=val?allP.filter(function(p){return p.name.toLowerCase().indexOf(t)>=0;}):allP;
+  var matches=val?allP.filter(function(p){return p.name.toLowerCase().indexOf(t)>=0;}):allP.slice(0,30);
   dd.classList.add("open");
   dd.innerHTML=matches.slice(0,50).map(function(p){
-    return'<div class="form-ac-item" onmousedown="event.preventDefault();efSelectPerson(\''+role+'\',\''+p.id+'\',\''+p.name.replace(/\\/g,"\\\\").replace(/'/g,"\\'")+'\')">'+(p.name)+'</div>';
+    return'<div class="form-ac-item" onmousedown="event.preventDefault();efAddRolePerson(\''+role+'\',\''+p.id+'\',\''+p.name.replace(/\\/g,"\\\\").replace(/'/g,"\\'")+'\')">'+p.name+'</div>';
   }).join("")||'<div class="form-ac-item" style="color:#999">No matches</div>';
 }
 
+// ── Edit form: manuscripts mentioned ─────────────────────────────────────────
+function efAddRoleMs(id,name){
+  if(!state.editForm)return;
+  var arr=state.editForm.roleMss;
+  for(var i=0;i<arr.length;i++){if(String(arr[i].id)===String(id))return;}
+  arr.push({id:id,name:name});
+  var inp=document.getElementById("eform-ms-inp");if(inp)inp.value="";
+  var dd=document.getElementById("eform-ms-drop");if(dd)dd.classList.remove("open");
+  render();
+}
+function efRemoveRoleMs(idx){
+  if(!state.editForm)return;
+  state.editForm.roleMss.splice(idx,1);
+  render();
+}
+function efAddMsInput(val){
+  var dd=document.getElementById("eform-ms-drop");if(!dd)return;
+  var t=(val||"").toLowerCase();
+  var opts=val?allManuscriptOpts.filter(function(o){return o.name.toLowerCase().indexOf(t)>=0;}):allManuscriptOpts.slice(0,30);
+  dd.classList.add("open");
+  dd.innerHTML=opts.slice(0,50).map(function(o){
+    return'<div class="form-ac-item" onmousedown="event.preventDefault();efAddRoleMs('+o.id+',\''+o.name.replace(/\\/g,"\\\\").replace(/'/g,"\\'")+'\')">'+o.name+'</div>';
+  }).join("")||'<div class="form-ac-item" style="color:#999">No matches</div>';
+}
+
+// ── Edit form: institution ────────────────────────────────────────────────────
+function efInstitutionInput(val){
+  if(state.editForm){state.editForm.institutionText=val;if(!val)state.editForm.institution_id="";}
+  var dd=document.getElementById("eform-inst-drop");if(!dd)return;
+  var t=(val||"").toLowerCase();
+  var opts=val?allInstitutionOpts.filter(function(o){return o.name.toLowerCase().indexOf(t)>=0;}):allInstitutionOpts.slice(0,30);
+  dd.classList.add("open");
+  dd.innerHTML=opts.slice(0,50).map(function(o){
+    return'<div class="form-ac-item" onmousedown="event.preventDefault();efSelectInstitution('+o.id+',\''+o.name.replace(/\\/g,"\\\\").replace(/'/g,"\\'")+'\')">'+o.name+'</div>';
+  }).join("")||'<div class="form-ac-item" style="color:#999">No matches</div>';
+}
+function efSelectInstitution(id,name){
+  if(state.editForm){state.editForm.institution_id=id;state.editForm.institutionText=name;}
+  var inp=document.getElementById("eform-inst-inp");if(inp)inp.value=name;
+  var dd=document.getElementById("eform-inst-drop");if(dd)dd.classList.remove("open");
+}
+
+// ── Click-outside to close dropdowns ─────────────────────────────────────────
 document.addEventListener("click",function(e){
   if(!e.target.closest("#ms-inp")&&!e.target.closest("#ms-drop")){var msd=document.getElementById("ms-drop");if(msd)msd.classList.remove("open");}
   if(!e.target.closest(".form-ac-wrap")){
-    var ad=document.getElementById("eform-author-drop");var rd=document.getElementById("eform-recip-drop");
-    if(ad)ad.classList.remove("open");if(rd)rd.classList.remove("open");
+    ["eform-author-drop","eform-recip-drop","eform-subject-drop","eform-mentioned-drop","eform-ms-drop","eform-inst-drop"].forEach(function(id){
+      var el=document.getElementById(id);if(el)el.classList.remove("open");
+    });
   }
   if(!e.target.closest(".ac-wrap")){
     var ad2=document.getElementById("author-drop");var rd2=document.getElementById("recip-drop");
@@ -559,114 +700,137 @@ document.addEventListener("click",function(e){
   }
 });
 
-function saveLetter(){
+// ── Save letter ───────────────────────────────────────────────────────────────
+async function saveLetter(){
   var f=state.editForm;if(!f)return;
   state.editSaving=true;state.editMsg="";render();
+
   var payload={
     title:f.title||null,
-    author_id:f.author_id||null,
-    recipient_id:f.recipient_id||null,
+    document_type:f.document_type||null,
+    // Primary author/recipient from first in role arrays (for search compat)
+    author_id:(f.roleAuthors&&f.roleAuthors.length>0)?f.roleAuthors[0].id:null,
+    recipient_id:(f.roleRecipients&&f.roleRecipients.length>0)?f.roleRecipients[0].id:(f.roleSubjects&&f.roleSubjects.length>0)?f.roleSubjects[0].id:null,
     date_of_letter:f.date_of_letter||null,
+    date_from:f.date_from||null,
+    date_to:f.date_to||null,
     language:f.language||null,
     description:f.description||null,
     translation:f.translation||null,
     full_text:f.full_text||null,
-    sharing_link:f.sharing_link||null
+    sharing_link:f.sharing_link||null,
+    institution_id:f.institution_id||null,
+    publication_stage:f.publication_stage||null,
+    publication_venue:f.publication_venue||null,
+    amount:f.amount?parseFloat(f.amount):null,
+    currency:f.currency||null,
+    photographer:f.photographer||null,
+    image_format:f.image_format||null,
+    condition_notes:f.condition_notes||null
   };
 
   var isAdd=(state.view==="add");
-  var url,method;
-  if(isAdd){
-    url=SURL+"/letters";method="POST";
-  } else {
-    url=SURL+"/letters?id=eq."+f.id;method="PATCH";
-  }
+  var url=isAdd?SURL+"/letters":SURL+"/letters?id=eq."+f.id;
+  var method=isAdd?"POST":"PATCH";
 
-  fetch(url,{
-    method:method,
-    headers:Object.assign({},SH,{"Content-Type":"application/json","Prefer":"return=representation"}),
-    body:JSON.stringify(payload)
-  }).then(function(r){
+  try{
+    var r=await fetch(url,{
+      method:method,
+      headers:Object.assign({},SH,{"Content-Type":"application/json","Prefer":"return=representation"}),
+      body:JSON.stringify(payload)
+    });
     if(!r.ok)throw new Error("HTTP "+r.status);
-    return r.json();
-  }).then(function(data){
-    state.editSaving=false;
-    state.editMsg="success";
-    // Update selected letter if editing
+    var data=await r.json();
+    var savedId=(data&&data.length>0)?data[0].id:f.id;
+
+    // Sync role people and manuscripts
+    await syncRolePeople(savedId,f);
+    await syncRoleMss(savedId,f);
+
+    state.editSaving=false;state.editMsg="success";
     if(!isAdd&&data&&data.length>0){
       state.selected=data[0];
-      // Also update in letters array
-      for(var i=0;i<state.letters.length;i++){
-        if(state.letters[i].id===f.id){state.letters[i]=data[0];break;}
-      }
+      for(var i=0;i<state.letters.length;i++){if(state.letters[i].id===f.id){state.letters[i]=data[0];break;}}
     }
-    if(isAdd&&data&&data.length>0){
-      state.selected=data[0];
-      state.letters=[data[0]];
-    }
+    if(isAdd&&data&&data.length>0){state.selected=data[0];state.letters=[data[0]];}
     render();
-    // Auto-navigate back to detail after 1.2s
     setTimeout(function(){
       state.view="detail";
       state.showFT=false;state.selectedPeople=[];state.selectedManuscripts=[];
+      state.roleAuthors=[];state.roleRecipients=[];state.roleSubjects=[];
       render();
       if(state.selected){
         var lid=state.selected.id;
-        Promise.all([sq("letter_people?letter_id=eq."+lid+"&select=person_id"),sq("letter_manuscripts?letter_id=eq."+lid+"&select=manuscript_id")])
+        Promise.all([loadRolePeople(lid),sq("letter_manuscripts?letter_id=eq."+lid+"&select=manuscript_id")])
           .then(function(res){
-            state.selectedPeople=(res[0]||[]).map(function(r){return{id:r.person_id,name:pname(r.person_id)};}).filter(function(x){return x.name;});
             state.selectedManuscripts=(res[1]||[]).map(function(r){var m=manuscripts[String(r.manuscript_id)];return m?{id:r.manuscript_id,name:m.name}:{};}).filter(function(x){return x.name;});
             render();
           });
       }
     },1200);
-  }).catch(function(err){
-    state.editSaving=false;
-    state.editMsg="error: "+err.message;
-    render();
-  });
+  }catch(err){
+    state.editSaving=false;state.editMsg="error: "+err.message;render();
+  }
 }
 
-// ── RENDER HELPERS ─────────────────────────────────────────────────────────
-
-var DOC_TYPES=["Correspondence","Financial Document","Legal Document","Scholarly Work","Manuscript Record","Institutional Record","Interview / Oral History","Journal / Diary","Press / Media","Manuscript Image","Literary Manuscript"];
-var LANGS=["English","French","German","Latin","Italian","Spanish","Coptic","Greek","Arabic","Dutch","Hebrew"];
-
-function miniLetterRow(l,showAuthor){
-  var who=showAuthor?pname(l.author_id):pname(l.recipient_id);
-  var label=showAuthor?"From: ":"To: ";
-  return'<div class="mini-letter" onclick="openLetterById('+l.id+')">'
-    +'<div class="mini-letter-info">'+label+(who||"Unknown")+(l.description?' &mdash; '+l.description.substring(0,80)+(l.description.length>80?"...":""):"")+'</div>'
-    +'<div class="mini-letter-date">'+fdate(l.date_of_letter)+'</div>'
-    +'</div>';
+async function syncRolePeople(letterId,f){
+  var managedRoles=['author','recipient','subject','mentioned'];
+  for(var i=0;i<managedRoles.length;i++){
+    var role=managedRoles[i];
+    var filter=role==='mentioned'?
+      "letter_people?letter_id=eq."+letterId+"&or=(role.is.null,role.eq.mentioned)":
+      "letter_people?letter_id=eq."+letterId+"&role=eq."+role;
+    await fetch(SURL+"/"+filter,{method:"DELETE",headers:SH});
+  }
+  var toInsert=[];
+  (f.roleAuthors||[]).forEach(function(p){toInsert.push({letter_id:letterId,person_id:p.id,role:'author'});});
+  (f.roleRecipients||[]).forEach(function(p){toInsert.push({letter_id:letterId,person_id:p.id,role:'recipient'});});
+  (f.roleSubjects||[]).forEach(function(p){toInsert.push({letter_id:letterId,person_id:p.id,role:'subject'});});
+  (f.roleMentioned||[]).forEach(function(p){toInsert.push({letter_id:letterId,person_id:p.id,role:'mentioned'});});
+  if(toInsert.length>0){
+    await fetch(SURL+"/letter_people",{method:"POST",headers:Object.assign({},SH,{"Content-Type":"application/json","Prefer":"return=minimal"}),body:JSON.stringify(toInsert)});
+  }
 }
 
-function onAuthorInput(v){
-  state.authorText=v;if(!v)state.authorId="";
-  var dd=document.getElementById("author-drop");if(!dd)return;
-  dd.classList.add("open");
-  var opts=filteredAuthorOpts();
-  dd.innerHTML=opts.length===0?'<div class="ac-item" style="color:#999;font-style:italic">No results</div>':opts.map(function(o){return'<div class="ac-item'+(o.id==state.authorId?" selected-item":"")+'" onmousedown="event.preventDefault();selectAuthor(\''+o.id+'\',\''+o.name.replace(/\\/g,"\\\\").replace(/'/g,"\\'")+'\')">'+o.name+'</div>';}).join("");
+async function syncRoleMss(letterId,f){
+  await fetch(SURL+"/letter_manuscripts?letter_id=eq."+letterId,{method:"DELETE",headers:SH});
+  var toInsert=(f.roleMss||[]).map(function(m){return{letter_id:letterId,manuscript_id:m.id};});
+  if(toInsert.length>0){
+    await fetch(SURL+"/letter_manuscripts",{method:"POST",headers:Object.assign({},SH,{"Content-Type":"application/json","Prefer":"return=minimal"}),body:JSON.stringify(toInsert)});
+  }
 }
-function onRecipInput(v){
-  state.recipientText=v;if(!v)state.recipientId="";
-  var dd=document.getElementById("recip-drop");if(!dd)return;
-  dd.classList.add("open");
-  var opts=filteredRecipOpts();
-  dd.innerHTML=opts.length===0?'<div class="ac-item" style="color:#999;font-style:italic">No results</div>':opts.map(function(o){return'<div class="ac-item'+(o.id==state.recipientId?" selected-item":"")+'" onmousedown="event.preventDefault();selectRecip(\''+o.id+'\',\''+o.name.replace(/\\/g,"\\\\").replace(/'/g,"\\'")+'\')">'+o.name+'</div>';}).join("");
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+function init(){
+  var params=new URLSearchParams(window.location.search);
+  var action=params.get("action");
+  if(action==="nodesc"){state.noDesc=true;}
+  else if(action==="notype"){state.notype=true;}
+  else if(action==="dupes"){
+    Promise.all([loadPeople(),loadManuscripts(),loadInstitutions()]).then(function(){
+      return sqCount("letters?select=id");
+    }).then(function(count){state.totalCount=count;state.filteredCount=count;return Promise.all([buildAuthorOpts(),buildRecipOpts()]);})
+    .then(function(){openDuplicates();});
+    return;
+  }
+  else if(action==="add"){
+    Promise.all([loadPeople(),loadManuscripts(),loadInstitutions()]).then(function(){openAddNew();});
+    return;
+  }
+  Promise.all([loadPeople(),loadManuscripts(),loadInstitutions()])
+    .then(function(){return sqCount("letters?select=id");})
+    .then(function(count){state.totalCount=count;state.filteredCount=count;render();return Promise.all([buildAuthorOpts(),buildRecipOpts()]);})
+    .then(function(){return loadLetters();});
 }
-function onAuthorKey(e){if(e.key==="Escape"){var dd=document.getElementById("author-drop");if(dd)dd.classList.remove("open");}if(e.key==="Enter"){var opts=filteredAuthorOpts();if(opts.length>0)selectAuthor(opts[0].id,opts[0].name);}}
-function onRecipKey(e){if(e.key==="Escape"){var dd=document.getElementById("recip-drop");if(dd)dd.classList.remove("open");}if(e.key==="Enter"){var opts=filteredRecipOpts();if(opts.length>0)selectRecip(opts[0].id,opts[0].name);}}
 
-// ── RENDER VIEWS ────────────────────────────────────────────────────────────
-
+// ── Render: list ──────────────────────────────────────────────────────────────
 function renderList(){
   var hasFilter=state.authorId||state.recipientId||state.dateFrom||state.dateTo||state.language||state.docType||state.descSearch||state.textSearch||state.noDesc||state.notype||state.manuscriptId;
   var displayCount=hasFilter?state.filteredCount.toLocaleString():state.totalCount.toLocaleString();
   var aOpts=filteredAuthorOpts();var rOpts=filteredRecipOpts();
 
   var html='<div class="header"><h1>&#x1F3F4;&#x200D;&#x2620;&#xFE0F; Papyrates Database</h1>'
-    +'<div class="header-right"><span class="count">'+displayCount+' letters</span>'
+    +'<div class="header-right"><span class="count">'+displayCount+' documents</span>'
     +'<a class="home-btn" href="/">&#8962; Home</a>'
     +'</div></div>';
 
@@ -690,7 +854,7 @@ function renderList(){
   html+='<div class="ac-wrap"><input class="ac-input" id="ms-inp" type="text" placeholder="Type to search manuscripts..." value="'+state.manuscriptText.replace(/"/g,"&quot;")+'" oninput="onManuscriptInput(this.value)" onfocus="document.getElementById(\'ms-drop\').classList.add(\'open\')" autocomplete="off">';
   if(state.manuscriptText)html+='<button class="ac-clear" onclick="clearManuscript()">x</button>';
   html+='<div class="ac-dropdown" id="ms-drop">';
-  html+=msOpts.length===0?'<div class="ac-item" style="color:#999">Type to search...</div>':msOpts.map(function(o){return'<div class="ac-item"'+' onmousedown="event.preventDefault();selectManuscript('+o.id+',\''+o.name.replace(/\\/g,"\\\\").replace(/'/g,"\\'")+'\')">'+o.name+'</div>';}).join("");
+  html+=msOpts.length===0?'<div class="ac-item" style="color:#999">Type to search...</div>':msOpts.map(function(o){return'<div class="ac-item" onmousedown="event.preventDefault();selectManuscript('+o.id+',\''+o.name.replace(/\\/g,"\\\\").replace(/'/g,"\\'")+'\')">'+o.name+'</div>';}).join("");
   html+='</div></div>';
   if(state.manuscriptId)html+='<span style="color:rgba(255,255,255,0.7);font-size:11px;flex-shrink:0">'+(state.manuscriptLetterIds===null?'Loading...':(state.manuscriptLetterIds.length+' docs'))+'</span>';
   html+='</div>';
@@ -702,9 +866,7 @@ function renderList(){
   html+='<div class="filter-row"><span class="filter-label">Doc type:</span>'+_dtSel+_ndBtn+_ntBtn+'</div>';
   html+='<div class="filter-row"><span class="filter-label">Date from:</span><input type="date" class="date-input" value="'+state.dateFrom+'" onchange="onFilter(\'dateFrom\',this.value)"><span style="color:rgba(255,255,255,0.7);font-size:12px;flex-shrink:0">to</span><input type="date" class="date-input" value="'+state.dateTo+'" onchange="onFilter(\'dateTo\',this.value)"></div>';
   html+='<div class="filter-row"><span class="filter-label">Description:</span><input class="filter-input" placeholder="Search descriptions..." value="'+state.descSearch+'" oninput="onSearch(\'descSearch\',this.value)"></div>';
-  html+='<div class="filter-row"><span class="filter-label">Full text:</span><input class="filter-input" placeholder="Search OCR text..." value="'+state.textSearch+'" oninput="onSearch(\'textSearch\',this.value)">'
-
-    +'<button class="clear-btn" onclick="doClear()">Clear all</button></div>';
+  html+='<div class="filter-row"><span class="filter-label">Full text:</span><input class="filter-input" placeholder="Search OCR text..." value="'+state.textSearch+'" oninput="onSearch(\'textSearch\',this.value)"><button class="clear-btn" onclick="doClear()">Clear all</button></div>';
   html+='</div>';
 
   html+='<div class="results-header"><span class="results-count">'+(state.loading?"Searching...":(displayCount+" results"))+'</span></div>';
@@ -713,14 +875,14 @@ function renderList(){
 }
 
 function renderRows(){
-  if(!state.letters.length)return'<div class="no-results">No letters found.</div>';
+  if(!state.letters.length)return'<div class="no-results">No documents found.</div>';
   var totalPages=Math.ceil(state.filteredCount/state.pageSize)||1;
-  var html='<div class="col-headers"><span>Author</span><span>Recipient</span><span>Date</span><span></span></div>';
+  var html='<div class="col-headers"><span>Author / Creator</span><span>Recipient / Subject</span><span>Date</span><span></span></div>';
   html+=state.letters.map(function(l,i){
     return'<div class="letter-row" onclick="openLetter('+i+')">'
       +'<span class="letter-name">'+(pname(l.author_id)||l.title||"&mdash;")+'</span>'
       +'<span class="letter-name">'+(pname(l.recipient_id)||"&mdash;")+'</span>'
-      +'<span class="letter-date">'+(fdate(l.date_of_letter)||"&mdash;")+'</span>'
+      +'<span class="letter-date">'+(fdate(l.date_of_letter)||fdate(l.date_from)||"&mdash;")+'</span>'
       +'<span class="arrow">&#x203A;</span>'
       +'</div>';
   }).join("");
@@ -733,35 +895,104 @@ function renderRows(){
   return html;
 }
 
+// ── Render: detail ────────────────────────────────────────────────────────────
 function renderDetail(){
   var l=state.selected;if(!l)return"";
+  var dt=l.document_type||"Correspondence";
+  var cfg=TYPE_CONFIG[dt]||TYPE_CONFIG["Correspondence"];
   var hasPdf=l.sharing_link&&l.sharing_link.trim();
+
   var html='<div class="detail-header"><button class="back-btn" onclick="goBack()">&#8592; Back</button>'
-    +'<span style="font-size:16px;font-weight:500">Letter Detail</span>'
+    +'<span style="font-size:15px;font-weight:500">Document Detail</span>'
     +(getPapyratesTier()==='readonly'?'<span style="width:80px"></span>':'<button class="edit-btn" onclick="openEdit()">&#9998; Edit</button>')
     +'</div>';
   html+='<div class="detail-body">';
-  html+='<div class="field-label">Author</div><div class="field-value"><span class="tag" onclick="openPerson('+l.author_id+')">'+(pname(l.author_id)||l.title||"Unknown")+'</span></div>';
-  html+='<div class="field-label">Recipient</div><div class="field-value"><span class="tag" onclick="openPerson('+l.recipient_id+')">'+(pname(l.recipient_id)||"Unknown")+'</span></div>';
-  html+='<div class="field-label">Date of Letter</div><div class="field-value">'+(fdate(l.date_of_letter)||"Unknown")+'</div>';
+
+  // Document type badge
+  html+='<div class="field-label">Document Type</div><div class="field-value"><span class="doc-type-badge">'+escHtml(dt)+'</span></div>';
+
+  // Title
+  if(l.title)html+='<div class="field-label">Title / Reference</div><div class="field-value">'+escHtml(l.title)+'</div>';
+
+  // Authors
+  if(cfg.showAuthor){
+    var authors=[];
+    var seenIds={};
+    // From role array (preferred)
+    (state.roleAuthors||[]).forEach(function(p){if(!seenIds[p.id]){seenIds[p.id]=true;authors.push(p);}});
+    // Fallback to author_id if no role entries
+    if(authors.length===0&&l.author_id&&pname(l.author_id)){authors.push({id:l.author_id,name:pname(l.author_id)});}
+    if(authors.length>0){
+      html+='<div class="field-label">'+escHtml(cfg.authorLabel)+'</div><div class="field-value">';
+      authors.forEach(function(p){html+='<span class="tag" onclick="openPerson('+p.id+')">'+escHtml(p.name)+'</span>';});
+      html+='</div>';
+    }
+  }
+
+  // Recipients / Subjects
+  if(cfg.showRecipient){
+    var recArr=dt==="Interview / Oral History"?state.roleSubjects:state.roleRecipients;
+    var recFallbackId=l.recipient_id;
+    var recipients=[];var seenRIds={};
+    (recArr||[]).forEach(function(p){if(!seenRIds[p.id]){seenRIds[p.id]=true;recipients.push(p);}});
+    if(recipients.length===0&&recFallbackId&&pname(recFallbackId)){recipients.push({id:recFallbackId,name:pname(recFallbackId)});}
+    if(recipients.length>0){
+      html+='<div class="field-label">'+escHtml(cfg.recipientLabel)+'</div><div class="field-value">';
+      recipients.forEach(function(p){html+='<span class="tag" onclick="openPerson('+p.id+')">'+escHtml(p.name)+'</span>';});
+      html+='</div>';
+    }
+  }
+
+  // Date
+  if(cfg.showDate&&l.date_of_letter){
+    html+='<div class="field-label">Date</div><div class="field-value">'+fdate(l.date_of_letter)+'</div>';
+  }
+  if(cfg.showDateRange&&(l.date_from||l.date_to)){
+    html+='<div class="field-label">Date Range</div><div class="field-value">'+(fdate(l.date_from)||"Unknown")+(l.date_to?' — '+fdate(l.date_to):'')+'</div>';
+  }
+
+  // Institution
+  if(l.institution_id&&institutions[String(l.institution_id)]){
+    html+='<div class="field-label">Institution</div><div class="field-value">'+escHtml(institutions[String(l.institution_id)].name||"")+'</div>';
+  }
+
+  // Publication fields
+  if(l.publication_venue)html+='<div class="field-label">Publication Venue</div><div class="field-value">'+escHtml(l.publication_venue)+'</div>';
+  if(l.publication_stage)html+='<div class="field-label">Publication Stage</div><div class="field-value">'+escHtml(l.publication_stage)+'</div>';
+
+  // Financial fields
+  if(l.amount)html+='<div class="field-label">Amount</div><div class="field-value">'+escHtml(String(l.amount))+(l.currency?' '+escHtml(l.currency):'')+'</div>';
+
+  // Image fields
+  if(l.photographer)html+='<div class="field-label">Photographer</div><div class="field-value">'+escHtml(l.photographer)+'</div>';
+  if(l.image_format)html+='<div class="field-label">Image Format</div><div class="field-value">'+escHtml(l.image_format)+'</div>';
+  if(l.condition_notes)html+='<div class="field-label">Condition Notes</div><div class="field-value">'+escHtml(l.condition_notes)+'</div>';
+
   html+='<div class="divider"></div>';
-  if(l.description)html+='<div class="field-label">Description</div><div class="field-value">'+l.description+'</div>';
-  if(l.translation)html+='<div class="field-label">Translation</div><div class="field-value">'+l.translation+'</div>';
-  if(l.language)html+='<div class="field-label">Language</div><div class="field-value">'+l.language+'</div>';
+
+  if(l.language)html+='<div class="field-label">Language</div><div class="field-value">'+escHtml(l.language)+'</div>';
+  if(l.description)html+='<div class="field-label">Description</div><div class="field-value">'+escHtml(l.description)+'</div>';
+  if(l.translation)html+='<div class="field-label">Translation</div><div class="field-value">'+escHtml(l.translation)+'</div>';
+
+  // People mentioned
   if(state.selectedPeople&&state.selectedPeople.length>0){
     html+='<div class="field-label">People Mentioned</div><div class="field-value">';
-    html+=state.selectedPeople.map(function(p){return'<span class="tag" onclick="openPerson('+p.id+')">'+p.name+'</span>';}).join("");
+    state.selectedPeople.forEach(function(p){html+='<span class="tag" onclick="openPerson('+p.id+')">'+escHtml(p.name)+'</span>';});
     html+='</div>';
   }
+
+  // Manuscripts mentioned
   if(state.selectedManuscripts&&state.selectedManuscripts.length>0){
-    html+='<div class="field-label">Papyri Mentioned</div><div class="field-value">';
-    html+=state.selectedManuscripts.map(function(m){return'<span class="tag" onclick="openManuscript('+m.id+')">'+m.name+'</span>';}).join("");
+    html+='<div class="field-label">Papyri / Manuscripts Mentioned</div><div class="field-value">';
+    state.selectedManuscripts.forEach(function(m){html+='<span class="tag" onclick="openManuscript('+m.id+')">'+escHtml(m.name)+'</span>';});
     html+='</div>';
   }
+
   html+='<div class="divider"></div>';
   html+='<div class="field-label">Original Document</div><div class="field-value">';
   html+=hasPdf?'<a class="pdf-btn" href="'+l.sharing_link+'" target="_blank">&#128196; View Original PDF</a>':'<span class="no-pdf">&#128196; No PDF available</span>';
   html+='</div>';
+
   if(l.full_text){
     html+='<div class="divider"></div><div class="field-label">OCR Full Text</div>';
     html+='<button class="fulltext-toggle" onclick="toggleFT()">'+(state.showFT?"Hide text":"Show OCR text")+'</button>';
@@ -771,87 +1002,187 @@ function renderDetail(){
   return html;
 }
 
+// ── Render: edit form ─────────────────────────────────────────────────────────
 function renderEditForm(isAdd){
   var f=state.editForm;if(!f)return"";
-  var title=isAdd?"Add New Letter":"Edit Letter";
+  var dt=f.document_type||"Correspondence";
+  var cfg=TYPE_CONFIG[dt]||TYPE_CONFIG["Correspondence"];
+  var formTitle=isAdd?"Add New Document":"Edit Document";
+
   var html='<div class="detail-header"><button class="back-btn" onclick="goBack()">&#8592; Back</button>'
-    +'<span style="font-size:16px;font-weight:500">'+title+'</span>'
-    +'<span></span>'
-    +'</div>';
+    +'<span style="font-size:15px;font-weight:500">'+formTitle+'</span><span></span></div>';
   html+='<div class="edit-body">';
 
-  // Title
+  // ── Document Type (drives everything) ──
+  html+='<div class="form-field"><label class="form-label">Document Type</label>'
+    +'<select class="form-select" onchange="efChangeType(this.value)">'
+    +DOC_TYPES.map(function(t){return'<option value="'+t+'"'+(dt===t?' selected':'')+'>'+t+'</option>';}).join("")
+    +'</select></div>';
+
+  // ── Title ──
   html+='<div class="form-field"><label class="form-label">Title / Reference</label>'
-    +'<input class="form-input" type="text" value="'+esc(f.title)+'" oninput="efUpdate(\'title\',this.value)" placeholder="e.g. Letter #1234"></div>';
+    +'<input class="form-input" type="text" value="'+esc(f.title)+'" oninput="efUpdate(\'title\',this.value)" placeholder="e.g. Letter #1234 or document reference"></div>';
 
-  // Author
-  html+='<div class="form-field"><label class="form-label">Author</label>'
-    +'<div class="form-ac-wrap">'
-    +'<input class="form-input" id="eform-author-inp" type="text" value="'+esc(f.authorText)+'" placeholder="Type name to search..." oninput="efPersonInput(\'author\',this.value)" onfocus="efPersonInput(\'author\',this.value)" autocomplete="off">'
-    +'<div class="form-ac-drop" id="eform-author-drop"></div>'
-    +'</div></div>';
+  // ── Author / Creator ──
+  if(cfg.showAuthor){
+    html+='<div class="form-field"><label class="form-label">'+escHtml(cfg.authorLabel)+' <span style="font-weight:normal;color:#aaa;font-size:10px">(add multiple)</span></label>';
+    html+='<div class="role-tags">';
+    (f.roleAuthors||[]).forEach(function(p,i){
+      html+='<span class="role-person-tag">'+escHtml(p.name)+'<button class="remove-tag" onclick="efRemoveRolePerson(\'author\','+i+')">&#215;</button></span>';
+    });
+    html+='</div>';
+    html+='<div class="add-person-row"><div class="form-ac-wrap" style="flex:1">'
+      +'<input class="form-input" id="eform-author-inp" type="text" placeholder="Type name to search and add..." oninput="efAddPersonInput(\'author\',this.value)" onfocus="efAddPersonInput(\'author\',this.value)" autocomplete="off">'
+      +'<div class="form-ac-drop" id="eform-author-drop"></div>'
+      +'</div></div></div>';
+  }
 
-  // Recipient
-  html+='<div class="form-field"><label class="form-label">Recipient</label>'
-    +'<div class="form-ac-wrap">'
-    +'<input class="form-input" id="eform-recip-inp" type="text" value="'+esc(f.recipientText)+'" placeholder="Type name to search..." oninput="efPersonInput(\'recipient\',this.value)" onfocus="efPersonInput(\'recipient\',this.value)" autocomplete="off">'
-    +'<div class="form-ac-drop" id="eform-recip-drop"></div>'
-    +'</div></div>';
+  // ── Recipient / Subject / Interviewee ──
+  if(cfg.showRecipient){
+    var recRole=dt==="Interview / Oral History"?"subject":"recipient";
+    var recArr=recRole==="subject"?(f.roleSubjects||[]):(f.roleRecipients||[]);
+    html+='<div class="form-field"><label class="form-label">'+escHtml(cfg.recipientLabel)+' <span style="font-weight:normal;color:#aaa;font-size:10px">(add multiple)</span></label>';
+    html+='<div class="role-tags">';
+    recArr.forEach(function(p,i){
+      html+='<span class="role-person-tag">'+escHtml(p.name)+'<button class="remove-tag" onclick="efRemoveRolePerson(\''+recRole+'\','+i+')">&#215;</button></span>';
+    });
+    html+='</div>';
+    html+='<div class="add-person-row"><div class="form-ac-wrap" style="flex:1">'
+      +'<input class="form-input" id="eform-'+recRole+'-inp" type="text" placeholder="Type name to search and add..." oninput="efAddPersonInput(\''+recRole+'\',this.value)" onfocus="efAddPersonInput(\''+recRole+'\',this.value)" autocomplete="off">'
+      +'<div class="form-ac-drop" id="eform-'+recRole+'-drop"></div>'
+      +'</div></div></div>';
+  }
 
-  // Date
-  html+='<div class="form-field"><label class="form-label">Date of Letter</label>'
-    +'<input class="form-input" type="date" value="'+esc(f.date_of_letter)+'" onchange="efUpdate(\'date_of_letter\',this.value)"></div>';
+  // ── Date ──
+  if(cfg.showDate){
+    html+='<div class="form-field"><label class="form-label">Date <span style="font-weight:normal;color:#aaa;font-size:10px">(optional)</span></label>'
+      +'<input class="form-input" type="date" value="'+esc(f.date_of_letter)+'" onchange="efUpdate(\'date_of_letter\',this.value)"></div>';
+  }
+  // ── Date Range (Journal/Diary) ──
+  if(cfg.showDateRange){
+    html+='<div class="form-field"><label class="form-label">Date From <span style="font-weight:normal;color:#aaa;font-size:10px">(optional)</span></label>'
+      +'<input class="form-input" type="date" value="'+esc(f.date_from)+'" onchange="efUpdate(\'date_from\',this.value)"></div>';
+    html+='<div class="form-field"><label class="form-label">Date To <span style="font-weight:normal;color:#aaa;font-size:10px">(optional)</span></label>'
+      +'<input class="form-input" type="date" value="'+esc(f.date_to)+'" onchange="efUpdate(\'date_to\',this.value)"></div>';
+  }
 
-  // Language
+  // ── Institution ──
+  if(cfg.showInstitution){
+    html+='<div class="form-field"><label class="form-label">Institution</label>'
+      +'<div class="form-ac-wrap">'
+      +'<input class="form-input" id="eform-inst-inp" type="text" value="'+esc(f.institutionText)+'" placeholder="Type to search institutions..." oninput="efInstitutionInput(this.value)" onfocus="efInstitutionInput(this.value)" autocomplete="off">'
+      +'<div class="form-ac-drop" id="eform-inst-drop"></div>'
+      +'</div></div>';
+  }
+
+  // ── Publication fields ──
+  if(cfg.showPublication){
+    html+='<div class="form-field"><label class="form-label">Publication Venue <span style="font-weight:normal;color:#aaa;font-size:10px">(journal, newspaper, conference…)</span></label>'
+      +'<input class="form-input" type="text" value="'+esc(f.publication_venue)+'" oninput="efUpdate(\'publication_venue\',this.value)" placeholder="e.g. Journal of Papyrology"></div>';
+    html+='<div class="form-field"><label class="form-label">Publication Stage</label>'
+      +'<select class="form-select" onchange="efUpdate(\'publication_stage\',this.value)">'
+      +'<option value="">— Select —</option>'
+      +PUB_STAGES.map(function(s){return'<option value="'+s+'"'+(f.publication_stage===s?' selected':'')+'>'+s+'</option>';}).join("")
+      +'</select></div>';
+  }
+
+  // ── Financial fields ──
+  if(cfg.showFinancial){
+    html+='<div class="form-field"><label class="form-label">Amount</label>'
+      +'<input class="form-input" type="number" step="0.01" value="'+esc(String(f.amount||''))+'" oninput="efUpdate(\'amount\',this.value)" placeholder="0.00"></div>';
+    html+='<div class="form-field"><label class="form-label">Currency</label>'
+      +'<input class="form-input" type="text" value="'+esc(f.currency)+'" oninput="efUpdate(\'currency\',this.value)" placeholder="USD, GBP, EGP, CHF…"></div>';
+  }
+
+  // ── Image fields ──
+  if(cfg.showImageFields){
+    html+='<div class="form-field"><label class="form-label">Photographer</label>'
+      +'<input class="form-input" type="text" value="'+esc(f.photographer)+'" oninput="efUpdate(\'photographer\',this.value)"></div>';
+    html+='<div class="form-field"><label class="form-label">Image Format</label>'
+      +'<input class="form-input" type="text" value="'+esc(f.image_format)+'" oninput="efUpdate(\'image_format\',this.value)" placeholder="JPEG, TIFF, PDF…"></div>';
+    html+='<div class="form-field"><label class="form-label">Condition Notes</label>'
+      +'<textarea class="form-textarea" rows="3" oninput="efUpdate(\'condition_notes\',this.value)" placeholder="Notes on physical condition…">'+escText(f.condition_notes)+'</textarea></div>';
+  }
+
+  // ── Language (all types) ──
   html+='<div class="form-field"><label class="form-label">Language</label>'
     +'<select class="form-select" onchange="efUpdate(\'language\',this.value)">'
     +'<option value="">— Select —</option>'
-    +LANGS.map(function(l){return'<option value="'+l+'"'+(f.language===l?" selected":"")+'>'+l+'</option>';}).join("")
+    +LANGS.map(function(l){return'<option value="'+l+'"'+(f.language===l?' selected':'')+'>'+l+'</option>';}).join("")
     +'</select></div>';
 
-  // Description
+  // ── Description (all types) ──
   html+='<div class="form-field"><label class="form-label">Description</label>'
-    +'<textarea class="form-textarea" rows="4" oninput="efUpdate(\'description\',this.value)" placeholder="Brief description of the letter content...">'+escText(f.description)+'</textarea></div>';
+    +'<textarea class="form-textarea" rows="4" oninput="efUpdate(\'description\',this.value)" placeholder="Brief description of the content…">'+escText(f.description)+'</textarea></div>';
 
-  // Translation
+  // ── Translation (all types) ──
   html+='<div class="form-field"><label class="form-label">Translation</label>'
-    +'<textarea class="form-textarea" rows="4" oninput="efUpdate(\'translation\',this.value)" placeholder="English translation...">'+escText(f.translation)+'</textarea></div>';
+    +'<textarea class="form-textarea" rows="4" oninput="efUpdate(\'translation\',this.value)" placeholder="English translation…">'+escText(f.translation)+'</textarea></div>';
 
-  // Sharing link
+  // ── People Mentioned (all types) ──
+  html+='<div class="form-field"><label class="form-label">People Mentioned <span style="font-weight:normal;color:#aaa;font-size:10px">(add multiple)</span></label>';
+  html+='<div class="role-tags">';
+  (f.roleMentioned||[]).forEach(function(p,i){
+    html+='<span class="role-person-tag mentioned">'+escHtml(p.name)+'<button class="remove-tag" onclick="efRemoveRolePerson(\'mentioned\','+i+')">&#215;</button></span>';
+  });
+  html+='</div>';
+  html+='<div class="add-person-row"><div class="form-ac-wrap" style="flex:1">'
+    +'<input class="form-input" id="eform-mentioned-inp" type="text" placeholder="Type name to search and add..." oninput="efAddPersonInput(\'mentioned\',this.value)" onfocus="efAddPersonInput(\'mentioned\',this.value)" autocomplete="off">'
+    +'<div class="form-ac-drop" id="eform-mentioned-drop"></div>'
+    +'</div></div></div>';
+
+  // ── Manuscripts Mentioned (all types) ──
+  html+='<div class="form-field"><label class="form-label">Papyri / Manuscripts Mentioned <span style="font-weight:normal;color:#aaa;font-size:10px">(add multiple)</span></label>';
+  html+='<div class="role-tags">';
+  (f.roleMss||[]).forEach(function(m,i){
+    html+='<span class="role-person-tag manuscript">'+escHtml(m.name)+'<button class="remove-tag" onclick="efRemoveRoleMs('+i+')">&#215;</button></span>';
+  });
+  html+='</div>';
+  html+='<div class="add-person-row"><div class="form-ac-wrap" style="flex:1">'
+    +'<input class="form-input" id="eform-ms-inp" type="text" placeholder="Type manuscript name to search and add..." oninput="efAddMsInput(this.value)" onfocus="efAddMsInput(this.value)" autocomplete="off">'
+    +'<div class="form-ac-drop" id="eform-ms-drop"></div>'
+    +'</div></div></div>';
+
+  // ── PDF / Sharing Link (all types) ──
   html+='<div class="form-field"><label class="form-label">PDF / Sharing Link</label>'
-    +'<input class="form-input" type="text" value="'+esc(f.sharing_link)+'" oninput="efUpdate(\'sharing_link\',this.value)" placeholder="https://..."></div>';
+    +'<input class="form-input" type="text" value="'+esc(f.sharing_link)+'" oninput="efUpdate(\'sharing_link\',this.value)" placeholder="https://…"></div>';
 
-  // Full text
+  // ── Full Text OCR (all types) ──
   html+='<div class="form-field"><label class="form-label">Full Text (OCR)</label>'
-    +'<textarea class="form-textarea" rows="6" oninput="efUpdate(\'full_text\',this.value)" placeholder="Full OCR text of the document...">'+escText(f.full_text)+'</textarea></div>';
+    +'<textarea class="form-textarea" rows="6" oninput="efUpdate(\'full_text\',this.value)" placeholder="Full OCR text of the document…">'+escText(f.full_text)+'</textarea></div>';
 
-  // Actions
+  // ── Actions ──
   html+='<div class="form-actions">'
-    +'<button class="save-btn" onclick="saveLetter()" '+(state.editSaving?"disabled":"")+'>'+(state.editSaving?"Saving...":"💾 Save Letter")+'</button>'
+    +'<button class="save-btn" onclick="saveLetter()" '+(state.editSaving?"disabled":"")+'>'+(state.editSaving?"Saving…":"&#128190; Save Document")+'</button>'
     +'<button class="cancel-btn" onclick="goBack()">Cancel</button>'
     +'</div>';
-
   if(state.editMsg==="success"){
-    html+='<div class="save-msg success">✅ Saved successfully! Returning to letter detail...</div>';
+    html+='<div class="save-msg success">&#10003; Saved successfully! Returning to detail…</div>';
   } else if(state.editMsg&&state.editMsg!=="success"){
-    html+='<div class="save-msg error">❌ '+esc(state.editMsg)+'</div>';
+    html+='<div class="save-msg error">&#10007; '+esc(state.editMsg)+'</div>';
   }
-
   html+='</div>';
   return html;
 }
 
-function esc(v){return(v||"").replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
-function escText(v){return(v||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
+// ── Render: person view ───────────────────────────────────────────────────────
+function miniLetterRow(l,showAuthor){
+  var who=showAuthor?pname(l.author_id):pname(l.recipient_id);
+  var label=showAuthor?"From: ":"To: ";
+  return'<div class="mini-letter" onclick="openLetterById('+l.id+')">'
+    +'<div class="mini-letter-info">'+label+(who||"Unknown")+(l.description?' &mdash; '+l.description.substring(0,80)+(l.description.length>80?"...":""):"")+'</div>'
+    +'<div class="mini-letter-date">'+fdate(l.date_of_letter)+'</div>'
+    +'</div>';
+}
 
 function renderPerson(){
   var pv=state.personView;if(!pv)return"";
   var p=pv.data;
-  var fullName=(p.first_name||"")+" "+(p.last_name||"");
-  var html='<div class="detail-header"><button class="back-btn" onclick="goBack()">&#8592; Back</button><span style="font-size:16px;font-weight:500">'+fullName.trim()+'</span><span></span></div>';
+  var fullName=((p.first_name||"")+" "+(p.last_name||"")).trim();
+  var html='<div class="detail-header"><button class="back-btn" onclick="goBack()">&#8592; Back</button><span style="font-size:16px;font-weight:500">'+escHtml(fullName)+'</span><span></span></div>';
   html+='<div class="detail-body">';
-  if(p.description)html+='<div class="field-label">About</div><div class="field-value">'+p.description+'</div>';
-  if(pv.loading){html+='<div class="loading">Loading correspondence...</div></div>';return html;}
+  if(p.description)html+='<div class="field-label">About</div><div class="field-value">'+escHtml(p.description)+'</div>';
+  if(pv.loading){html+='<div class="loading">Loading correspondence…</div></div>';return html;}
   if(pv.authored.length>0){html+='<div class="section-title">Letters Authored ('+pv.authored.length+')</div>';html+=pv.authored.map(function(l){return miniLetterRow(l,false);}).join("");}
   if(pv.received.length>0){html+='<div class="section-title">Letters Received ('+pv.received.length+')</div>';html+=pv.received.map(function(l){return miniLetterRow(l,true);}).join("");}
   if(pv.mentioned.length>0){
@@ -867,24 +1198,25 @@ function renderPerson(){
   return html;
 }
 
+// ── Render: manuscript view ───────────────────────────────────────────────────
 function renderManuscript(){
   var mv=state.manuscriptView;if(!mv)return"";
   var m=mv.data;
-  var html='<div class="detail-header"><button class="back-btn" onclick="goBack()">&#8592; Back</button><span style="font-size:16px;font-weight:500">'+m.name+'</span><span></span></div>';
+  var html='<div class="detail-header"><button class="back-btn" onclick="goBack()">&#8592; Back</button><span style="font-size:16px;font-weight:500">'+escHtml(m.name)+'</span><span></span></div>';
   html+='<div class="detail-body">';
-  if(m.description)html+='<div class="field-label">Description</div><div class="field-value">'+m.description+'</div>';
-  if(mv.loading){html+='<div class="loading">Loading...</div></div>';return html;}
+  if(m.description)html+='<div class="field-label">Description</div><div class="field-value">'+escHtml(m.description)+'</div>';
+  if(mv.loading){html+='<div class="loading">Loading…</div></div>';return html;}
   if(mv.institutions.length>0){
     html+='<div class="section-title">Holding Institutions</div>';
     mv.institutions.forEach(function(i){
-      html+='<div style="margin-bottom:8px"><div class="field-value"><strong>'+i.name+'</strong>';
-      if(i.location)html+=' &mdash; '+i.location;
-      if(i.notes)html+='<br><span style="font-size:12px;color:#666">'+i.notes+'</span>';
+      html+='<div style="margin-bottom:8px"><div class="field-value"><strong>'+escHtml(i.name)+'</strong>';
+      if(i.location)html+=' &mdash; '+escHtml(i.location);
+      if(i.notes)html+='<br><span style="font-size:12px;color:#666">'+escHtml(i.notes)+'</span>';
       html+='</div></div>';
     });
   }
   if(mv.letters.length>0){
-    html+='<div class="section-title">Mentioned In Letters ('+mv.letters.length+')</div>';
+    html+='<div class="section-title">Mentioned In Documents ('+mv.letters.length+')</div>';
     html+=mv.letters.map(function(l){
       return'<div class="mini-letter" onclick="openLetterById('+l.id+')">'
         +'<div class="mini-letter-info">'+(pname(l.author_id)||"?")+" to "+(pname(l.recipient_id)||"?")+(l.description?' &mdash; '+l.description.substring(0,60)+"...":"")+'</div>'
@@ -896,23 +1228,16 @@ function renderManuscript(){
   return html;
 }
 
-
-// ── DUPLICATE REVIEW ─────────────────────────────────────────────────────────
-
-var dupState = {
-  groups: [], groupIdx: 0, loading: false, decisions: {}
-};
+// ── Duplicate review (unchanged) ──────────────────────────────────────────────
+var dupState={groups:[],groupIdx:0,loading:false,decisions:{}};
 
 function openDuplicates(){
-  dupState = {groups:[],groupIdx:0,loading:true,decisions:{}};
-  viewStack.push(state.view);
-  state.view = "duplicates";
-  render();
+  dupState={groups:[],groupIdx:0,loading:true,decisions:{}};
+  viewStack.push(state.view);state.view="duplicates";render();
   loadDuplicateGroups();
 }
-
 async function loadDuplicateGroups(){
-  var all=[], offset=0;
+  var all=[],offset=0;
   while(true){
     var batch=await sq("letters?select=id,author_id,recipient_id,date_of_letter,description,full_text,title&limit=500&offset="+offset);
     if(!batch||!batch.length)break;
@@ -929,186 +1254,78 @@ async function loadDuplicateGroups(){
   });
   var dupGroups=Object.values(groups).filter(function(g){return g.length>1;});
   dupGroups.sort(function(a,b){return b.length-a.length;});
-  dupState.groups=dupGroups;
-  dupState.loading=false;
-  render();
+  dupState.groups=dupGroups;dupState.loading=false;render();
 }
-
-function dupNavigate(dir){
-  dupState.groupIdx=Math.max(0,Math.min(dupState.groups.length-1,dupState.groupIdx+dir));
-  render();
-}
-
-function dupDecide(letterId, decision){
-  dupState.decisions[letterId]=decision;
-  render();
-}
-
-function dupSimilarity(a, b){
+function dupNavigate(dir){dupState.groupIdx=Math.max(0,Math.min(dupState.groups.length-1,dupState.groupIdx+dir));render();}
+function dupSimilarity(a,b){
   var ta=(a.full_text||"").trim().substring(0,400).toLowerCase();
   var tb=(b.full_text||"").trim().substring(0,400).toLowerCase();
-  if(!ta&&!tb)return null;
-  if(!ta||!tb)return "low";
-  if(ta===tb)return "high";
-  var matches=0, len=Math.min(ta.length,tb.length,200);
+  if(!ta&&!tb)return null;if(!ta||!tb)return"low";if(ta===tb)return"high";
+  var matches=0,len=Math.min(ta.length,tb.length,200);
   for(var i=0;i<len;i++){if(tb.indexOf(ta[i])>=0)matches++;}
   var score=matches/len;
-  if(score>0.85)return "high";
-  if(score>0.6)return "med";
-  return "low";
+  if(score>0.85)return"high";if(score>0.6)return"med";return"low";
 }
-
-function escHtml(v){return(v||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
-
 function renderDuplicates(){
-  if(dupState.loading){
-    return '<div class="dup-header"><button class="back-btn" onclick="goBack()">&#8592; Back</button>'
-      +'<span style="font-size:16px;font-weight:500">Duplicate Review</span><span></span></div>'
-      +'<div style="padding:40px;text-align:center;color:#666;background:white">Loading all letters and finding duplicates...<br><small style="color:#aaa">This may take 20-30 seconds</small></div>';
-  }
-  if(!dupState.groups.length){
-    return '<div class="dup-header"><button class="back-btn" onclick="goBack()">&#8592; Back</button>'
-      +'<span style="font-size:16px;font-weight:500">Duplicate Review</span><span></span></div>'
-      +'<div style="padding:32px;text-align:center;color:#666;background:white">No duplicate groups found!</div>';
-  }
-  var idx=dupState.groupIdx, group=dupState.groups[idx], total=dupState.groups.length;
-  var authorName=pname(group[0].author_id)||"Unknown";
-  var recipName=pname(group[0].recipient_id)||"Unknown";
-  var dateStr=fdate(group[0].date_of_letter)||"No date";
-  var keeperId=dupState.groupKeeper?dupState.groupKeeper[idx]:null;
-  var groupDone=dupState.groupDone?dupState.groupDone[idx]:false;
-
-  var html='<div class="dup-header">'
-    +'<button class="back-btn" onclick="goBack()">&#8592; Back</button>'
-    +'<span style="font-size:15px;font-weight:500">Duplicate Review</span>'
-    +'<span style="font-size:12px;opacity:0.8">'+total+' groups</span>'
-    +'</div>';
-  html+='<div class="dup-progress">'
-    +'<span>Group '+(idx+1)+' of '+total+' &mdash; '+group.length+' letters &mdash; <strong>'+authorName+' &#8594; '+recipName+'</strong> &mdash; '+dateStr+'</span>'
-    +'<span style="color:#2e7d32;font-weight:500">'+(dupState.doneCount||0)+' groups resolved</span>'
-    +'</div>';
-
+  if(dupState.loading){return'<div class="dup-header"><button class="back-btn" onclick="goBack()">&#8592; Back</button><span style="font-size:16px;font-weight:500">Duplicate Review</span><span></span></div><div style="padding:40px;text-align:center;color:#666;background:white">Loading all documents and finding duplicates…<br><small style="color:#aaa">This may take 20-30 seconds</small></div>';}
+  if(!dupState.groups.length){return'<div class="dup-header"><button class="back-btn" onclick="goBack()">&#8592; Back</button><span style="font-size:16px;font-weight:500">Duplicate Review</span><span></span></div><div style="padding:32px;text-align:center;color:#666;background:white">No duplicate groups found!</div>';}
+  var idx=dupState.groupIdx,group=dupState.groups[idx],total=dupState.groups.length;
+  var authorName=pname(group[0].author_id)||"Unknown";var recipName=pname(group[0].recipient_id)||"Unknown";var dateStr=fdate(group[0].date_of_letter)||"No date";
+  var keeperId=dupState.groupKeeper?dupState.groupKeeper[idx]:null;var groupDone=dupState.groupDone?dupState.groupDone[idx]:false;
+  var html='<div class="dup-header"><button class="back-btn" onclick="goBack()">&#8592; Back</button><span style="font-size:15px;font-weight:500">Duplicate Review</span><span style="font-size:12px;opacity:0.8">'+total+' groups</span></div>';
+  html+='<div class="dup-progress"><span>Group '+(idx+1)+' of '+total+' &mdash; '+group.length+' documents &mdash; <strong>'+escHtml(authorName)+' &#8594; '+escHtml(recipName)+'</strong> &mdash; '+dateStr+'</span><span style="color:#2e7d32;font-weight:500">'+(dupState.doneCount||0)+' resolved</span></div>';
   html+='<div class="dup-group">';
-
-  if(groupDone){
-    html+='<div class="dup-notice" style="background:#e8f5e9;border-color:#a5d6a7;color:#2e7d32">&#10003; This group has been resolved. Navigate to the next group.</div>';
-  } else {
-    html+='<div class="dup-notice">&#128270; Read the OCR text below and <strong>click &quot;✓ Keep This One&quot; on the record you want to preserve</strong>. The others will be deleted after your confirmation. Use &quot;&#9998; Edit&quot; to view full details first.</div>';
-  }
-
+  if(groupDone){html+='<div class="dup-notice" style="background:#e8f5e9;border-color:#a5d6a7;color:#2e7d32">&#10003; This group has been resolved.</div>';}
+  else{html+='<div class="dup-notice">&#128270; Read the OCR text below and <strong>click &quot;&#10003; Keep This One&quot;</strong> on the record you want to preserve. The others will be deleted after confirmation.</div>';}
   html+='<div class="dup-cards">';
   group.forEach(function(l,i){
-    var isKeeper=(keeperId===l.id);
-    var isOther=(keeperId&&keeperId!==l.id);
+    var isKeeper=(keeperId===l.id);var isOther=(keeperId&&keeperId!==l.id);
     var cardClass="dup-card"+(isKeeper?" dup-kept":isOther?" dup-deleted":"");
-    var ocrText=(l.full_text||"").trim();
-    var ocrDisplay=ocrText?ocrText.substring(0,600)+(ocrText.length>600?"...":""):"No OCR text available";
+    var ocrText=(l.full_text||"").trim();var ocrDisplay=ocrText?ocrText.substring(0,600)+(ocrText.length>600?"...":""):"No OCR text";
     var simBadge="";
-    if(i===0){
-      simBadge='<span style="background:#e8ecf5;color:#2d4a8a;padding:2px 6px;border-radius:10px;font-size:10px">Card 1</span>';
-    } else {
-      var sim=dupSimilarity(group[0],l);
-      if(sim==="high")simBadge='<span style="background:#fdecea;color:#c62828;padding:2px 6px;border-radius:10px;font-size:10px;font-weight:bold">HIGH MATCH</span>';
-      else if(sim==="med")simBadge='<span style="background:#fff8e1;color:#f57f17;padding:2px 6px;border-radius:10px;font-size:10px;font-weight:bold">PARTIAL MATCH</span>';
-      else simBadge='<span style="background:#e8f5e9;color:#2e7d32;padding:2px 6px;border-radius:10px;font-size:10px;font-weight:bold">DIFFERENT CONTENT</span>';
-    }
-    html+='<div class="'+cardClass+'">';
-    html+='<div class="dup-card-meta">ID: '+l.id+' &nbsp; '+simBadge+'</div>';
-    html+='<div class="dup-card-title">'+(l.title||"(no title)")+'</div>';
+    if(i===0){simBadge='<span style="background:#e8ecf5;color:#2d4a8a;padding:2px 6px;border-radius:10px;font-size:10px">Card 1</span>';}
+    else{var sim=dupSimilarity(group[0],l);if(sim==="high")simBadge='<span style="background:#fdecea;color:#c62828;padding:2px 6px;border-radius:10px;font-size:10px;font-weight:bold">HIGH MATCH</span>';else if(sim==="med")simBadge='<span style="background:#fff8e1;color:#f57f17;padding:2px 6px;border-radius:10px;font-size:10px;font-weight:bold">PARTIAL MATCH</span>';else simBadge='<span style="background:#e8f5e9;color:#2e7d32;padding:2px 6px;border-radius:10px;font-size:10px;font-weight:bold">DIFFERENT</span>';}
+    html+='<div class="'+cardClass+'"><div class="dup-card-meta">ID: '+l.id+' &nbsp; '+simBadge+'</div>';
+    html+='<div class="dup-card-title">'+escHtml(l.title||"(no title)")+'</div>';
     if(l.description)html+='<div class="dup-card-desc">'+escHtml(l.description.substring(0,120))+(l.description.length>120?"...":"")+'</div>';
     html+='<div class="dup-card-ocr'+(ocrText?"":" no-text")+'">'+escHtml(ocrDisplay)+'</div>';
     html+='<div class="dup-card-actions">';
-    if(!groupDone){
-      if(isKeeper){
-        html+='<button class="dup-keep-btn active" style="flex:2" onclick="dupClearKeeper()">&#10003; This is the Keeper &mdash; click to change</button>';
-      } else {
-        html+='<button class="dup-keep-btn" style="flex:2" onclick="dupSelectKeeper('+l.id+')">&#10003; Keep This One</button>';
-      }
-    } else {
-      html+='<button class="dup-keep-btn" style="flex:2;opacity:0.5" disabled>'+(isKeeper?"&#10003; Kept":"Deleted")+'</button>';
-    }
-    if(getPapyratesTier()!=='readonly') html+='<button class="dup-edit-btn" onclick="openLetterById('+l.id+')">&#9998; Edit</button>';
+    if(!groupDone){if(isKeeper){html+='<button class="dup-keep-btn active" style="flex:2" onclick="dupClearKeeper()">&#10003; Keeper — click to change</button>';}else{html+='<button class="dup-keep-btn" style="flex:2" onclick="dupSelectKeeper('+l.id+')">&#10003; Keep This One</button>';}}
+    else{html+='<button class="dup-keep-btn" style="flex:2;opacity:0.5" disabled>'+(isKeeper?"&#10003; Kept":"Deleted")+'</button>';}
+    if(getPapyratesTier()!=='readonly')html+='<button class="dup-edit-btn" onclick="openLetterById('+l.id+')">&#9998;</button>';
     html+='</div></div>';
   });
   html+='</div>';
-
-  // Confirm deletion button — shown once a keeper is selected
   if(keeperId&&!groupDone){
     var otherIds=group.filter(function(l){return l.id!==keeperId;}).map(function(l){return l.id;});
-    html+='<div style="padding:12px 0 4px;text-align:center">'
-      +'<button onclick="confirmKeepAndDelete()" style="background:#c62828;color:white;border:none;padding:10px 28px;border-radius:8px;cursor:pointer;font-size:14px;font-weight:500">'
-      +'&#128465; Delete the other '+(otherIds.length)+' record'+(otherIds.length>1?"s":"")+' and keep ID '+keeperId
-      +'</button>'
-      +'<button onclick="dupClearKeeper()" style="background:none;border:1px solid #ccc;color:#666;padding:10px 16px;border-radius:8px;cursor:pointer;font-size:13px;margin-left:10px">Cancel</button>'
-      +'</div>';
+    html+='<div style="padding:12px 0 4px;text-align:center"><button onclick="confirmKeepAndDelete()" style="background:#c62828;color:white;border:none;padding:10px 28px;border-radius:8px;cursor:pointer;font-size:14px;font-weight:500">&#128465; Delete '+otherIds.length+' duplicate'+(otherIds.length>1?'s':'')+', keep ID '+keeperId+'</button><button onclick="dupClearKeeper()" style="background:none;border:1px solid #ccc;color:#666;padding:10px 16px;border-radius:8px;cursor:pointer;font-size:13px;margin-left:10px">Cancel</button></div>';
   }
-
   html+='</div>';
-  html+='<div class="dup-nav">';
-  html+='<button class="dup-nav-btn" onclick="dupNavigate(-1)"'+(idx===0?" disabled":"")+'>&#8592; Prev</button>';
-  html+='<span style="font-size:13px;color:#555">'+(idx+1)+' / '+total+'</span>';
-  html+='<button class="dup-nav-btn" onclick="dupNavigate(1)"'+(idx>=total-1?" disabled":"")+'>Next &#8594;</button>';
-  html+='</div>';
+  html+='<div class="dup-nav"><button class="dup-nav-btn" onclick="dupNavigate(-1)"'+(idx===0?" disabled":"")+'>&#8592; Prev</button><span style="font-size:13px;color:#555">'+(idx+1)+' / '+total+'</span><button class="dup-nav-btn" onclick="dupNavigate(1)"'+(idx>=total-1?" disabled":"")+'>Next &#8594;</button></div>';
   return html;
 }
-
-function dupSelectKeeper(keeperId){
-  if(!dupState.groupKeeper)dupState.groupKeeper={};
-  dupState.groupKeeper[dupState.groupIdx]=keeperId;
-  render();
-}
-
-function dupClearKeeper(){
-  if(dupState.groupKeeper)delete dupState.groupKeeper[dupState.groupIdx];
-  render();
-}
-
+function dupSelectKeeper(keeperId){if(!dupState.groupKeeper)dupState.groupKeeper={};dupState.groupKeeper[dupState.groupIdx]=keeperId;render();}
+function dupClearKeeper(){if(dupState.groupKeeper)delete dupState.groupKeeper[dupState.groupIdx];render();}
 async function confirmKeepAndDelete(){
-  var idx=dupState.groupIdx;
-  var group=dupState.groups[idx];
-  var keeperId=dupState.groupKeeper?dupState.groupKeeper[idx]:null;
-  if(!keeperId)return;
+  var idx=dupState.groupIdx;var group=dupState.groups[idx];var keeperId=dupState.groupKeeper?dupState.groupKeeper[idx]:null;if(!keeperId)return;
   var toDelete=group.filter(function(l){return l.id!==keeperId;});
-  var names=toDelete.map(function(l){return "ID "+l.id+(l.title?" ("+l.title+")":"");}).join(", ");
+  var names=toDelete.map(function(l){return"ID "+l.id+(l.title?" ("+l.title+")":"");}).join(", ");
   if(!confirm("Keep record ID "+keeperId+" and permanently delete: "+names+"?\n\nThis cannot be undone."))return;
-
   var errors=[];
-  for(var i=0;i<toDelete.length;i++){
-    var r=await fetch(SURL+"/letters?id=eq."+toDelete[i].id,{method:"DELETE",headers:SH});
-    if(!r.ok&&r.status!==204)errors.push(toDelete[i].id);
-  }
-
-  if(errors.length){
-    alert("Some deletes failed for IDs: "+errors.join(", "));
-  } else {
-    // Mark group as done
-    if(!dupState.groupDone)dupState.groupDone={};
-    dupState.groupDone[idx]=true;
-    if(!dupState.doneCount)dupState.doneCount=0;
-    dupState.doneCount++;
-    // Remove deleted letters from group (keep only the keeper)
-    dupState.groups[idx]=group.filter(function(l){return l.id===keeperId;});
-    render();
-  }
+  for(var i=0;i<toDelete.length;i++){var r=await fetch(SURL+"/letters?id=eq."+toDelete[i].id,{method:"DELETE",headers:SH});if(!r.ok&&r.status!==204)errors.push(toDelete[i].id);}
+  if(errors.length){alert("Some deletes failed for IDs: "+errors.join(", "));}
+  else{if(!dupState.groupDone)dupState.groupDone={};dupState.groupDone[idx]=true;if(!dupState.doneCount)dupState.doneCount=0;dupState.doneCount++;dupState.groups[idx]=group.filter(function(l){return l.id===keeperId;});render();}
 }
 
-
+// ── Manuscript sidebar ────────────────────────────────────────────────────────
 function renderMsSidebar(){
-  if(!state.msInfo) return '<div class="ms-sidebar-body"><div style="color:#888;font-size:13px">Loading...</div></div>';
+  if(!state.msInfo)return'<div class="ms-sidebar-body"><div style="color:#888;font-size:13px">Loading…</div></div>';
   var info=state.msInfo;
-  var html='<div class="ms-sidebar-header">';
-  html+='<span>&#128196; Manuscript</span>';
-  html+='<button class="ms-sidebar-close" onclick="clearManuscript()" title="Clear filter">&#x2715;</button>';
-  html+='</div>';
+  var html='<div class="ms-sidebar-header"><span>&#128196; Manuscript</span><button class="ms-sidebar-close" onclick="clearManuscript()">&#x2715;</button></div>';
   html+='<div class="ms-sidebar-body">';
   html+='<div style="font-size:16px;font-weight:500;color:#2d4a8a;margin-bottom:8px;">'+escHtml(info.name)+'</div>';
-  if(state.manuscriptLetterIds!==null){
-    html+='<span class="ms-sidebar-count">'+state.manuscriptLetterIds.length+' document'+(state.manuscriptLetterIds.length!==1?'s':'')+'</span>';
-  }
-  if(info.description){
-    html+='<div class="ms-sidebar-label">Description</div>';
-    html+='<div class="ms-sidebar-desc">'+escHtml(info.description)+'</div>';
-  }
+  if(state.manuscriptLetterIds!==null)html+='<span class="ms-sidebar-count">'+state.manuscriptLetterIds.length+' document'+(state.manuscriptLetterIds.length!==1?'s':'')+'</span>';
+  if(info.description){html+='<div class="ms-sidebar-label">Description</div><div class="ms-sidebar-desc">'+escHtml(info.description)+'</div>';}
   if(info.institutions&&info.institutions.length>0){
     html+='<div class="ms-sidebar-label">Holding Institutions</div>';
     info.institutions.forEach(function(link){
@@ -1119,27 +1336,19 @@ function renderMsSidebar(){
       if(link.notes)html+='<div class="ms-inst-notes">'+escHtml(link.notes)+'</div>';
       html+='</div>';
     });
-  } else if(info.institutions&&info.institutions.length===0){
-    html+='<div class="ms-sidebar-label">Holding Institutions</div>';
-    html+='<div style="font-size:12px;color:#aaa">None recorded</div>';
   }
   html+='</div>';
   return html;
 }
 
+// ── Main render ───────────────────────────────────────────────────────────────
 function render(){
   var app=document.getElementById("app");if(!app)return;
-  // Update sidebar
   var sidebar=document.getElementById("ms-sidebar");
   var wrap=document.getElementById("page-wrap");
   if(sidebar&&wrap){
-    if(state.manuscriptId&&state.view==="list"){
-      wrap.classList.add("with-sidebar");
-      sidebar.innerHTML=renderMsSidebar();
-    } else {
-      wrap.classList.remove("with-sidebar");
-      sidebar.innerHTML="";
-    }
+    if(state.manuscriptId&&state.view==="list"){wrap.classList.add("with-sidebar");sidebar.innerHTML=renderMsSidebar();}
+    else{wrap.classList.remove("with-sidebar");sidebar.innerHTML="";}
   }
   if(state.view==="detail")app.innerHTML=renderDetail();
   else if(state.view==="edit")app.innerHTML=renderEditForm(false);
