@@ -223,7 +223,9 @@ const QueryPlanExecutor = (() => {
           case 'date_filter': {
             const { start, end } = plan.date_range || {};
             if (!start && !end) break;
-            let q = `${supabaseUrl}/rest/v1/letters?select=id,title,date_of_letter,document_type,full_text,description,author_id,recipient_id`;
+
+            // Query 1: Normal documents with exact date_of_letter
+            let q = `${supabaseUrl}/rest/v1/letters?select=id,title,date_of_letter,date_from,date_to,document_type,full_text,description,author_id,recipient_id`;
             if (start) q += `&date_of_letter=gte.${encodeURIComponent(start)}`;
             if (end)   q += `&date_of_letter=lte.${encodeURIComponent(end)}`;
             q += '&limit=50';
@@ -232,12 +234,33 @@ const QueryPlanExecutor = (() => {
             const letters = await lResp.json();
             if (Array.isArray(letters)) {
               letters.forEach(l => {
-                if (!letterMap.has(l.id)) {
-                  letterMap.set(l.id, { ...l, _sources: [], _score: null });
-                }
+                if (!letterMap.has(l.id)) letterMap.set(l.id, { ...l, _sources: [], _score: null });
                 letterMap.get(l.id)._sources.push('date_filter');
               });
               sources['date_filter'] = letters.length;
+            }
+
+            // Query 2: Journals/Diaries where date range overlaps the search period
+            // A journal covers the period if: date_from <= search_end AND date_to >= search_start
+            let jq = `${supabaseUrl}/rest/v1/letters?select=id,title,date_of_letter,date_from,date_to,document_type,full_text,description,author_id,recipient_id`;
+            jq += `&document_type=eq.Journal%20%2F%20Diary`;
+            jq += `&date_from=not.is.null&date_to=not.is.null`;
+            if (end)   jq += `&date_from=lte.${encodeURIComponent(end)}`;
+            if (start) jq += `&date_to=gte.${encodeURIComponent(start)}`;
+            jq += '&limit=30';
+
+            const jResp = await fetch(jq, { headers });
+            const journals = await jResp.json();
+            if (Array.isArray(journals)) {
+              let newJournals = 0;
+              journals.forEach(l => {
+                if (!letterMap.has(l.id)) {
+                  letterMap.set(l.id, { ...l, _sources: [], _score: null });
+                  newJournals++;
+                }
+                letterMap.get(l.id)._sources.push(`journal_covers_period:${l.date_from}–${l.date_to}`);
+              });
+              sources['journal_date_range'] = newJournals;
             }
             break;
           }
