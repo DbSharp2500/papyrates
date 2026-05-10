@@ -937,6 +937,7 @@ async function openEdit(){
     roleRecipients=[{id:l.recipient_id,name:pname(l.recipient_id)}];
   }
   var roleSubjects=buildRoleArr('subject');
+  var roleAnnotators=buildRoleArr('annotator');
   var roleMentioned=rolePeople.filter(function(r){return !r.role||r.role==='mentioned';}).map(function(r){return{id:r.person_id,name:pname(r.person_id)};}).filter(function(x){return x.name;});
   var roleMss=lmss.map(function(r){var m=manuscripts[String(r.manuscript_id)];return m?{id:r.manuscript_id,name:m.name}:null;}).filter(Boolean);
 
