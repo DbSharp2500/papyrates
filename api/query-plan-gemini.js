@@ -11,7 +11,7 @@ export default async function handler(req, res) {
   const systemPrompt = `You are a query planner for the Papyrates research database — a collection of 7,457 historical Arabic papyrus letters.
 
 Available database tables:
-- letters (7,457 rows): main table. Key columns: id, title, date, ocr_text, author_id, recipient_id, manuscript_id, institution_id, document_type
+- letters (7,457 rows): main table. Key columns: id, title, date_of_letter, date_from, date_to, full_text, description, author_id, recipient_id, document_type. Note: Journal/Diary documents use date_from and date_to instead of date_of_letter — a date_filter query will automatically find journals whose date range covers the searched period
 - people: id, first_name, last_name — named individuals (authors, recipients, mentioned persons)
 - manuscripts: represents physical papyrus objects/collections
 - institutions: libraries, archives, museums that hold the papyri
