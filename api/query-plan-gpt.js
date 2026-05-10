@@ -8,7 +8,7 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Missing question' });
   }
 
-  const systemPrompt = `You are a query planner for the Papyrates research database — a collection of 7,457 historical Arabic papyrus letters.
+  const systemPrompt = `You are a query planner for the Papyrates research database — a collection of 7,457 historical documents related to the papyrus manuscript trade. Document types include correspondence, financial documents, legal documents, scholarly works, institutional records, interviews, journals/diaries, press/media, and manuscript images. The database tracks dealers, collectors, scholars, and institutions involved in the acquisition and study of ancient papyri.
 
 Available database tables:
 - letters (7,457 rows): main table. Key columns: id, title, date_of_letter, date_from, date_to, full_text, description, author_id, recipient_id, document_type. Note: Journal/Diary documents use date_from and date_to instead of date_of_letter — a date_filter query will automatically find journals whose date range covers the searched period
