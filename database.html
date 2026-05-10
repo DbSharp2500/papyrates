@@ -479,7 +479,7 @@ function onConnectedPersonInput(v){
 // ── Create New Person modal ───────────────────────────────────────────────────
 function openCreatePersonModal(role){
   if(getPapyratesTier()==='readonly'){return;}
-  modalState={open:true,role:role,firstName:"",lastName:"",description:"",saving:false,error:""};
+  modalState={open:true,role:role,firstName:"",lastName:"",description:"",saving:false,error:"",similarPeople:[]};
   // Close the dropdown
   var dd=document.getElementById("eform-"+role+"-drop");if(dd)dd.classList.remove("open");
   var inp=document.getElementById("eform-"+role+"-inp");if(inp)inp.value="";
@@ -517,22 +517,76 @@ async function saveNewPerson(){
   }
 }
 
+var modalState = {open:false, role:"", firstName:"", lastName:"", description:"", saving:false, error:"", similarPeople:[]};
+
+var modalSearchTimer = null;
+function modalUpdate(field, val){
+  modalState[field] = val;
+  // Trigger similar people search when last name changes (or first name)
+  if(field === 'lastName' || field === 'firstName'){
+    clearTimeout(modalSearchTimer);
+    modalSearchTimer = setTimeout(function(){
+      findSimilarPeople();
+    }, 300);
+  }
+  render();
+}
+
+function findSimilarPeople(){
+  var last = (modalState.lastName || "").trim().toLowerCase();
+  var first = (modalState.firstName || "").trim().toLowerCase();
+  if(!last && !first){modalState.similarPeople = [];render();return;}
+  var allP = allPeopleSorted();
+  var matches = allP.filter(function(p){
+    var pLower = p.name.toLowerCase();
+    if(last && pLower.indexOf(last) >= 0) return true;
+    if(first && first.length > 1 && pLower.indexOf(first) >= 0) return true;
+    return false;
+  });
+  modalState.similarPeople = matches.slice(0, 5);
+  render();
+}
+
+function useExistingPerson(id, name){
+  efAddRolePerson(modalState.role, id, name);
+  modalState.open = false;
+  render();
+}
+
 function renderModal(){
   if(!modalState.open)return"";
-  return'<div class="modal-overlay" onclick="if(event.target===this)closeCreatePersonModal()">'
+  var html='<div class="modal-overlay" onclick="if(event.target===this)closeCreatePersonModal()">'
     +'<div class="modal-box">'
     +'<div class="modal-title">&#43; Create New Person</div>'
     +'<div class="form-field"><label class="form-label">First Name</label>'
-    +'<input class="form-input" id="modal-firstname" type="text" value="'+esc(modalState.firstName)+'" oninput="modalUpdate(\'firstName\',this.value)" placeholder="First name"></div>'
+    +'<input class="form-input" id="modal-firstname" type="text" value="'+esc(modalState.firstName)+'" oninput="modalUpdate(\'firstName\',this.value)" placeholder="First name" autocomplete="off"></div>'
     +'<div class="form-field"><label class="form-label">Last Name</label>'
-    +'<input class="form-input" type="text" value="'+esc(modalState.lastName)+'" oninput="modalUpdate(\'lastName\',this.value)" placeholder="Last name"></div>'
-    +'<div class="form-field"><label class="form-label">Description <span style="font-weight:normal;color:#aaa;font-size:10px">(optional)</span></label>'
+    +'<input class="form-input" type="text" value="'+esc(modalState.lastName)+'" oninput="modalUpdate(\'lastName\',this.value)" placeholder="Last name" autocomplete="off"></div>';
+
+  // Similar people warning
+  if(modalState.similarPeople && modalState.similarPeople.length > 0){
+    html += '<div style="background:#fff8e1;border:1px solid #ffe082;border-radius:6px;padding:10px 12px;margin-bottom:12px;">'
+      +'<div style="font-size:12px;font-weight:600;color:#5d4037;margin-bottom:6px;">&#9888; Similar people already exist:</div>';
+    modalState.similarPeople.forEach(function(p){
+      html += '<div style="display:flex;align-items:center;justify-content:space-between;padding:4px 0;border-bottom:1px solid #ffe082;">'
+        +'<span style="font-size:13px;color:#333;">'+escHtml(p.name)+'</span>'
+        +'<button onclick="useExistingPerson(\''+p.id+'\',\''+p.name.replace(/\\/g,"\\\\").replace(/'/g,"\\'")+'\')" '
+        +'style="background:#2d4a8a;color:white;border:none;padding:3px 8px;border-radius:4px;cursor:pointer;font-size:11px;white-space:nowrap;margin-left:8px;">'
+        +'Use this one</button>'
+        +'</div>';
+    });
+    html += '<div style="font-size:11px;color:#888;margin-top:6px;">Not the same person? Continue creating below.</div>'
+      +'</div>';
+  }
+
+  html += '<div class="form-field"><label class="form-label">Description <span style="font-weight:normal;color:#aaa;font-size:10px">(optional)</span></label>'
     +'<textarea class="form-textarea" rows="3" oninput="modalUpdate(\'description\',this.value)" placeholder="Brief bio or notes...">'+escText(modalState.description)+'</textarea></div>'
     +(modalState.error?'<div class="modal-error">'+esc(modalState.error)+'</div>':"")
     +'<div class="modal-actions">'
     +'<button class="modal-save-btn" onclick="saveNewPerson()" '+(modalState.saving?"disabled":"")+'>'+(modalState.saving?"Saving…":"&#10003; Create Person")+'</button>'
     +'<button class="modal-cancel-btn" onclick="closeCreatePersonModal()">Cancel</button>'
     +'</div></div></div>';
+  return html;
 }
 function buildAuthorOpts(){
   var p=state.recipientId?sq("letters?recipient_id=eq."+state.recipientId+"&select=author_id&limit=5000"):sq("letters?select=author_id&limit=5000");
