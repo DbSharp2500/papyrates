@@ -244,11 +244,11 @@ var state = {
   loading:true,
   sortBy:"author", sortDir:"asc", allSortedResults:null,
   connectedPersonId:"", connectedPersonText:"", connectedLetterIds:null,
-  connectedAuthoredIds:null, connectedReceivedIds:null, connectedMentionedIds:null,
+  connectedAuthoredIds:null, connectedReceivedIds:null, connectedMentionedIds:null, connectedAnnotatedIds:null,
   connectedRoleFilter:"all",
   selected:null, showFT:false,
   selectedPeople:[], selectedManuscripts:[],
-  roleAuthors:[], roleRecipients:[], roleSubjects:[],
+  roleAuthors:[], roleRecipients:[], roleSubjects:[], roleAnnotators:[],
   personView:null, manuscriptView:null,
   editForm:null, editSaving:false, editMsg:""
 };
@@ -415,20 +415,22 @@ function selectConnectedPerson(id, name){
   state.page=0;
   state.allSortedResults=null;
   var dd=document.getElementById("connected-drop");if(dd)dd.classList.remove("open");
-  // Fetch from all three sources in parallel
+  // Fetch from all four sources in parallel
   Promise.all([
     sq("letters?author_id=eq."+id+"&select=id&limit=5000"),
     sq("letters?recipient_id=eq."+id+"&select=id&limit=5000"),
-    sq("letter_people?person_id=eq."+id+"&select=letter_id&limit=5000")
+    sq("letter_people?person_id=eq."+id+"&role=eq.mentioned&select=letter_id&limit=5000"),
+    sq("letter_people?person_id=eq."+id+"&role=eq.annotator&select=letter_id&limit=5000")
   ]).then(function(res){
     state.connectedAuthoredIds=(res[0]||[]).map(function(r){return r.id;});
     state.connectedReceivedIds=(res[1]||[]).map(function(r){return r.id;});
     state.connectedMentionedIds=(res[2]||[]).map(function(r){return r.letter_id;});
-    // Union all three
+    state.connectedAnnotatedIds=(res[3]||[]).map(function(r){return r.letter_id;});
     var allIds={};
     state.connectedAuthoredIds.forEach(function(id){allIds[id]=true;});
     state.connectedReceivedIds.forEach(function(id){allIds[id]=true;});
     state.connectedMentionedIds.forEach(function(id){allIds[id]=true;});
+    state.connectedAnnotatedIds.forEach(function(id){allIds[id]=true;});
     state.connectedLetterIds=Object.keys(allIds).map(Number);
     render();loadLetters();
   });
@@ -444,12 +446,14 @@ function setConnectedRoleFilter(role){
     state.connectedLetterIds=state.connectedReceivedIds.slice();
   } else if(role==="mentioned"){
     state.connectedLetterIds=state.connectedMentionedIds.slice();
+  } else if(role==="annotated"){
+    state.connectedLetterIds=(state.connectedAnnotatedIds||[]).slice();
   } else {
-    // All — union
     var allIds={};
     state.connectedAuthoredIds.forEach(function(id){allIds[id]=true;});
     state.connectedReceivedIds.forEach(function(id){allIds[id]=true;});
     state.connectedMentionedIds.forEach(function(id){allIds[id]=true;});
+    (state.connectedAnnotatedIds||[]).forEach(function(id){allIds[id]=true;});
     state.connectedLetterIds=Object.keys(allIds).map(Number);
   }
   loadLetters();
@@ -458,7 +462,7 @@ function setConnectedRoleFilter(role){
 function clearConnectedPerson(){
   state.connectedPersonId="";state.connectedPersonText="";
   state.connectedLetterIds=null;state.connectedAuthoredIds=null;
-  state.connectedReceivedIds=null;state.connectedMentionedIds=null;
+  state.connectedReceivedIds=null;state.connectedMentionedIds=null;state.connectedAnnotatedIds=null;
   state.connectedRoleFilter="all";state.page=0;
   var dd=document.getElementById("connected-drop");if(dd)dd.classList.remove("open");
   render();loadLetters();
@@ -736,7 +740,7 @@ function selectRecip(id,name){state.recipientId=id;state.recipientText=name;stat
 function clearAuthor(){state.authorId="";state.authorText="";state.page=0;buildRecipOpts().then(function(){render();loadLetters();});}
 function clearRecip(){state.recipientId="";state.recipientText="";state.page=0;buildAuthorOpts().then(function(){render();loadLetters();});}
 function doSwap(){var aId=state.authorId,aName=state.authorText,rId=state.recipientId,rName=state.recipientText;state.authorId=rId;state.authorText=rName;state.recipientId=aId;state.recipientText=aName;state.page=0;Promise.all([buildAuthorOpts(),buildRecipOpts()]).then(function(){loadLetters();});}
-function doClear(){state.authorId="";state.authorText="";state.recipientId="";state.recipientText="";state.dateFrom="";state.dateTo="";state.language="";state.descSearch="";state.textSearch="";state.docType="";state.noDesc=false;state.notype=false;state.connectedPersonId="";state.connectedPersonText="";state.connectedLetterIds=null;state.connectedAuthoredIds=null;state.connectedReceivedIds=null;state.connectedMentionedIds=null;state.connectedRoleFilter="all";state.page=0;Promise.all([buildAuthorOpts(),buildRecipOpts()]).then(function(){loadLetters();});}
+function doClear(){state.authorId="";state.authorText="";state.recipientId="";state.recipientText="";state.dateFrom="";state.dateTo="";state.language="";state.descSearch="";state.textSearch="";state.docType="";state.noDesc=false;state.notype=false;state.connectedPersonId="";state.connectedPersonText="";state.connectedLetterIds=null;state.connectedAuthoredIds=null;state.connectedReceivedIds=null;state.connectedMentionedIds=null;state.connectedAnnotatedIds=null;state.connectedRoleFilter="all";state.page=0;Promise.all([buildAuthorOpts(),buildRecipOpts()]).then(function(){loadLetters();});}
 function onFilter(k,v){state[k]=v;state.page=0;loadLetters();}
 function toggleNoDesc(){state.noDesc=!state.noDesc;state.page=0;loadLetters();}
 function toggleNotype(){state.notype=!state.notype;state.page=0;loadLetters();}
@@ -823,6 +827,7 @@ function loadRolePeople(lid){
     state.roleAuthors=rows.filter(function(r){return r.role==='author';}).map(function(r){return{id:r.person_id,name:pname(r.person_id)};}).filter(function(x){return x.name;});
     state.roleRecipients=rows.filter(function(r){return r.role==='recipient';}).map(function(r){return{id:r.person_id,name:pname(r.person_id)};}).filter(function(x){return x.name;});
     state.roleSubjects=rows.filter(function(r){return r.role==='subject';}).map(function(r){return{id:r.person_id,name:pname(r.person_id)};}).filter(function(x){return x.name;});
+    state.roleAnnotators=rows.filter(function(r){return r.role==='annotator';}).map(function(r){return{id:r.person_id,name:pname(r.person_id)};}).filter(function(x){return x.name;});
     // Mentioned = null role or 'mentioned'
     state.selectedPeople=rows.filter(function(r){return !r.role||r.role==='mentioned';}).map(function(r){return{id:r.person_id,name:pname(r.person_id)};}).filter(function(x){return x.name;});
   });
@@ -831,7 +836,7 @@ function loadRolePeople(lid){
 function openLetter(idx){
   state.selected=state.letters[idx];
   state.showFT=false;state.selectedPeople=[];state.selectedManuscripts=[];
-  state.roleAuthors=[];state.roleRecipients=[];state.roleSubjects=[];
+  state.roleAuthors=[];state.roleRecipients=[];state.roleSubjects=[];state.roleAnnotators=[];
   viewStack.push(state.view);state.view="detail";render();
   var lid=state.selected.id;
   Promise.all([loadRolePeople(lid),sq("letter_manuscripts?letter_id=eq."+lid+"&select=manuscript_id")])
@@ -846,7 +851,7 @@ function openLetterById(id){
     if(res&&res.length>0){
       state.letters=[res[0]];state.selected=res[0];
       state.showFT=false;state.selectedPeople=[];state.selectedManuscripts=[];
-      state.roleAuthors=[];state.roleRecipients=[];state.roleSubjects=[];
+      state.roleAuthors=[];state.roleRecipients=[];state.roleSubjects=[];state.roleAnnotators=[];
       viewStack.push(state.view);state.view="detail";render();
       Promise.all([loadRolePeople(id),sq("letter_manuscripts?letter_id=eq."+id+"&select=manuscript_id")])
         .then(function(res){
@@ -964,6 +969,7 @@ async function openEdit(){
     roleAuthors:roleAuthors,
     roleRecipients:roleRecipients,
     roleSubjects:roleSubjects,
+    roleAnnotators:roleAnnotators,
     roleMentioned:roleMentioned,
     roleMss:roleMss
   };
@@ -984,7 +990,7 @@ function openAddNew(){
     publication_stage:"",publication_venue:"",
     amount:"",currency:"",
     photographer:"",image_format:"",condition_notes:"",
-    roleAuthors:[],roleRecipients:[],roleSubjects:[],roleMentioned:[],roleMss:[]
+    roleAuthors:[],roleRecipients:[],roleSubjects:[],roleAnnotators:[],roleMentioned:[],roleMss:[]
   };
   state.editMsg="";
   viewStack.push(state.view);
@@ -1005,6 +1011,7 @@ function efRoleArray(role){
   if(role==='author')return state.editForm.roleAuthors;
   if(role==='recipient')return state.editForm.roleRecipients;
   if(role==='subject')return state.editForm.roleSubjects;
+  if(role==='annotator')return state.editForm.roleAnnotators;
   if(role==='mentioned')return state.editForm.roleMentioned;
   return[];
 }
@@ -1093,7 +1100,7 @@ document.addEventListener("click",function(e){
   if(!e.target.closest("#ms-inp")&&!e.target.closest("#ms-drop")){var msd=document.getElementById("ms-drop");if(msd)msd.classList.remove("open");}
   if(!e.target.closest("#connected-inp")&&!e.target.closest("#connected-drop")){var cd=document.getElementById("connected-drop");if(cd)cd.classList.remove("open");}
   if(!e.target.closest(".form-ac-wrap")){
-    ["eform-author-drop","eform-recip-drop","eform-subject-drop","eform-mentioned-drop","eform-ms-drop","eform-inst-drop"].forEach(function(id){
+    ["eform-author-drop","eform-recip-drop","eform-subject-drop","eform-mentioned-drop","eform-annotator-drop","eform-ms-drop","eform-inst-drop"].forEach(function(id){
       var el=document.getElementById(id);if(el)el.classList.remove("open");
     });
   }
@@ -1161,7 +1168,7 @@ async function saveLetter(){
     setTimeout(function(){
       state.view="detail";
       state.showFT=false;state.selectedPeople=[];state.selectedManuscripts=[];
-      state.roleAuthors=[];state.roleRecipients=[];state.roleSubjects=[];
+      state.roleAuthors=[];state.roleRecipients=[];state.roleSubjects=[];state.roleAnnotators=[];
       render();
       if(state.selected){
         var lid=state.selected.id;
@@ -1178,7 +1185,7 @@ async function saveLetter(){
 }
 
 async function syncRolePeople(letterId,f){
-  var managedRoles=['author','recipient','subject','mentioned'];
+  var managedRoles=['author','recipient','subject','annotator','mentioned'];
   for(var i=0;i<managedRoles.length;i++){
     var role=managedRoles[i];
     var filter=role==='mentioned'?
@@ -1190,6 +1197,7 @@ async function syncRolePeople(letterId,f){
   (f.roleAuthors||[]).forEach(function(p){toInsert.push({letter_id:letterId,person_id:p.id,role:'author'});});
   (f.roleRecipients||[]).forEach(function(p){toInsert.push({letter_id:letterId,person_id:p.id,role:'recipient'});});
   (f.roleSubjects||[]).forEach(function(p){toInsert.push({letter_id:letterId,person_id:p.id,role:'subject'});});
+  (f.roleAnnotators||[]).forEach(function(p){toInsert.push({letter_id:letterId,person_id:p.id,role:'annotator'});});
   (f.roleMentioned||[]).forEach(function(p){toInsert.push({letter_id:letterId,person_id:p.id,role:'mentioned'});});
   if(toInsert.length>0){
     await fetch(SURL+"/letter_people",{method:"POST",headers:Object.assign({},SH,{"Content-Type":"application/json","Prefer":"return=minimal"}),body:JSON.stringify(toInsert)});
@@ -1276,10 +1284,12 @@ function renderList(){
     var aCount=state.connectedAuthoredIds?state.connectedAuthoredIds.length:0;
     var rCount=state.connectedReceivedIds?state.connectedReceivedIds.length:0;
     var mCount=state.connectedMentionedIds?state.connectedMentionedIds.length:0;
+    var anCount=state.connectedAnnotatedIds?state.connectedAnnotatedIds.length:0;
     var allIds={};
     (state.connectedAuthoredIds||[]).forEach(function(id){allIds[id]=true;});
     (state.connectedReceivedIds||[]).forEach(function(id){allIds[id]=true;});
     (state.connectedMentionedIds||[]).forEach(function(id){allIds[id]=true;});
+    (state.connectedAnnotatedIds||[]).forEach(function(id){allIds[id]=true;});
     var totalCount=Object.keys(allIds).length;
     var rf=state.connectedRoleFilter;
     var tabStyle='padding:5px 10px;border-radius:5px;cursor:pointer;font-size:12px;border:1px solid rgba(255,255,255,0.3);background:rgba(255,255,255,0.1);color:white;';
@@ -1290,6 +1300,7 @@ function renderList(){
       +'<button style="'+(rf==="authored"?activeTabStyle:tabStyle)+'" onclick="setConnectedRoleFilter(\'authored\')">Authored ('+aCount+')</button>'
       +'<button style="'+(rf==="received"?activeTabStyle:tabStyle)+'" onclick="setConnectedRoleFilter(\'received\')">Received ('+rCount+')</button>'
       +'<button style="'+(rf==="mentioned"?activeTabStyle:tabStyle)+'" onclick="setConnectedRoleFilter(\'mentioned\')">Mentioned ('+mCount+')</button>'
+      +(anCount>0?'<button style="'+(rf==="annotated"?activeTabStyle:tabStyle)+'" onclick="setConnectedRoleFilter(\'annotated\')">Annotated ('+anCount+')</button>':'')
       +'</div>';
   } else if(state.connectedPersonId){
     html+='<div class="filter-row"><span class="filter-label"></span><span style="color:rgba(255,255,255,0.6);font-size:12px">Loading connections…</span></div>';
@@ -1418,6 +1429,12 @@ function renderDetail(){
   if(l.description)html+='<div class="field-label">Description</div><div class="field-value">'+escHtml(l.description)+'</div>';
   if(l.translation)html+='<div class="field-label">Translation</div><div class="field-value">'+escHtml(l.translation)+'</div>';
 
+  // Annotated by
+  if(state.roleAnnotators&&state.roleAnnotators.length>0){
+    html+='<div class="field-label">Annotated By</div><div class="field-value">';
+    state.roleAnnotators.forEach(function(p){html+='<span class="tag" onclick="openPerson('+p.id+')">'+escHtml(p.name)+'</span>';});
+    html+='</div>';
+  }
   // People mentioned
   if(state.selectedPeople&&state.selectedPeople.length>0){
     html+='<div class="field-label">People Mentioned</div><div class="field-value">';
@@ -1562,6 +1579,18 @@ function renderEditForm(isAdd){
   // ── Translation (all types) ──
   html+='<div class="form-field"><label class="form-label">Translation</label>'
     +'<textarea class="form-textarea" rows="4" oninput="efUpdate(\'translation\',this.value)" placeholder="English translation…">'+escText(f.translation)+'</textarea></div>';
+
+  // ── Annotated By (all types) ──
+  html+='<div class="form-field"><label class="form-label">Annotated By <span style="font-weight:normal;color:#aaa;font-size:10px">(handwritten notes or marginalia — add multiple)</span></label>';
+  html+='<div class="role-tags">';
+  (f.roleAnnotators||[]).forEach(function(p,i){
+    html+='<span class="role-person-tag" style="background:#f0e8f5;color:#5a2080;">'+escHtml(p.name)+'<button class="remove-tag" onclick="efRemoveRolePerson(\'annotator\','+i+')">&#215;</button></span>';
+  });
+  html+='</div>';
+  html+='<div class="add-person-row"><div class="form-ac-wrap" style="flex:1">'
+    +'<input class="form-input" id="eform-annotator-inp" type="text" placeholder="Type name to search and add..." oninput="efAddPersonInput(\'annotator\',this.value)" onfocus="efAddPersonInput(\'annotator\',this.value)" autocomplete="off">'
+    +'<div class="form-ac-drop" id="eform-annotator-drop"></div>'
+    +'</div></div></div>';
 
   // ── People Mentioned (all types) ──
   html+='<div class="form-field"><label class="form-label">People Mentioned <span style="font-weight:normal;color:#aaa;font-size:10px">(add multiple)</span></label>';
