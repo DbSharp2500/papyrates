@@ -495,6 +495,17 @@ async function saveNewPerson(){
   if(!modalState.firstName.trim()&&!modalState.lastName.trim()){
     modalState.error="Please enter at least a first or last name.";render();return;
   }
+  // Check for similar people first — unless user already confirmed
+  if(!modalState.showDuplicateWarning){
+    var similar = findSimilarPeople();
+    if(similar.length > 0){
+      modalState.similarPeople = similar;
+      modalState.showDuplicateWarning = true;
+      render();
+      return; // Stop — show warning, let user decide
+    }
+  }
+  // No duplicates found, or user clicked "Create anyway" — proceed
   modalState.saving=true;modalState.error="";render();
   try{
     var r=await fetch(SURL+"/people",{
@@ -517,17 +528,15 @@ async function saveNewPerson(){
   }
 }
 
-var modalState = {open:false, role:"", firstName:"", lastName:"", description:"", saving:false, error:"", similarPeople:[]};
+var modalState = {open:false, role:"", firstName:"", lastName:"", description:"", saving:false, error:"", similarPeople:[], showDuplicateWarning:false};
 
 var modalSearchTimer = null;
 function modalUpdate(field, val){
   modalState[field] = val;
-  // Trigger similar people search when last name changes (or first name)
+  // Clear duplicate warning if they change the name after seeing it
   if(field === 'lastName' || field === 'firstName'){
-    clearTimeout(modalSearchTimer);
-    modalSearchTimer = setTimeout(function(){
-      findSimilarPeople();
-    }, 300);
+    modalState.showDuplicateWarning = false;
+    modalState.similarPeople = [];
   }
   render();
 }
@@ -535,22 +544,26 @@ function modalUpdate(field, val){
 function findSimilarPeople(){
   var last = (modalState.lastName || "").trim().toLowerCase();
   var first = (modalState.firstName || "").trim().toLowerCase();
-  if(!last && !first){modalState.similarPeople = [];render();return;}
+  if(!last && !first) return [];
   var allP = allPeopleSorted();
-  var matches = allP.filter(function(p){
+  return allP.filter(function(p){
     var pLower = p.name.toLowerCase();
     if(last && pLower.indexOf(last) >= 0) return true;
     if(first && first.length > 1 && pLower.indexOf(first) >= 0) return true;
     return false;
-  });
-  modalState.similarPeople = matches.slice(0, 5);
-  render();
+  }).slice(0, 5);
 }
 
 function useExistingPerson(id, name){
   efAddRolePerson(modalState.role, id, name);
   modalState.open = false;
   render();
+}
+
+function createPersonAnyway(){
+  modalState.showDuplicateWarning = false;
+  modalState.similarPeople = [];
+  saveNewPerson();
 }
 
 function renderModal(){
@@ -563,29 +576,37 @@ function renderModal(){
     +'<div class="form-field"><label class="form-label">Last Name</label>'
     +'<input class="form-input" type="text" value="'+esc(modalState.lastName)+'" oninput="modalUpdate(\'lastName\',this.value)" placeholder="Last name" autocomplete="off"></div>';
 
-  // Similar people warning
-  if(modalState.similarPeople && modalState.similarPeople.length > 0){
-    html += '<div style="background:#fff8e1;border:1px solid #ffe082;border-radius:6px;padding:10px 12px;margin-bottom:12px;">'
-      +'<div style="font-size:12px;font-weight:600;color:#5d4037;margin-bottom:6px;">&#9888; Similar people already exist:</div>';
+  // Duplicate warning — only shown after clicking Create, not while typing
+  if(modalState.showDuplicateWarning && modalState.similarPeople.length > 0){
+    html += '<div style="background:#fff8e1;border:1px solid #f9a825;border-radius:6px;padding:12px;margin-bottom:12px;">'
+      +'<div style="font-size:13px;font-weight:600;color:#5d4037;margin-bottom:8px;">&#9888; Similar people already exist — is this one of them?</div>';
     modalState.similarPeople.forEach(function(p){
-      html += '<div style="display:flex;align-items:center;justify-content:space-between;padding:4px 0;border-bottom:1px solid #ffe082;">'
+      html += '<div style="display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-bottom:1px solid #ffe082;">'
         +'<span style="font-size:13px;color:#333;">'+escHtml(p.name)+'</span>'
-        +'<button onclick="useExistingPerson(\''+p.id+'\',\''+p.name.replace(/\\/g,"\\\\").replace(/'/g,"\\'")+'\')" '
-        +'style="background:#2d4a8a;color:white;border:none;padding:3px 8px;border-radius:4px;cursor:pointer;font-size:11px;white-space:nowrap;margin-left:8px;">'
-        +'Use this one</button>'
+        +'<button onclick="useExistingPerson(\''+p.id+'\',\''+p.name.replace(/\\/g,"\\\\").replace(/'/g,"\\'")+'\');" '
+        +'style="background:#2d4a8a;color:white;border:none;padding:4px 10px;border-radius:4px;cursor:pointer;font-size:12px;white-space:nowrap;margin-left:8px;">'
+        +'Yes, use this one</button>'
         +'</div>';
     });
-    html += '<div style="font-size:11px;color:#888;margin-top:6px;">Not the same person? Continue creating below.</div>'
+    html += '<div style="margin-top:10px;display:flex;gap:8px;">'
+      +'<button onclick="createPersonAnyway()" style="flex:1;background:#c62828;color:white;border:none;padding:8px;border-radius:6px;cursor:pointer;font-size:13px;">No — create as a new person</button>'
+      +'<button onclick="modalState.showDuplicateWarning=false;render();" style="background:none;border:1px solid #ccc;color:#666;padding:8px 12px;border-radius:6px;cursor:pointer;font-size:13px;">Go back</button>'
+      +'</div>'
       +'</div>';
   }
 
   html += '<div class="form-field"><label class="form-label">Description <span style="font-weight:normal;color:#aaa;font-size:10px">(optional)</span></label>'
     +'<textarea class="form-textarea" rows="3" oninput="modalUpdate(\'description\',this.value)" placeholder="Brief bio or notes...">'+escText(modalState.description)+'</textarea></div>'
-    +(modalState.error?'<div class="modal-error">'+esc(modalState.error)+'</div>':"")
-    +'<div class="modal-actions">'
-    +'<button class="modal-save-btn" onclick="saveNewPerson()" '+(modalState.saving?"disabled":"")+'>'+(modalState.saving?"Saving…":"&#10003; Create Person")+'</button>'
-    +'<button class="modal-cancel-btn" onclick="closeCreatePersonModal()">Cancel</button>'
-    +'</div></div></div>';
+    +(modalState.error?'<div class="modal-error">'+esc(modalState.error)+'</div>':"");
+
+  if(!modalState.showDuplicateWarning){
+    html += '<div class="modal-actions">'
+      +'<button class="modal-save-btn" onclick="saveNewPerson()" '+(modalState.saving?"disabled":"")+'>'+(modalState.saving?"Saving…":"&#10003; Create Person")+'</button>'
+      +'<button class="modal-cancel-btn" onclick="closeCreatePersonModal()">Cancel</button>'
+      +'</div>';
+  }
+
+  html += '</div></div>';
   return html;
 }
 function buildAuthorOpts(){
