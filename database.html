@@ -541,17 +541,97 @@ function modalUpdate(field, val){
   }
 }
 
+var NICKNAME_MAP = {
+  // Key = nickname, value = list of formal names it could match
+  "dave":["david"],"dav":["david"],
+  "bill":["william","will"],"billy":["william","will"],
+  "will":["william"],"willy":["william"],
+  "dick":["richard"],"rich":["richard"],"rick":["richard"],"ricky":["richard"],
+  "bob":["robert"],"rob":["robert"],"bobby":["robert"],"robbie":["robert"],
+  "jim":["james"],"jimmy":["james"],"jamie":["james"],
+  "joe":["joseph"],"joey":["joseph"],
+  "jack":["john"],"johnny":["john"],"jon":["john"],
+  "tom":["thomas"],"tommy":["thomas"],
+  "ted":["edward","theodore"],"ed":["edward"],"eddie":["edward"],"ned":["edward"],
+  "mike":["michael"],"mick":["michael"],"mickey":["michael"],
+  "nick":["nicholas"],"nicky":["nicholas"],
+  "chris":["christopher","christian"],
+  "dan":["daniel"],"danny":["daniel"],
+  "ben":["benjamin"],"benny":["benjamin"],
+  "tony":["anthony"],"ant":["anthony"],
+  "andy":["andrew"],"drew":["andrew"],
+  "matt":["matthew"],"matty":["matthew"],
+  "pat":["patrick"],"paddy":["patrick"],
+  "pete":["peter"],"petey":["peter"],
+  "sam":["samuel"],"sammy":["samuel"],
+  "steve":["stephen","steven"],"steph":["stephen","steven"],
+  "ken":["kenneth"],"kenny":["kenneth"],
+  "chuck":["charles"],"charlie":["charles"],"chas":["charles"],
+  "larry":["lawrence"],"lars":["lawrence"],
+  "frank":["francis","franklin"],"fran":["francis"],
+  "fred":["frederick"],"freddy":["frederick"],
+  "harry":["harold","henry"],"hal":["harold","henry"],
+  "hank":["henry"],
+  "liz":["elizabeth"],"beth":["elizabeth"],"betty":["elizabeth"],"bette":["elizabeth"],"lisa":["elizabeth"],
+  "kate":["katherine","catherine"],"kathy":["katherine","catherine"],"cathy":["catherine","katherine"],"katie":["katherine","catherine"],
+  "meg":["margaret"],"maggie":["margaret"],"peggy":["margaret"],"marge":["margaret"],
+  "sue":["susan"],"susie":["susan"],
+  "jan":["janet","janice"],"jane":["janet"],
+  "ann":["anne","anna","annette"],"annie":["anne","anna"],
+  "dot":["dorothy"],"dottie":["dorothy"],
+  "connie":["constance"],
+  "jenny":["jennifer"],"jen":["jennifer"],
+  "nik":["nikolaos","nikolas"],"nikos":["nikolaos"],
+  "rod":["rodolphe","rodolph","rodney"],"rodo":["rodolphe"],
+  "al":["albert","alfred","alphonse"],"bert":["albert","bertram"],
+  "theo":["theodore","theophilus"],
+  "gus":["augustus","gustave"],"aug":["augustus"],
+  "max":["maximilian","maximus"],
+};
+
+// Also build reverse map: formal -> [nicknames]
+var FORMAL_TO_NICK = {};
+Object.keys(NICKNAME_MAP).forEach(function(nick){
+  NICKNAME_MAP[nick].forEach(function(formal){
+    if(!FORMAL_TO_NICK[formal]) FORMAL_TO_NICK[formal] = [];
+    FORMAL_TO_NICK[formal].push(nick);
+  });
+});
+
+function nameVariants(name){
+  // Returns all name variants (the name itself + nicknames + formals)
+  var n = name.toLowerCase().trim();
+  var variants = [n];
+  if(NICKNAME_MAP[n]) variants = variants.concat(NICKNAME_MAP[n]);
+  if(FORMAL_TO_NICK[n]) variants = variants.concat(FORMAL_TO_NICK[n]);
+  return variants;
+}
+
 function findSimilarPeople(){
   var last = (modalState.lastName || "").trim().toLowerCase();
   var first = (modalState.firstName || "").trim().toLowerCase();
   if(!last && !first) return [];
+  var firstVariants = first ? nameVariants(first) : [];
   var allP = allPeopleSorted();
-  return allP.filter(function(p){
+  var scored = [];
+  allP.forEach(function(p){
     var pLower = p.name.toLowerCase();
-    if(last && pLower.indexOf(last) >= 0) return true;
-    if(first && first.length > 1 && pLower.indexOf(first) >= 0) return true;
-    return false;
-  }).slice(0, 5);
+    var score = 0;
+    // Last name match (strong signal)
+    if(last && pLower.indexOf(last) >= 0) score += 2;
+    // First name match — check typed name AND all its variants
+    if(first && first.length > 1){
+      for(var i=0; i<firstVariants.length; i++){
+        if(firstVariants[i].length > 1 && pLower.indexOf(firstVariants[i]) >= 0){
+          score += 1;
+          break;
+        }
+      }
+    }
+    if(score > 0) scored.push({p:p, score:score});
+  });
+  scored.sort(function(a,b){return b.score - a.score;});
+  return scored.slice(0, 8).map(function(x){return x.p;});
 }
 
 function useExistingPerson(id, name){
