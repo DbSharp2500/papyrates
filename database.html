@@ -1173,11 +1173,15 @@ async function saveLetter(){
       render();
       if(state.selected){
         var lid=state.selected.id;
-        Promise.all([loadRolePeople(lid),sq("letter_manuscripts?letter_id=eq."+lid+"&select=manuscript_id")])
-          .then(function(res){
-            state.selectedManuscripts=(res[1]||[]).map(function(r){var m=manuscripts[String(r.manuscript_id)];return m?{id:r.manuscript_id,name:m.name}:{};}).filter(function(x){return x.name;});
-            render();
-          });
+        Promise.all([
+          sq("letters?id=eq."+lid+"&select="+LETTER_SELECT),
+          loadRolePeople(lid),
+          sq("letter_manuscripts?letter_id=eq."+lid+"&select=manuscript_id")
+        ]).then(function(res){
+          if(res[0]&&res[0].length>0){state.selected=res[0][0];}
+          state.selectedManuscripts=(res[2]||[]).map(function(r){var m=manuscripts[String(r.manuscript_id)];return m?{id:r.manuscript_id,name:m.name}:{};}).filter(function(x){return x.name;});
+          render();
+        });
       }
     },1200);
   }catch(err){
