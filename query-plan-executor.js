@@ -70,16 +70,19 @@ const QueryPlanExecutor = (() => {
                   sources['person_lookup'] = (sources['person_lookup'] || 0) + fkLetters.length;
                 }
 
-                // SOURCE 2: Letters where person is mentioned (letter_people junction table)
+                // SOURCE 2: Letters where person has any role (mentioned, annotator, subject, etc.)
                 const mentionResp = await fetch(
-                  `${supabaseUrl}/rest/v1/letter_people?select=letter_id,role&person_id=eq.${pid}&limit=100`,
+                  `${supabaseUrl}/rest/v1/letter_people?select=letter_id,role&person_id=eq.${pid}&limit=500`,
                   { headers }
                 );
                 const mentionRows = await mentionResp.json();
                 if (Array.isArray(mentionRows) && mentionRows.length > 0) {
                   const mentionIds = mentionRows.map(r => r.letter_id).join(',');
+                  // Build a map of letter_id → role for labeling
+                  const roleByLetter = {};
+                  mentionRows.forEach(r => { roleByLetter[r.letter_id] = r.role || 'mentioned'; });
                   const mLetterResp = await fetch(
-                    `${supabaseUrl}/rest/v1/letters?select=id,title,date_of_letter,document_type,full_text,description,author_id,recipient_id&id=in.(${mentionIds})&limit=100`,
+                    `${supabaseUrl}/rest/v1/letters?select=id,title,date_of_letter,document_type,full_text,description,author_id,recipient_id&id=in.(${mentionIds})&limit=500`,
                     { headers }
                   );
                   const mLetters = await mLetterResp.json();
@@ -90,7 +93,8 @@ const QueryPlanExecutor = (() => {
                         letterMap.set(l.id, { ...l, _sources: [], _score: null });
                         newMentions++;
                       }
-                      letterMap.get(l.id)._sources.push(`mentioned_in:${personLabel}`);
+                      const role = roleByLetter[l.id] || 'mentioned';
+                      letterMap.get(l.id)._sources.push(`${role}:${personLabel}`);
                     });
                     sources['letter_people'] = (sources['letter_people'] || 0) + newMentions;
                   }
