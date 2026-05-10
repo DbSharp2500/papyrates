@@ -829,9 +829,11 @@ function renderList(){
   var displayCount=hasFilter?state.filteredCount.toLocaleString():state.totalCount.toLocaleString();
   var aOpts=filteredAuthorOpts();var rOpts=filteredRecipOpts();
 
-  var html='<div class="header"><h1>&#x1F3F4;&#x200D;&#x2620;&#xFE0F; Papyrates Database</h1>'
-    +'<div class="header-right"><span class="count">'+displayCount+' documents</span>'
-    +'<a class="home-btn" href="/">&#8962; Home</a>'
+  var html='<div class="header" style="display:grid;grid-template-columns:1fr auto 1fr;align-items:center;">'
+    +'<div><a class="home-btn" href="/">&#8962; Home</a></div>'
+    +'<h1 style="text-align:center;">&#x1F3F4;&#x200D;&#x2620;&#xFE0F; Papyrates Database</h1>'
+    +'<div style="display:flex;justify-content:flex-end;align-items:center;gap:10px;"><span class="count">'+displayCount+' documents</span>'
+    +'<button class="home-btn" onclick="loadLetters()" title="Refresh results">&#8635; Refresh</button>'
     +'</div></div>';
 
   html+='<div class="filters">';
@@ -861,9 +863,7 @@ function renderList(){
 
   html+='<div class="filter-row"><span class="filter-label">Language:</span><select class="filter-select" onchange="onFilter(\'language\',this.value)"><option value="">Any</option>'+LANGS.map(function(l){return'<option value="'+l+'"'+(state.language===l?" selected":"")+'>'+l+'</option>';}).join("")+'</select></div>';
   var _dtSel='<select class="filter-select" onchange="onFilter(\'docType\',this.value)"><option value="">All types</option>'+DOC_TYPES.map(function(t){return'<option value="'+t+'"'+(state.docType===t?' selected':'')+'>'+t+'</option>';}).join('')+'</select>';
-  var _ndBtn='<button class="nodesc-btn'+(state.noDesc?' active':'')+'" onclick="toggleNoDesc()" style="flex-shrink:0">&#x1F4CB; No Desc</button>';
-  var _ntBtn='<button class="nodesc-btn'+(state.notype?' active':'')+'" onclick="toggleNotype()" style="flex-shrink:0;background:rgba(100,150,255,0.18);border-color:rgba(100,150,255,0.45)">&#x1F3F7; Untyped</button>';
-  html+='<div class="filter-row"><span class="filter-label">Doc type:</span>'+_dtSel+_ndBtn+_ntBtn+'</div>';
+  html+='<div class="filter-row"><span class="filter-label">Doc type:</span>'+_dtSel+'</div>';
   html+='<div class="filter-row"><span class="filter-label">Date from:</span><input type="date" class="date-input" value="'+state.dateFrom+'" onchange="onFilter(\'dateFrom\',this.value)"><span style="color:rgba(255,255,255,0.7);font-size:12px;flex-shrink:0">to</span><input type="date" class="date-input" value="'+state.dateTo+'" onchange="onFilter(\'dateTo\',this.value)"></div>';
   html+='<div class="filter-row"><span class="filter-label">Description:</span><input class="filter-input" placeholder="Search descriptions..." value="'+state.descSearch+'" oninput="onSearch(\'descSearch\',this.value)"></div>';
   html+='<div class="filter-row"><span class="filter-label">Full text:</span><input class="filter-input" placeholder="Search OCR text..." value="'+state.textSearch+'" oninput="onSearch(\'textSearch\',this.value)"><button class="clear-btn" onclick="doClear()">Clear all</button></div>';
