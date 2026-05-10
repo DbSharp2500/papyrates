@@ -436,6 +436,7 @@ function onConnectedPersonInput(v){
 
 // ── Create New Person modal ───────────────────────────────────────────────────
 function openCreatePersonModal(role){
+  if(getPapyratesTier()==='readonly'){return;}
   modalState={open:true,role:role,firstName:"",lastName:"",description:"",saving:false,error:""};
   // Close the dropdown
   var dd=document.getElementById("eform-"+role+"-drop");if(dd)dd.classList.remove("open");
@@ -448,6 +449,7 @@ function closeCreatePersonModal(){
 }
 function modalUpdate(field,val){modalState[field]=val;}
 async function saveNewPerson(){
+  if(getPapyratesTier()==='readonly'){modalState.error="You do not have permission to create people.";render();return;}
   if(!modalState.firstName.trim()&&!modalState.lastName.trim()){
     modalState.error="Please enter at least a first or last name.";render();return;
   }
@@ -885,6 +887,7 @@ document.addEventListener("click",function(e){
 
 // ── Save letter ───────────────────────────────────────────────────────────────
 async function saveLetter(){
+  if(getPapyratesTier()==='readonly'){return;}
   var f=state.editForm;if(!f)return;
   state.editSaving=true;state.editMsg="";render();
 
@@ -997,6 +1000,7 @@ function init(){
     return;
   }
   else if(action==="add"){
+    if(getPapyratesTier()==='readonly'){window.location.href='/';return;}
     Promise.all([loadPeople(),loadManuscripts(),loadInstitutions()]).then(function(){openAddNew();});
     return;
   }
