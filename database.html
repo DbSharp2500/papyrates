@@ -318,13 +318,32 @@ function buildQ(){
   var f=[];
   if(state.authorId)f.push("author_id=eq."+state.authorId);
   if(state.recipientId)f.push("recipient_id=eq."+state.recipientId);
-  if(state.dateFrom)f.push("date_of_letter=gte."+state.dateFrom);
-  if(state.dateTo)f.push("date_of_letter=lte."+state.dateTo);
+  // Date filter — includes journals whose date_from/date_to range covers the period
+  if(state.dateFrom||state.dateTo){
+    if(state.dateFrom&&state.dateTo){
+      f.push("or=(and(date_of_letter.gte."+state.dateFrom+",date_of_letter.lte."+state.dateTo+"),and(document_type.eq.Journal / Diary,date_from.lte."+state.dateTo+",date_to.gte."+state.dateFrom+"))");
+    } else if(state.dateFrom){
+      f.push("or=(date_of_letter.gte."+state.dateFrom+",and(document_type.eq.Journal / Diary,date_to.gte."+state.dateFrom+"))");
+    } else {
+      f.push("or=(date_of_letter.lte."+state.dateTo+",and(document_type.eq.Journal / Diary,date_from.lte."+state.dateTo+"))");
+    }
+  }
   if(state.connectedLetterIds!==null){
     if(state.connectedLetterIds.length===0)f.push("id=eq.0");
     else f.push("id=in.("+state.connectedLetterIds.join(",")+")");
   }
   if(state.manuscriptLetterIds!==null){
+    if(state.manuscriptLetterIds.length===0)f.push("id=eq.0");
+    else f.push("id=in.("+state.manuscriptLetterIds.join(",")+")");
+  }
+  if(state.language)f.push("language=eq."+encodeURIComponent(state.language));
+  if(state.docType)f.push("document_type=eq."+encodeURIComponent(state.docType));
+  if(state.descSearch)f.push("description=ilike.*"+encodeURIComponent(state.descSearch)+"*");
+  if(state.textSearch)f.push("full_text=ilike.*"+encodeURIComponent(state.textSearch)+"*");
+  if(state.noDesc)f.push("or=(description.is.null,description.eq.)");
+  if(state.notype)f.push("or=(document_type.is.null,document_type.eq.Correspondence)");
+  if(f.length)q+="&"+f.join("&");
+  if(state.sortBy==="date"){
     q+="&order=date_of_letter."+(state.sortDir==="desc"?"desc":"asc")+".nullslast";
   } else {
     q+="&order=date_of_letter.asc.nullslast";
@@ -337,8 +356,15 @@ function buildCountQ(){
   var f=[];
   if(state.authorId)f.push("author_id=eq."+state.authorId);
   if(state.recipientId)f.push("recipient_id=eq."+state.recipientId);
-  if(state.dateFrom)f.push("date_of_letter=gte."+state.dateFrom);
-  if(state.dateTo)f.push("date_of_letter=lte."+state.dateTo);
+  if(state.dateFrom||state.dateTo){
+    if(state.dateFrom&&state.dateTo){
+      f.push("or=(and(date_of_letter.gte."+state.dateFrom+",date_of_letter.lte."+state.dateTo+"),and(document_type.eq.Journal / Diary,date_from.lte."+state.dateTo+",date_to.gte."+state.dateFrom+"))");
+    } else if(state.dateFrom){
+      f.push("or=(date_of_letter.gte."+state.dateFrom+",and(document_type.eq.Journal / Diary,date_to.gte."+state.dateFrom+"))");
+    } else {
+      f.push("or=(date_of_letter.lte."+state.dateTo+",and(document_type.eq.Journal / Diary,date_from.lte."+state.dateTo+"))");
+    }
+  }
   if(state.connectedLetterIds!==null){
     if(state.connectedLetterIds.length===0)f.push("id=eq.0");
     else f.push("id=in.("+state.connectedLetterIds.join(",")+")");
@@ -362,8 +388,15 @@ function buildFetchAllQ(){
   var f=[];
   if(state.authorId)f.push("author_id=eq."+state.authorId);
   if(state.recipientId)f.push("recipient_id=eq."+state.recipientId);
-  if(state.dateFrom)f.push("date_of_letter=gte."+state.dateFrom);
-  if(state.dateTo)f.push("date_of_letter=lte."+state.dateTo);
+  if(state.dateFrom||state.dateTo){
+    if(state.dateFrom&&state.dateTo){
+      f.push("or=(and(date_of_letter.gte."+state.dateFrom+",date_of_letter.lte."+state.dateTo+"),and(document_type.eq.Journal / Diary,date_from.lte."+state.dateTo+",date_to.gte."+state.dateFrom+"))");
+    } else if(state.dateFrom){
+      f.push("or=(date_of_letter.gte."+state.dateFrom+",and(document_type.eq.Journal / Diary,date_to.gte."+state.dateFrom+"))");
+    } else {
+      f.push("or=(date_of_letter.lte."+state.dateTo+",and(document_type.eq.Journal / Diary,date_from.lte."+state.dateTo+"))");
+    }
+  }
   if(state.connectedLetterIds!==null){
     if(state.connectedLetterIds.length===0)f.push("id=eq.0");
     else f.push("id=in.("+state.connectedLetterIds.join(",")+")");
