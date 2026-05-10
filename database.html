@@ -229,6 +229,7 @@ var state = {
   letters:[], totalCount:0, filteredCount:0,
   page:0, pageSize:50,
   loading:true,
+  sortBy:"author", sortDir:"asc", allSortedResults:null,
   selected:null, showFT:false,
   selectedPeople:[], selectedManuscripts:[],
   roleAuthors:[], roleRecipients:[], roleSubjects:[],
@@ -314,7 +315,12 @@ function buildQ(){
   if(state.noDesc)f.push("or=(description.is.null,description.eq.)");
   if(state.notype)f.push("or=(document_type.is.null,document_type.eq.Correspondence)");
   if(f.length)q+="&"+f.join("&");
-  q+="&order=date_of_letter.asc.nullslast&offset="+(state.page*state.pageSize)+"&limit="+state.pageSize;
+  if(state.sortBy==="date"){
+    q+="&order=date_of_letter."+(state.sortDir==="desc"?"desc":"asc")+".nullslast";
+  } else {
+    q+="&order=date_of_letter.asc.nullslast";
+  }
+  q+="&offset="+(state.page*state.pageSize)+"&limit="+state.pageSize;
   return q;
 }
 function buildCountQ(){
@@ -338,7 +344,51 @@ function buildCountQ(){
   return q;
 }
 
-// ── Autocomplete helpers (list view) ──────────────────────────────────────────
+function buildFetchAllQ(){
+  var q="letters?select="+LETTER_SELECT;
+  var f=[];
+  if(state.authorId)f.push("author_id=eq."+state.authorId);
+  if(state.recipientId)f.push("recipient_id=eq."+state.recipientId);
+  if(state.dateFrom)f.push("date_of_letter=gte."+state.dateFrom);
+  if(state.dateTo)f.push("date_of_letter=lte."+state.dateTo);
+  if(state.manuscriptLetterIds!==null){
+    if(state.manuscriptLetterIds.length===0)f.push("id=eq.0");
+    else f.push("id=in.("+state.manuscriptLetterIds.join(",")+")");
+  }
+  if(state.language)f.push("language=eq."+encodeURIComponent(state.language));
+  if(state.docType)f.push("document_type=eq."+encodeURIComponent(state.docType));
+  if(state.descSearch)f.push("description=ilike.*"+encodeURIComponent(state.descSearch)+"*");
+  if(state.textSearch)f.push("full_text=ilike.*"+encodeURIComponent(state.textSearch)+"*");
+  if(state.noDesc)f.push("or=(description.is.null,description.eq.)");
+  if(state.notype)f.push("or=(document_type.is.null,document_type.eq.Correspondence)");
+  if(f.length)q+="&"+f.join("&");
+  return q;
+}
+
+async function fetchAllForSort(){
+  var all=[],offset=0;
+  var base=buildFetchAllQ();
+  while(true){
+    var batch=await sq(base+"&offset="+offset+"&limit=1000");
+    if(!Array.isArray(batch)||batch.length===0)break;
+    all=all.concat(batch);
+    if(batch.length<1000)break;
+    offset+=1000;
+  }
+  return all;
+}
+
+function setSortBy(col){
+  if(state.sortBy===col){
+    state.sortDir=state.sortDir==="asc"?"desc":"asc";
+  } else {
+    state.sortBy=col;
+    state.sortDir="asc";
+  }
+  state.page=0;
+  state.allSortedResults=null;
+  loadLetters();
+}
 function buildAuthorOpts(){
   var p=state.recipientId?sq("letters?recipient_id=eq."+state.recipientId+"&select=author_id&limit=5000"):sq("letters?select=author_id&limit=5000");
   return p.then(function(rows){
@@ -418,11 +468,31 @@ function onManuscriptInput(v){
 
 function loadLetters(){
   state.loading=true;render();
-  return Promise.all([sq(buildQ()),sqCount(buildCountQ())]).then(function(res){
-    state.letters=Array.isArray(res[0])?res[0]:[];
-    state.filteredCount=res[1];
-    state.loading=false;render();
-  });
+  if(state.sortBy==="date"){
+    // Server-side sort with normal pagination
+    return Promise.all([sq(buildQ()),sqCount(buildCountQ())]).then(function(res){
+      state.letters=Array.isArray(res[0])?res[0]:[];
+      state.filteredCount=res[1];
+      state.allSortedResults=null;
+      state.loading=false;render();
+    });
+  } else {
+    // Client-side name sort — fetch all results then sort in memory
+    return sqCount(buildCountQ()).then(function(count){
+      state.filteredCount=count;
+      return fetchAllForSort();
+    }).then(function(all){
+      all.sort(function(a,b){
+        var aName=state.sortBy==="author"?(pname(a.author_id)||a.title||""):(pname(a.recipient_id)||"");
+        var bName=state.sortBy==="author"?(pname(b.author_id)||b.title||""):(pname(b.recipient_id)||"");
+        var cmp=aName.toLowerCase().localeCompare(bName.toLowerCase());
+        return state.sortDir==="desc"?-cmp:cmp;
+      });
+      state.allSortedResults=all;
+      state.letters=all.slice(state.page*state.pageSize,(state.page+1)*state.pageSize);
+      state.loading=false;render();
+    });
+  }
 }
 
 // ── Letter open / navigation ──────────────────────────────────────────────────
@@ -506,7 +576,15 @@ function openManuscript(manuscriptId){
 
 function goBack(){var prev=viewStack.pop();state.view=prev||"list";render();}
 function toggleFT(){state.showFT=!state.showFT;render();}
-function changePage(d){state.page+=d;loadLetters();}
+function changePage(d){
+  state.page+=d;
+  if(state.allSortedResults){
+    state.letters=state.allSortedResults.slice(state.page*state.pageSize,(state.page+1)*state.pageSize);
+    render();
+  } else {
+    loadLetters();
+  }
+}
 
 // ── Edit form ─────────────────────────────────────────────────────────────────
 async function openEdit(){
@@ -875,9 +953,19 @@ function renderList(){
 }
 
 function renderRows(){
-  if(!state.letters.length)return'<div class="no-results">No documents found.</div>';
   var totalPages=Math.ceil(state.filteredCount/state.pageSize)||1;
-  var html='<div class="col-headers"><span>Author / Creator</span><span>Recipient / Subject</span><span>Date</span><span></span></div>';
+  if(!state.letters.length)return'<div class="no-results">No documents found.</div>';
+  function sortIcon(col){
+    if(state.sortBy!==col)return'<span style="color:rgba(58,91,160,0.35);font-size:11px"> &#8597;</span>';
+    return state.sortDir==='asc'?'<span style="font-size:11px"> &#8593;</span>':'<span style="font-size:11px"> &#8595;</span>';
+  }
+  var chStyle='cursor:pointer;user-select:none;';
+  var activeStyle='color:#1a3a7a;font-weight:bold;';
+  var html='<div class="col-headers">'
+    +'<span style="'+chStyle+(state.sortBy==="author"?activeStyle:'')+'" onclick="setSortBy(\'author\')">Author / Creator'+sortIcon('author')+'</span>'
+    +'<span style="'+chStyle+(state.sortBy==="recipient"?activeStyle:'')+'" onclick="setSortBy(\'recipient\')">Recipient / Subject'+sortIcon('recipient')+'</span>'
+    +'<span style="'+chStyle+(state.sortBy==="date"?activeStyle:'')+'" onclick="setSortBy(\'date\')">Date'+sortIcon('date')+'</span>'
+    +'<span></span></div>';
   html+=state.letters.map(function(l,i){
     return'<div class="letter-row" onclick="openLetter('+i+')">'
       +'<span class="letter-name">'+(pname(l.author_id)||l.title||"&mdash;")+'</span>'
