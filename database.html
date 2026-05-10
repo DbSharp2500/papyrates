@@ -158,7 +158,18 @@ body{font-family:Arial,sans-serif;background:#f0f3fa;min-height:100vh;}
 .ms-inst-item{font-size:12px;padding:5px 8px;background:#f0f3fa;border-radius:5px;margin-bottom:5px;color:#2d4a8a;}
 .ms-inst-notes{font-size:11px;color:#666;margin-top:2px;}
 .ms-sidebar-count{background:#e8ecf5;color:#2d4a8a;padding:4px 10px;border-radius:12px;font-size:12px;font-weight:500;}
-@media (max-width:1080px){
+/* Create Person Modal */
+.modal-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:1000;display:flex;align-items:center;justify-content:center;}
+.modal-box{background:white;border-radius:10px;padding:24px;width:90%;max-width:420px;box-shadow:0 8px 32px rgba(0,0,0,0.25);}
+.modal-title{font-size:16px;font-weight:600;color:#2d4a8a;margin-bottom:16px;}
+.modal-actions{display:flex;gap:10px;margin-top:20px;}
+.modal-save-btn{flex:1;background:#2d4a8a;color:white;border:none;padding:10px;border-radius:6px;cursor:pointer;font-size:14px;font-weight:500;}
+.modal-save-btn:hover{background:#3a5ba0;}
+.modal-save-btn:disabled{opacity:0.5;cursor:default;}
+.modal-cancel-btn{background:none;color:#666;border:1px solid #ccc;padding:10px 16px;border-radius:6px;cursor:pointer;font-size:14px;}
+.modal-cancel-btn:hover{background:#f5f5f5;}
+.modal-error{color:#c62828;font-size:12px;margin-top:8px;}
+
   .page-wrap.with-sidebar{max-width:700px;}
   .page-wrap.with-sidebar .ms-sidebar{display:none;}
   .page-wrap.with-sidebar .app{flex:unset;}
@@ -219,6 +230,8 @@ var TYPE_CONFIG = {
 var LANGS = ["English","French","German","Latin","Italian","Spanish","Coptic","Greek","Arabic","Dutch","Hebrew"];
 var PUB_STAGES = ["Draft","Submitted","Published","Unpublished","Unknown"];
 
+var modalState = {open:false, role:"", firstName:"", lastName:"", description:"", saving:false, error:""};
+
 var state = {
   view:"list",
   authorId:"", recipientId:"",
@@ -230,6 +243,7 @@ var state = {
   page:0, pageSize:50,
   loading:true,
   sortBy:"author", sortDir:"asc", allSortedResults:null,
+  connectedPersonId:"", connectedPersonText:"", connectedLetterIds:null,
   selected:null, showFT:false,
   selectedPeople:[], selectedManuscripts:[],
   roleAuthors:[], roleRecipients:[], roleSubjects:[],
@@ -304,18 +318,11 @@ function buildQ(){
   if(state.recipientId)f.push("recipient_id=eq."+state.recipientId);
   if(state.dateFrom)f.push("date_of_letter=gte."+state.dateFrom);
   if(state.dateTo)f.push("date_of_letter=lte."+state.dateTo);
-  if(state.manuscriptLetterIds!==null){
-    if(state.manuscriptLetterIds.length===0)f.push("id=eq.0");
-    else f.push("id=in.("+state.manuscriptLetterIds.join(",")+")");
+  if(state.connectedLetterIds!==null){
+    if(state.connectedLetterIds.length===0)f.push("id=eq.0");
+    else f.push("id=in.("+state.connectedLetterIds.join(",")+")");
   }
-  if(state.language)f.push("language=eq."+encodeURIComponent(state.language));
-  if(state.docType)f.push("document_type=eq."+encodeURIComponent(state.docType));
-  if(state.descSearch)f.push("description=ilike.*"+encodeURIComponent(state.descSearch)+"*");
-  if(state.textSearch)f.push("full_text=ilike.*"+encodeURIComponent(state.textSearch)+"*");
-  if(state.noDesc)f.push("or=(description.is.null,description.eq.)");
-  if(state.notype)f.push("or=(document_type.is.null,document_type.eq.Correspondence)");
-  if(f.length)q+="&"+f.join("&");
-  if(state.sortBy==="date"){
+  if(state.manuscriptLetterIds!==null){
     q+="&order=date_of_letter."+(state.sortDir==="desc"?"desc":"asc")+".nullslast";
   } else {
     q+="&order=date_of_letter.asc.nullslast";
@@ -330,6 +337,10 @@ function buildCountQ(){
   if(state.recipientId)f.push("recipient_id=eq."+state.recipientId);
   if(state.dateFrom)f.push("date_of_letter=gte."+state.dateFrom);
   if(state.dateTo)f.push("date_of_letter=lte."+state.dateTo);
+  if(state.connectedLetterIds!==null){
+    if(state.connectedLetterIds.length===0)f.push("id=eq.0");
+    else f.push("id=in.("+state.connectedLetterIds.join(",")+")");
+  }
   if(state.manuscriptLetterIds!==null){
     if(state.manuscriptLetterIds.length===0)f.push("id=eq.0");
     else f.push("id=in.("+state.manuscriptLetterIds.join(",")+")");
@@ -351,6 +362,10 @@ function buildFetchAllQ(){
   if(state.recipientId)f.push("recipient_id=eq."+state.recipientId);
   if(state.dateFrom)f.push("date_of_letter=gte."+state.dateFrom);
   if(state.dateTo)f.push("date_of_letter=lte."+state.dateTo);
+  if(state.connectedLetterIds!==null){
+    if(state.connectedLetterIds.length===0)f.push("id=eq.0");
+    else f.push("id=in.("+state.connectedLetterIds.join(",")+")");
+  }
   if(state.manuscriptLetterIds!==null){
     if(state.manuscriptLetterIds.length===0)f.push("id=eq.0");
     else f.push("id=in.("+state.manuscriptLetterIds.join(",")+")");
@@ -389,6 +404,92 @@ function setSortBy(col){
   state.allSortedResults=null;
   loadLetters();
 }
+
+// ── Connected to Person filter ────────────────────────────────────────────────
+function selectConnectedPerson(id, name){
+  state.connectedPersonId=String(id);
+  state.connectedPersonText=name;
+  state.page=0;
+  state.allSortedResults=null;
+  var dd=document.getElementById("connected-drop");if(dd)dd.classList.remove("open");
+  sq("letter_people?person_id=eq."+id+"&select=letter_id&limit=5000").then(function(rows){
+    state.connectedLetterIds=Array.isArray(rows)?rows.map(function(r){return r.letter_id;}):[];
+    render();loadLetters();
+  });
+}
+function clearConnectedPerson(){
+  state.connectedPersonId="";state.connectedPersonText="";state.connectedLetterIds=null;state.page=0;
+  var dd=document.getElementById("connected-drop");if(dd)dd.classList.remove("open");
+  render();loadLetters();
+}
+function onConnectedPersonInput(v){
+  state.connectedPersonText=v;if(!v){state.connectedPersonId="";state.connectedLetterIds=null;}
+  var dd=document.getElementById("connected-drop");if(!dd)return;
+  var t=v.toLowerCase();
+  var allP=allPeopleSorted();
+  var matches=v?allP.filter(function(p){return p.name.toLowerCase().indexOf(t)>=0;}):allP.slice(0,30);
+  dd.classList.add("open");
+  dd.innerHTML=matches.slice(0,50).map(function(p){
+    return'<div class="ac-item'+(p.id==state.connectedPersonId?" selected-item":"")+'" onmousedown="event.preventDefault();selectConnectedPerson(\''+p.id+'\',\''+p.name.replace(/\\/g,"\\\\").replace(/'/g,"\\'")+'\')">'+p.name+'</div>';
+  }).join("")||'<div class="ac-item" style="color:#999">No results</div>';
+}
+
+// ── Create New Person modal ───────────────────────────────────────────────────
+function openCreatePersonModal(role){
+  modalState={open:true,role:role,firstName:"",lastName:"",description:"",saving:false,error:""};
+  // Close the dropdown
+  var dd=document.getElementById("eform-"+role+"-drop");if(dd)dd.classList.remove("open");
+  var inp=document.getElementById("eform-"+role+"-inp");if(inp)inp.value="";
+  render();
+  setTimeout(function(){var el=document.getElementById("modal-firstname");if(el)el.focus();},50);
+}
+function closeCreatePersonModal(){
+  modalState.open=false;render();
+}
+function modalUpdate(field,val){modalState[field]=val;}
+async function saveNewPerson(){
+  if(!modalState.firstName.trim()&&!modalState.lastName.trim()){
+    modalState.error="Please enter at least a first or last name.";render();return;
+  }
+  modalState.saving=true;modalState.error="";render();
+  try{
+    var r=await fetch(SURL+"/people",{
+      method:"POST",
+      headers:Object.assign({},SH,{"Content-Type":"application/json","Prefer":"return=representation"}),
+      body:JSON.stringify({first_name:modalState.firstName.trim()||null,last_name:modalState.lastName.trim()||null,description:modalState.description.trim()||null})
+    });
+    if(!r.ok)throw new Error("HTTP "+r.status);
+    var data=await r.json();
+    var newPerson=data[0];
+    // Add to people cache
+    people[String(newPerson.id)]=newPerson;
+    // Add to the role in the edit form
+    var name=pname(newPerson.id);
+    efAddRolePerson(modalState.role,newPerson.id,name);
+    modalState.open=false;
+    render();
+  }catch(err){
+    modalState.saving=false;modalState.error="Error: "+err.message;render();
+  }
+}
+
+function renderModal(){
+  if(!modalState.open)return"";
+  return'<div class="modal-overlay" onclick="if(event.target===this)closeCreatePersonModal()">'
+    +'<div class="modal-box">'
+    +'<div class="modal-title">&#43; Create New Person</div>'
+    +'<div class="form-field"><label class="form-label">First Name</label>'
+    +'<input class="form-input" id="modal-firstname" type="text" value="'+esc(modalState.firstName)+'" oninput="modalUpdate(\'firstName\',this.value)" placeholder="First name"></div>'
+    +'<div class="form-field"><label class="form-label">Last Name</label>'
+    +'<input class="form-input" type="text" value="'+esc(modalState.lastName)+'" oninput="modalUpdate(\'lastName\',this.value)" placeholder="Last name"></div>'
+    +'<div class="form-field"><label class="form-label">Description <span style="font-weight:normal;color:#aaa;font-size:10px">(optional)</span></label>'
+    +'<textarea class="form-textarea" rows="3" oninput="modalUpdate(\'description\',this.value)" placeholder="Brief bio or notes...">'+escText(modalState.description)+'</textarea></div>'
+    +(modalState.error?'<div class="modal-error">'+esc(modalState.error)+'</div>':"")
+    +'<div class="modal-actions">'
+    +'<button class="modal-save-btn" onclick="saveNewPerson()" '+(modalState.saving?"disabled":"")+'>'+(modalState.saving?"Saving…":"&#10003; Create Person")+'</button>'
+    +'<button class="modal-cancel-btn" onclick="closeCreatePersonModal()">Cancel</button>'
+    +'</div></div></div>';
+}
 function buildAuthorOpts(){
   var p=state.recipientId?sq("letters?recipient_id=eq."+state.recipientId+"&select=author_id&limit=5000"):sq("letters?select=author_id&limit=5000");
   return p.then(function(rows){
@@ -415,7 +516,7 @@ function selectRecip(id,name){state.recipientId=id;state.recipientText=name;stat
 function clearAuthor(){state.authorId="";state.authorText="";state.page=0;buildRecipOpts().then(function(){render();loadLetters();});}
 function clearRecip(){state.recipientId="";state.recipientText="";state.page=0;buildAuthorOpts().then(function(){render();loadLetters();});}
 function doSwap(){var aId=state.authorId,aName=state.authorText,rId=state.recipientId,rName=state.recipientText;state.authorId=rId;state.authorText=rName;state.recipientId=aId;state.recipientText=aName;state.page=0;Promise.all([buildAuthorOpts(),buildRecipOpts()]).then(function(){loadLetters();});}
-function doClear(){state.authorId="";state.authorText="";state.recipientId="";state.recipientText="";state.dateFrom="";state.dateTo="";state.language="";state.descSearch="";state.textSearch="";state.docType="";state.noDesc=false;state.notype=false;state.page=0;Promise.all([buildAuthorOpts(),buildRecipOpts()]).then(function(){loadLetters();});}
+function doClear(){state.authorId="";state.authorText="";state.recipientId="";state.recipientText="";state.dateFrom="";state.dateTo="";state.language="";state.descSearch="";state.textSearch="";state.docType="";state.noDesc=false;state.notype=false;state.connectedPersonId="";state.connectedPersonText="";state.connectedLetterIds=null;state.page=0;Promise.all([buildAuthorOpts(),buildRecipOpts()]).then(function(){loadLetters();});}
 function onFilter(k,v){state[k]=v;state.page=0;loadLetters();}
 function toggleNoDesc(){state.noDesc=!state.noDesc;state.page=0;loadLetters();}
 function toggleNotype(){state.notype=!state.notype;state.page=0;loadLetters();}
@@ -717,9 +818,12 @@ function efAddPersonInput(role,val){
   var allP=allPeopleSorted();
   var matches=val?allP.filter(function(p){return p.name.toLowerCase().indexOf(t)>=0;}):allP.slice(0,30);
   dd.classList.add("open");
-  dd.innerHTML=matches.slice(0,50).map(function(p){
+  var items=matches.slice(0,50).map(function(p){
     return'<div class="form-ac-item" onmousedown="event.preventDefault();efAddRolePerson(\''+role+'\',\''+p.id+'\',\''+p.name.replace(/\\/g,"\\\\").replace(/'/g,"\\'")+'\')">'+p.name+'</div>';
-  }).join("")||'<div class="form-ac-item" style="color:#999">No matches</div>';
+  }).join("");
+  // Always show Create New Person at the bottom
+  items+='<div class="form-ac-item" style="color:#2d4a8a;border-top:1px solid #e8ecf5;font-weight:500;" onmousedown="event.preventDefault();openCreatePersonModal(\''+role+'\')">&#43; Create new person…</div>';
+  dd.innerHTML=items;
 }
 
 // ── Edit form: manuscripts mentioned ─────────────────────────────────────────
@@ -767,6 +871,7 @@ function efSelectInstitution(id,name){
 // ── Click-outside to close dropdowns ─────────────────────────────────────────
 document.addEventListener("click",function(e){
   if(!e.target.closest("#ms-inp")&&!e.target.closest("#ms-drop")){var msd=document.getElementById("ms-drop");if(msd)msd.classList.remove("open");}
+  if(!e.target.closest("#connected-inp")&&!e.target.closest("#connected-drop")){var cd=document.getElementById("connected-drop");if(cd)cd.classList.remove("open");}
   if(!e.target.closest(".form-ac-wrap")){
     ["eform-author-drop","eform-recip-drop","eform-subject-drop","eform-mentioned-drop","eform-ms-drop","eform-inst-drop"].forEach(function(id){
       var el=document.getElementById(id);if(el)el.classList.remove("open");
@@ -937,6 +1042,14 @@ function renderList(){
   html+=msOpts.length===0?'<div class="ac-item" style="color:#999">Type to search...</div>':msOpts.map(function(o){return'<div class="ac-item" onmousedown="event.preventDefault();selectManuscript('+o.id+',\''+o.name.replace(/\\/g,"\\\\").replace(/'/g,"\\'")+'\')">'+o.name+'</div>';}).join("");
   html+='</div></div>';
   if(state.manuscriptId)html+='<span style="color:rgba(255,255,255,0.7);font-size:11px;flex-shrink:0">'+(state.manuscriptLetterIds===null?'Loading...':(state.manuscriptLetterIds.length+' docs'))+'</span>';
+  html+='</div>';
+
+  // Connected to Person filter
+  html+='<div class="filter-row"><span class="filter-label">Person:</span>';
+  html+='<div class="ac-wrap"><input class="ac-input" id="connected-inp" type="text" placeholder="Any connection to this person..." value="'+state.connectedPersonText.replace(/"/g,"&quot;")+'" oninput="onConnectedPersonInput(this.value)" onfocus="onConnectedPersonInput(this.value)" autocomplete="off">';
+  if(state.connectedPersonText)html+='<button class="ac-clear" onclick="clearConnectedPerson()">x</button>';
+  html+='<div class="ac-dropdown" id="connected-drop"></div></div>';
+  if(state.connectedPersonId)html+='<span style="color:rgba(255,255,255,0.7);font-size:11px;flex-shrink:0">'+(state.connectedLetterIds===null?'Loading...':(state.connectedLetterIds.length+' docs'))+'</span>';
   html+='</div>';
 
   html+='<div class="filter-row"><span class="filter-label">Language:</span><select class="filter-select" onchange="onFilter(\'language\',this.value)"><option value="">Any</option>'+LANGS.map(function(l){return'<option value="'+l+'"'+(state.language===l?" selected":"")+'>'+l+'</option>';}).join("")+'</select></div>';
@@ -1445,6 +1558,14 @@ function render(){
   else if(state.view==="manuscript")app.innerHTML=renderManuscript();
   else if(state.view==="duplicates")app.innerHTML=renderDuplicates();
   else app.innerHTML=renderList();
+  // Render modal overlay on top of everything
+  var existing=document.getElementById("modal-container");
+  if(existing)existing.remove();
+  if(modalState.open){
+    var mc=document.createElement("div");mc.id="modal-container";
+    mc.innerHTML=renderModal();
+    document.body.appendChild(mc);
+  }
 }
 
 render();
