@@ -533,12 +533,12 @@ var modalState = {open:false, role:"", firstName:"", lastName:"", description:""
 var modalSearchTimer = null;
 function modalUpdate(field, val){
   modalState[field] = val;
-  // Clear duplicate warning if they change the name after seeing it
+  // Clear duplicate warning silently when name changes — no render needed
+  // The browser handles the input value natively; re-rendering destroys focus
   if(field === 'lastName' || field === 'firstName'){
     modalState.showDuplicateWarning = false;
     modalState.similarPeople = [];
   }
-  render();
 }
 
 function findSimilarPeople(){
