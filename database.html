@@ -641,8 +641,18 @@ function useExistingPerson(id, name){
 }
 
 function togglePersonDetail(id){
-  modalState.expandedPersonId = (modalState.expandedPersonId === id) ? null : id;
-  render();
+  var descBox = document.getElementById("person-desc-"+id);
+  if(!descBox) return;
+  var personData = people[String(id)];
+  var desc = personData ? (personData.description || "") : "";
+  if(descBox.style.display === "none" || descBox.style.display === ""){
+    descBox.innerHTML = desc
+      ? '<div style="padding:6px 8px;background:white;border-radius:4px;font-size:12px;color:#555;line-height:1.5;">'+escHtml(desc)+'</div>'
+      : '<div style="padding:6px 8px;background:white;border-radius:4px;font-size:12px;color:#aaa;font-style:italic;">No description on file.</div>';
+    descBox.style.display = "block";
+  } else {
+    descBox.style.display = "none";
+  }
 }
 
 function createPersonAnyway(){
@@ -668,7 +678,6 @@ function renderModal(){
     modalState.similarPeople.forEach(function(p){
       var personData = people[String(p.id)];
       var desc = personData ? (personData.description || "") : "";
-      var isExpanded = modalState.expandedPersonId === p.id;
       html += '<div style="padding:6px 0;border-bottom:1px solid #ffe082;">'
         +'<div style="display:flex;align-items:center;justify-content:space-between;">'
         +'<span onclick="togglePersonDetail(\''+p.id+'\')" style="font-size:13px;color:#2d4a8a;cursor:pointer;text-decoration:underline;text-underline-offset:2px;" title="Click to see description">'
@@ -677,11 +686,7 @@ function renderModal(){
         +'style="background:#2d4a8a;color:white;border:none;padding:4px 10px;border-radius:4px;cursor:pointer;font-size:12px;white-space:nowrap;margin-left:8px;">'
         +'Yes, use this one</button>'
         +'</div>'
-        +(isExpanded
-          ? '<div style="margin-top:5px;padding:6px 8px;background:white;border-radius:4px;font-size:12px;color:#555;line-height:1.5;">'
-            +(desc ? escHtml(desc) : '<em style="color:#aaa">No description on file.</em>')
-            +'</div>'
-          : '')
+        +'<div id="person-desc-'+p.id+'" style="display:none;"></div>'
         +'</div>';
     });
     html += '<div style="margin-top:10px;display:flex;gap:8px;">'
