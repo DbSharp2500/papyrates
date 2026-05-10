@@ -244,6 +244,8 @@ var state = {
   loading:true,
   sortBy:"author", sortDir:"asc", allSortedResults:null,
   connectedPersonId:"", connectedPersonText:"", connectedLetterIds:null,
+  connectedAuthoredIds:null, connectedReceivedIds:null, connectedMentionedIds:null,
+  connectedRoleFilter:"all",
   selected:null, showFT:false,
   selectedPeople:[], selectedManuscripts:[],
   roleAuthors:[], roleRecipients:[], roleSubjects:[],
@@ -409,21 +411,61 @@ function setSortBy(col){
 function selectConnectedPerson(id, name){
   state.connectedPersonId=String(id);
   state.connectedPersonText=name;
+  state.connectedRoleFilter="all";
   state.page=0;
   state.allSortedResults=null;
   var dd=document.getElementById("connected-drop");if(dd)dd.classList.remove("open");
-  sq("letter_people?person_id=eq."+id+"&select=letter_id&limit=5000").then(function(rows){
-    state.connectedLetterIds=Array.isArray(rows)?rows.map(function(r){return r.letter_id;}):[];
+  // Fetch from all three sources in parallel
+  Promise.all([
+    sq("letters?author_id=eq."+id+"&select=id&limit=5000"),
+    sq("letters?recipient_id=eq."+id+"&select=id&limit=5000"),
+    sq("letter_people?person_id=eq."+id+"&select=letter_id&limit=5000")
+  ]).then(function(res){
+    state.connectedAuthoredIds=(res[0]||[]).map(function(r){return r.id;});
+    state.connectedReceivedIds=(res[1]||[]).map(function(r){return r.id;});
+    state.connectedMentionedIds=(res[2]||[]).map(function(r){return r.letter_id;});
+    // Union all three
+    var allIds={};
+    state.connectedAuthoredIds.forEach(function(id){allIds[id]=true;});
+    state.connectedReceivedIds.forEach(function(id){allIds[id]=true;});
+    state.connectedMentionedIds.forEach(function(id){allIds[id]=true;});
+    state.connectedLetterIds=Object.keys(allIds).map(Number);
     render();loadLetters();
   });
 }
+
+function setConnectedRoleFilter(role){
+  state.connectedRoleFilter=role;
+  state.page=0;
+  state.allSortedResults=null;
+  if(role==="authored"){
+    state.connectedLetterIds=state.connectedAuthoredIds.slice();
+  } else if(role==="received"){
+    state.connectedLetterIds=state.connectedReceivedIds.slice();
+  } else if(role==="mentioned"){
+    state.connectedLetterIds=state.connectedMentionedIds.slice();
+  } else {
+    // All — union
+    var allIds={};
+    state.connectedAuthoredIds.forEach(function(id){allIds[id]=true;});
+    state.connectedReceivedIds.forEach(function(id){allIds[id]=true;});
+    state.connectedMentionedIds.forEach(function(id){allIds[id]=true;});
+    state.connectedLetterIds=Object.keys(allIds).map(Number);
+  }
+  loadLetters();
+}
+
 function clearConnectedPerson(){
-  state.connectedPersonId="";state.connectedPersonText="";state.connectedLetterIds=null;state.page=0;
+  state.connectedPersonId="";state.connectedPersonText="";
+  state.connectedLetterIds=null;state.connectedAuthoredIds=null;
+  state.connectedReceivedIds=null;state.connectedMentionedIds=null;
+  state.connectedRoleFilter="all";state.page=0;
   var dd=document.getElementById("connected-drop");if(dd)dd.classList.remove("open");
   render();loadLetters();
 }
 function onConnectedPersonInput(v){
-  state.connectedPersonText=v;if(!v){state.connectedPersonId="";state.connectedLetterIds=null;}
+  state.connectedPersonText=v;
+  if(!v){state.connectedPersonId="";state.connectedLetterIds=null;state.connectedAuthoredIds=null;state.connectedReceivedIds=null;state.connectedMentionedIds=null;}
   var dd=document.getElementById("connected-drop");if(!dd)return;
   var t=v.toLowerCase();
   var allP=allPeopleSorted();
@@ -518,7 +560,7 @@ function selectRecip(id,name){state.recipientId=id;state.recipientText=name;stat
 function clearAuthor(){state.authorId="";state.authorText="";state.page=0;buildRecipOpts().then(function(){render();loadLetters();});}
 function clearRecip(){state.recipientId="";state.recipientText="";state.page=0;buildAuthorOpts().then(function(){render();loadLetters();});}
 function doSwap(){var aId=state.authorId,aName=state.authorText,rId=state.recipientId,rName=state.recipientText;state.authorId=rId;state.authorText=rName;state.recipientId=aId;state.recipientText=aName;state.page=0;Promise.all([buildAuthorOpts(),buildRecipOpts()]).then(function(){loadLetters();});}
-function doClear(){state.authorId="";state.authorText="";state.recipientId="";state.recipientText="";state.dateFrom="";state.dateTo="";state.language="";state.descSearch="";state.textSearch="";state.docType="";state.noDesc=false;state.notype=false;state.connectedPersonId="";state.connectedPersonText="";state.connectedLetterIds=null;state.page=0;Promise.all([buildAuthorOpts(),buildRecipOpts()]).then(function(){loadLetters();});}
+function doClear(){state.authorId="";state.authorText="";state.recipientId="";state.recipientText="";state.dateFrom="";state.dateTo="";state.language="";state.descSearch="";state.textSearch="";state.docType="";state.noDesc=false;state.notype=false;state.connectedPersonId="";state.connectedPersonText="";state.connectedLetterIds=null;state.connectedAuthoredIds=null;state.connectedReceivedIds=null;state.connectedMentionedIds=null;state.connectedRoleFilter="all";state.page=0;Promise.all([buildAuthorOpts(),buildRecipOpts()]).then(function(){loadLetters();});}
 function onFilter(k,v){state[k]=v;state.page=0;loadLetters();}
 function toggleNoDesc(){state.noDesc=!state.noDesc;state.page=0;loadLetters();}
 function toggleNotype(){state.notype=!state.notype;state.page=0;loadLetters();}
@@ -1052,9 +1094,30 @@ function renderList(){
   html+='<div class="filter-row"><span class="filter-label">Person:</span>';
   html+='<div class="ac-wrap"><input class="ac-input" id="connected-inp" type="text" placeholder="Any connection to this person..." value="'+state.connectedPersonText.replace(/"/g,"&quot;")+'" oninput="onConnectedPersonInput(this.value)" onfocus="onConnectedPersonInput(this.value)" autocomplete="off">';
   if(state.connectedPersonText)html+='<button class="ac-clear" onclick="clearConnectedPerson()">x</button>';
-  html+='<div class="ac-dropdown" id="connected-drop"></div></div>';
-  if(state.connectedPersonId)html+='<span style="color:rgba(255,255,255,0.7);font-size:11px;flex-shrink:0">'+(state.connectedLetterIds===null?'Loading...':(state.connectedLetterIds.length+' docs'))+'</span>';
-  html+='</div>';
+  html+='<div class="ac-dropdown" id="connected-drop"></div></div></div>';
+  // Role sub-filter tabs — only shown once a person is selected and data loaded
+  if(state.connectedPersonId&&state.connectedLetterIds!==null){
+    var aCount=state.connectedAuthoredIds?state.connectedAuthoredIds.length:0;
+    var rCount=state.connectedReceivedIds?state.connectedReceivedIds.length:0;
+    var mCount=state.connectedMentionedIds?state.connectedMentionedIds.length:0;
+    var allIds={};
+    (state.connectedAuthoredIds||[]).forEach(function(id){allIds[id]=true;});
+    (state.connectedReceivedIds||[]).forEach(function(id){allIds[id]=true;});
+    (state.connectedMentionedIds||[]).forEach(function(id){allIds[id]=true;});
+    var totalCount=Object.keys(allIds).length;
+    var rf=state.connectedRoleFilter;
+    var tabStyle='padding:5px 10px;border-radius:5px;cursor:pointer;font-size:12px;border:1px solid rgba(255,255,255,0.3);background:rgba(255,255,255,0.1);color:white;';
+    var activeTabStyle='padding:5px 10px;border-radius:5px;cursor:pointer;font-size:12px;border:1px solid white;background:white;color:#3a5ba0;font-weight:600;';
+    html+='<div class="filter-row" style="padding-top:0;gap:6px;">'
+      +'<span class="filter-label"></span>'
+      +'<button style="'+(rf==="all"?activeTabStyle:tabStyle)+'" onclick="setConnectedRoleFilter(\'all\')">All ('+totalCount+')</button>'
+      +'<button style="'+(rf==="authored"?activeTabStyle:tabStyle)+'" onclick="setConnectedRoleFilter(\'authored\')">Authored ('+aCount+')</button>'
+      +'<button style="'+(rf==="received"?activeTabStyle:tabStyle)+'" onclick="setConnectedRoleFilter(\'received\')">Received ('+rCount+')</button>'
+      +'<button style="'+(rf==="mentioned"?activeTabStyle:tabStyle)+'" onclick="setConnectedRoleFilter(\'mentioned\')">Mentioned ('+mCount+')</button>'
+      +'</div>';
+  } else if(state.connectedPersonId){
+    html+='<div class="filter-row"><span class="filter-label"></span><span style="color:rgba(255,255,255,0.6);font-size:12px">Loading connections…</span></div>';
+  }
 
   html+='<div class="filter-row"><span class="filter-label">Language:</span><select class="filter-select" onchange="onFilter(\'language\',this.value)"><option value="">Any</option>'+LANGS.map(function(l){return'<option value="'+l+'"'+(state.language===l?" selected":"")+'>'+l+'</option>';}).join("")+'</select></div>';
   var _dtSel='<select class="filter-select" onchange="onFilter(\'docType\',this.value)"><option value="">All types</option>'+DOC_TYPES.map(function(t){return'<option value="'+t+'"'+(state.docType===t?' selected':'')+'>'+t+'</option>';}).join('')+'</select>';
