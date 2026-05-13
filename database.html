@@ -524,7 +524,8 @@ function findSimilarPeople(){
 function useExistingPerson(id,name){efAddRolePerson(modalState.role,id,name);modalState.open=false;render();}
 function togglePersonDetail(id){
   var descBox=document.getElementById("person-desc-"+id);if(!descBox)return;
-  var personData=people[String(id)];var desc=personData?(personData.description||")":"";
+  var personData=people[String(id)];var desc=personData?(personData.description||""):"";
+
   if(descBox.style.display==="none"||descBox.style.display===""){
     descBox.innerHTML=desc?'<div style="padding:6px 8px;background:white;border-radius:4px;font-size:12px;color:#555;line-height:1.5;">'+escHtml(desc)+'</div>':'<div style="padding:6px 8px;background:white;border-radius:4px;font-size:12px;color:#aaa;font-style:italic;">No description on file.</div>';
     descBox.style.display="block";
