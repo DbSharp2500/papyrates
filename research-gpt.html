@@ -433,6 +433,7 @@ Supported types: bar, line, pie, doughnut, scatter`;
 // In research.html: replace the systemPrompt variable content with PAPYRATES_SYSTEM_PROMPT
 // In research-gpt.html: same
 // In research-gemini.html: same
+  let sys = PAPYRATES_SYSTEM_PROMPT + "\n\n";
   if(dss)sys+=DSS_SYSTEM_KNOWLEDGE+"\n";
   if(useMemory&&loadedMemory.length>0)sys+=buildMemoryContext();
 
