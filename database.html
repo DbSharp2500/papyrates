@@ -627,17 +627,24 @@ function clearRecip(){state.recipientId="";state.recipientText="";state.page=0;b
 function doSwap(){var aId=state.authorId,aName=state.authorText,rId=state.recipientId,rName=state.recipientText;state.authorId=rId;state.authorText=rName;state.recipientId=aId;state.recipientText=aName;state.page=0;Promise.all([buildAuthorOpts(),buildRecipOpts()]).then(function(){loadLetters();});}
 // ── CHANGED: also clears letterId ──
 function doClear(){state.letterId="";state.authorId="";state.authorText="";state.recipientId="";state.recipientText="";state.dateFrom="";state.dateTo="";state.language="";state.descSearch="";state.textSearch="";state.docType="";state.noDesc=false;state.notype=false;state.connectedPersonId="";state.connectedPersonText="";state.connectedLetterIds=null;state.connectedAuthoredIds=null;state.connectedReceivedIds=null;state.connectedMentionedIds=null;state.connectedAnnotatedIds=null;state.connectedRoleFilter="all";state.page=0;Promise.all([buildAuthorOpts(),buildRecipOpts()]).then(function(){loadLetters();});}
+// onFilter: for dropdowns and toggles that fire on a single deliberate action — immediate is fine
 function onFilter(k,v){state[k]=v;state.page=0;loadLetters();}
 function toggleNoDesc(){state.noDesc=!state.noDesc;state.page=0;loadLetters();}
 function toggleNotype(){state.notype=!state.notype;state.page=0;loadLetters();}
-var st;function onSearch(k,v){state[k]=v;clearTimeout(st);st=setTimeout(function(){state.page=0;loadLetters();},600);}
 
+// onSearch: description and full-text — 1200ms so you can finish a word before it fires
+var st;function onSearch(k,v){state[k]=v;clearTimeout(st);st=setTimeout(function(){state.page=0;loadLetters();},1200);}
+
+// onLetterIdInput: separate debounce for the ID field so typing a 3-digit ID doesn't fire 3 times
+var idTimer;function onLetterIdInput(v){state.letterId=v;clearTimeout(idTimer);idTimer=setTimeout(function(){state.page=0;loadLetters();},800);}
+
+// onDateFilter: 800ms — date fields need all digits before the query makes sense
 var dateTimer;
 function onDateFilter(k,v){
   state[k]=v;
   clearTimeout(dateTimer);
   if(v===''||v.length===10){
-    dateTimer=setTimeout(function(){state.page=0;loadLetters();},300);
+    dateTimer=setTimeout(function(){state.page=0;loadLetters();},800);
   }
 }
 
@@ -686,8 +693,30 @@ function onManuscriptInput(v){
   dd.innerHTML=opts.length===0?'<div class="ac-item" style="color:#999">No matches</div>':opts.map(function(o){return'<div class="ac-item" onmousedown="event.preventDefault();selectManuscript('+o.id+',\''+o.name.replace(/\\/g,"\\\\").replace(/'/g,"\\'")+'\')">'+o.name+'</div>';}).join("");
 }
 
+function renderResultsOnly(){
+  // Updates only the results area without rebuilding filter inputs (prevents focus loss)
+  var app=document.getElementById("app");if(!app||state.view!=="list")return;
+  var statusEl=app.querySelector(".results-count");
+  if(statusEl)statusEl.textContent="Searching…";
+  var colHeaders=app.querySelector(".col-headers");
+  var firstRow=app.querySelector(".letter-row");
+  var noResults=app.querySelector(".no-results");
+  var pagination=app.querySelector(".pagination");
+  var loadingEl=app.querySelector(".loading");
+  // Replace everything after results-header with a loading indicator
+  var resultsHeader=app.querySelector(".results-header");
+  if(resultsHeader){
+    var next=resultsHeader.nextSibling;
+    while(next){var tmp=next.nextSibling;next.parentNode.removeChild(next);next=tmp;}
+    var ld=document.createElement("div");ld.className="loading";ld.textContent="Loading…";
+    app.appendChild(ld);
+  }
+}
+
 function loadLetters(){
-  state.loading=true;render();
+  state.loading=true;
+  // Only patch the results area — do NOT call full render() which would rebuild inputs and steal focus
+  renderResultsOnly();
   if(state.sortBy==="date"){
     return Promise.all([sq(buildQ()),sqCount(buildCountQ())]).then(function(res){
       state.letters=Array.isArray(res[0])?res[0]:[];
@@ -1074,7 +1103,7 @@ function renderList(){
 
   // ── NEW: Record ID filter ──
   html+='<div class="filter-row"><span class="filter-label">Record ID:</span>'
-    +'<input class="filter-input" type="number" min="1" placeholder="Jump to ID..." value="'+state.letterId+'" oninput="onFilter(\'letterId\',this.value)" style="max-width:160px;">'
+    +'<input class="filter-input" type="number" min="1" placeholder="Jump to ID..." value="'+state.letterId+'" oninput="onLetterIdInput(this.value)" style="max-width:160px;">'
     +(state.letterId?'<button class="ac-clear" style="position:static;transform:none;background:rgba(255,100,100,0.3);border:1px solid rgba(255,100,100,0.5);border-radius:6px;padding:6px 10px;font-size:12px;" onclick="onFilter(\'letterId\',\'\');document.querySelector(\'input[placeholder=\\\'Jump to ID...\\\']\').__val=\'\';loadLetters();">x</button>':'')
     +'</div>';
 
