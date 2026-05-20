@@ -224,6 +224,8 @@ var state = {
   authorText:"",recipientText:"",
   dateFrom:"",dateTo:"",
   language:"",descSearch:"",textSearch:"",docType:"",noDesc:false,notype:false,
+  // ── NEW: ID filter ──
+  letterId:"",
   manuscriptId:"",manuscriptText:"",manuscriptLetterIds:null,msInfo:null,
   letters:[],totalCount:0,filteredCount:0,
   page:0,pageSize:50,
@@ -311,6 +313,8 @@ function buildDateFilters(f){
 }
 
 function buildCommonFilters(f){
+  // ── NEW: ID lookup — short-circuits everything else if set ──
+  if(state.letterId&&state.letterId.trim()){f.push("id=eq."+parseInt(state.letterId));return;}
   if(state.authorId)f.push("author_id=eq."+state.authorId);
   if(state.recipientId)f.push("recipient_id=eq."+state.recipientId);
   buildDateFilters(f);
@@ -621,7 +625,8 @@ function selectRecip(id,name){state.recipientId=id;state.recipientText=name;stat
 function clearAuthor(){state.authorId="";state.authorText="";state.page=0;buildRecipOpts().then(function(){render();loadLetters();});}
 function clearRecip(){state.recipientId="";state.recipientText="";state.page=0;buildAuthorOpts().then(function(){render();loadLetters();});}
 function doSwap(){var aId=state.authorId,aName=state.authorText,rId=state.recipientId,rName=state.recipientText;state.authorId=rId;state.authorText=rName;state.recipientId=aId;state.recipientText=aName;state.page=0;Promise.all([buildAuthorOpts(),buildRecipOpts()]).then(function(){loadLetters();});}
-function doClear(){state.authorId="";state.authorText="";state.recipientId="";state.recipientText="";state.dateFrom="";state.dateTo="";state.language="";state.descSearch="";state.textSearch="";state.docType="";state.noDesc=false;state.notype=false;state.connectedPersonId="";state.connectedPersonText="";state.connectedLetterIds=null;state.connectedAuthoredIds=null;state.connectedReceivedIds=null;state.connectedMentionedIds=null;state.connectedAnnotatedIds=null;state.connectedRoleFilter="all";state.page=0;Promise.all([buildAuthorOpts(),buildRecipOpts()]).then(function(){loadLetters();});}
+// ── CHANGED: also clears letterId ──
+function doClear(){state.letterId="";state.authorId="";state.authorText="";state.recipientId="";state.recipientText="";state.dateFrom="";state.dateTo="";state.language="";state.descSearch="";state.textSearch="";state.docType="";state.noDesc=false;state.notype=false;state.connectedPersonId="";state.connectedPersonText="";state.connectedLetterIds=null;state.connectedAuthoredIds=null;state.connectedReceivedIds=null;state.connectedMentionedIds=null;state.connectedAnnotatedIds=null;state.connectedRoleFilter="all";state.page=0;Promise.all([buildAuthorOpts(),buildRecipOpts()]).then(function(){loadLetters();});}
 function onFilter(k,v){state[k]=v;state.page=0;loadLetters();}
 function toggleNoDesc(){state.noDesc=!state.noDesc;state.page=0;loadLetters();}
 function toggleNotype(){state.notype=!state.notype;state.page=0;loadLetters();}
@@ -695,7 +700,7 @@ function loadLetters(){
       state.filteredCount=count;return fetchAllForSort();
     }).then(function(all){
       all.sort(function(a,b){
-        var aName=state.sortBy==="author"?(pname(a.author_id)||a.title||""):(pname(a.recipient_id)||"");
+        var aName=state.sortBy==="author"?(pname(a.author_id)||a.title||""):(pname(b.recipient_id)||"");
         var bName=state.sortBy==="author"?(pname(b.author_id)||b.title||""):(pname(b.recipient_id)||"");
         var cmp=aName.toLowerCase().localeCompare(bName.toLowerCase());
         return state.sortDir==="desc"?-cmp:cmp;
@@ -758,7 +763,7 @@ function openPerson(personId){
     state.personView.authored=Array.isArray(res[0])?res[0]:[];
     state.personView.received=Array.isArray(res[1])?res[1]:[];
     var mentionedIds=(res[2]||[]).map(function(r){return r.letter_id;});
-    if(mentionedIds.length>0)return sq("letters?id=in.("+mentionedIds.join(",")+")&select=id,author_id,recipient_id,date_of_letter,description&order=date_of_letter.asc&limit=200");
+    if(mentionedIds.length>0)return sq("letters?id=in.("+mentionedIds.join(",")+")"+"&select=id,author_id,recipient_id,date_of_letter,description&order=date_of_letter.asc&limit=200");
     return[];
   }).then(function(mentioned){
     state.personView.mentioned=Array.isArray(mentioned)?mentioned:[];
@@ -776,7 +781,7 @@ function openManuscript(manuscriptId){
   ]).then(function(res){
     state.manuscriptView.institutions=(res[0]||[]).map(function(r){var i=institutions[String(r.institution_id)];return i?{name:i.name,location:i.location,notes:r.notes}:{};}).filter(function(x){return x.name;});
     var letterIds=(res[1]||[]).map(function(r){return r.letter_id;});
-    if(letterIds.length>0)return sq("letters?id=in.("+letterIds.join(",")+")&select=id,author_id,recipient_id,date_of_letter,description&order=date_of_letter.asc&limit=200");
+    if(letterIds.length>0)return sq("letters?id=in.("+letterIds.join(",")+")"+"&select=id,author_id,recipient_id,date_of_letter,description&order=date_of_letter.asc&limit=200");
     return[];
   }).then(function(letters){
     state.manuscriptView.letters=Array.isArray(letters)?letters:[];
@@ -978,7 +983,7 @@ function init(){
 
 // ── Render: list ──────────────────────────────────────────────────────────────
 function renderList(){
-  var hasFilter=state.authorId||state.recipientId||state.dateFrom||state.dateTo||state.language||state.docType||state.descSearch||state.textSearch||state.noDesc||state.notype||state.manuscriptId;
+  var hasFilter=state.authorId||state.recipientId||state.dateFrom||state.dateTo||state.language||state.docType||state.descSearch||state.textSearch||state.noDesc||state.notype||state.manuscriptId||state.letterId;
   var displayCount=hasFilter?state.filteredCount.toLocaleString():state.totalCount.toLocaleString();
   var aOpts=filteredAuthorOpts();var rOpts=filteredRecipOpts();
 
@@ -1062,9 +1067,17 @@ function renderList(){
 
   html+='<div class="filter-row"><span class="filter-label">Description:</span>'
     +'<input class="filter-input" placeholder="Search descriptions..." value="'+state.descSearch+'" oninput="onSearch(\'descSearch\',this.value)"></div>';
+
   html+='<div class="filter-row"><span class="filter-label">Full text:</span>'
     +'<input class="filter-input" placeholder="Search OCR text..." value="'+state.textSearch+'" oninput="onSearch(\'textSearch\',this.value)">'
     +'<button class="clear-btn" onclick="doClear()">Clear all</button></div>';
+
+  // ── NEW: Record ID filter ──
+  html+='<div class="filter-row"><span class="filter-label">Record ID:</span>'
+    +'<input class="filter-input" type="number" min="1" placeholder="Jump to ID..." value="'+state.letterId+'" oninput="onFilter(\'letterId\',this.value)" style="max-width:160px;">'
+    +(state.letterId?'<button class="ac-clear" style="position:static;transform:none;background:rgba(255,100,100,0.3);border:1px solid rgba(255,100,100,0.5);border-radius:6px;padding:6px 10px;font-size:12px;" onclick="onFilter(\'letterId\',\'\');document.querySelector(\'input[placeholder=\\\'Jump to ID...\\\']\').__val=\'\';loadLetters();">x</button>':'')
+    +'</div>';
+
   html+='</div>';
 
   html+='<div class="results-header"><span class="results-count">'+(state.loading?"Searching...":(displayCount+" results"))+'</span></div>';
@@ -1112,6 +1125,11 @@ function renderDetail(){
     +'<span style="font-size:15px;font-weight:500">Document Detail</span>'
     +(getPapyratesTier()==='readonly'?'<span style="width:80px"></span>':'<button class="edit-btn" onclick="openEdit()">&#9998; Edit</button>')
     +'</div><div class="detail-body">';
+
+  // ── NEW: Record ID — read-only, always first ──
+  html+='<div class="field-label">Record ID</div>'
+    +'<div class="field-value"><span style="font-family:monospace;font-size:14px;color:#444;background:#f0f3fa;padding:3px 10px;border-radius:6px;border:1px solid #d0d8ec;user-select:all;" title="Read-only database ID">'+l.id+'</span></div>';
+
   html+='<div class="field-label">Document Type</div><div class="field-value"><span class="doc-type-badge">'+escHtml(dt)+'</span></div>';
   if(l.content_status&&l.content_status!=="available"){
     var csLabels={"transcription_only":"Transcription Only","citation_only":"Citation Only \u2014 Robinson Reference","do_not_have":"Do Not Have","does_not_exist":"Does Not Exist"};
@@ -1163,7 +1181,7 @@ function renderDetail(){
   return html;
 }
 
-// ── Render: edit form ─────────────────────────────────────────────────────────
+// ── Render: edit form — NOTE: ID field is intentionally absent ────────────────
 function renderEditForm(isAdd){
   var f=state.editForm;if(!f)return"";
   var dt=f.document_type||"Correspondence";
@@ -1171,6 +1189,13 @@ function renderEditForm(isAdd){
   var html='<div class="detail-header"><button class="back-btn" onclick="goBack()">&#8592; Back</button>'
     +'<span style="font-size:15px;font-weight:500">'+(isAdd?"Add New Document":"Edit Document")+'</span><span></span></div>';
   html+='<div class="edit-body">';
+
+  // ── Show ID as read-only label in edit view (no input field) ──
+  if(!isAdd&&f.id){
+    html+='<div class="form-field"><label class="form-label">Record ID <span style="font-weight:normal;color:#aaa;font-size:10px">(read-only)</span></label>'
+      +'<div style="font-family:monospace;font-size:14px;color:#444;background:#f5f5f5;padding:8px 10px;border-radius:6px;border:1px solid #ddd;user-select:all;">'+f.id+'</div></div>';
+  }
+
   html+='<div class="form-field"><label class="form-label">Document Type</label>'
     +'<select class="form-select" onchange="efChangeType(this.value)">'
     +DOC_TYPES.map(function(t){return'<option value="'+t+'"'+(dt===t?' selected':'')+'>'+t+'</option>';}).join("")
