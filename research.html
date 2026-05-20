@@ -31,7 +31,6 @@ body{font-family:Arial,sans-serif;background:#1a1a2e;min-height:100vh;display:fl
 .sources{margin-top:14px;padding-top:12px;border-top:1px solid #eee;}
 .sources strong{font-size:12px;color:#888;}
 .source-item{font-size:12px;color:#666;padding:3px 0;border-bottom:1px dotted #f0f0f0;}
-.dss-badge{background:#8b4513;color:white;font-size:10px;padding:2px 6px;border-radius:4px;margin-left:6px;vertical-align:middle;}
 .vec-badge{background:#1a6b3a;color:white;font-size:10px;padding:2px 6px;border-radius:4px;margin-left:6px;vertical-align:middle;}
 .hybrid-badge{background:#4a3a8a;color:white;font-size:10px;padding:2px 6px;border-radius:4px;margin-left:6px;vertical-align:middle;}
 .followup-badge{background:#1a4a3a;color:#7ecfa0;font-size:10px;padding:2px 6px;border-radius:4px;margin-left:6px;vertical-align:middle;border:1px solid #2a6a4a;}
@@ -201,9 +200,9 @@ var SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSI
 var SH = {"apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY};
 
 // ── State ─────────────────────────────────────────────────────────────────────
-var sessionHistory  = [];   // Full conversation history passed to API
-var cachedLetters   = [];   // Last retrieved letters — reused on follow-ups
-var cachedNames     = {};   // People name map for cached letters
+var sessionHistory  = [];
+var cachedLetters   = [];
+var cachedNames     = {};
 var loadedMemory    = [];
 var savingSession   = false;
 var pendingSummary  = null;
@@ -211,11 +210,6 @@ var activeArticle   = null;
 var attachedFile    = null;
 var vectorSearchAvailable = false;
 var lastSearchMode  = "keyword";
-
-// ── DSS detection ─────────────────────────────────────────────────────────────
-var DSS_TRIGGERS = ["dead sea","dss","qumran","cave 4","cave 11","judean desert","museum of the bible","motb","green collection","hobby lobby","post-2002","post 2002","unprovenanced","forgery","forgeries","kando","ferrini","schoyen","fragment"];
-var ALL_DSS_TERMS = ["dead sea","scroll","qumran","fragment","kando","william kando","ferrini","schøyen","schoyen","museum of the bible","hobby lobby","green collection","azusa pacific","lanier","cave 4","cave 11","wadi","judean desert","nahal hever","israel antiquities","paleo-leviticus","genesis apocryphon","isaiah scroll","psalms scroll","enoch","jubilees","community rule","war scroll","damascus document","temple scroll","hodayot","pesher","mmt","tefillin","phylactery","mezuzah","unprovenanced","provenance","forgery","forged","looted","authentication","radiocarbon","repatriation","hobby lobby settlement","scott carroll","jerry pattengale","southwestern baptist","liberty university","4q","11q","1q","apocryphon","sectarian","schiffman","charlesworth","elgvin","justnes","rollston","tov"];
-var DSS_SYSTEM_KNOWLEDGE = "SPECIALIZED KNOWLEDGE - DEAD SEA SCROLLS:\n\nMANUSCRIPT NAMES: Paleo-Leviticus (4QpaleoLev), Genesis Apocryphon, Isaiah Scroll (1QIsa), Psalms Scroll (11QPsa), 1 Enoch (4QEn), Jubilees (4QJub), Community Rule (1QS), War Scroll (1QM), Damascus Document, Temple Scroll (11QT), Hodayot (1QH), Pesharim, Songs of Sabbath Sacrifice, MMT (4QMMT), New Jerusalem, Visions of Amram, Aramaic Levi, 4Q542-548, Tefillin, Mezuzot\n\nKEY DEALERS: Kando family (Khalil Eskander Shahin, William Kando), anonymous Swiss/Norwegian dealers\n\nKEY INSTITUTIONS (post-2002): Museum of the Bible (MOTB), Hobby Lobby, Green Collection, Azusa Pacific University, Southwestern Baptist Theological Seminary, Liberty University, Lanier Theological Library\n\nKEY SCHOLARS: Emanuel Tov, Lawrence Schiffman, James Charlesworth, Torleif Elgvin, Kipp Davis, Arstein Justnes, Christopher Rollston, Michael Langlois, Craig Evans, Scott Carroll, Jerry Pattengale\n\nPROVENANCE: Most post-2002 fragments lack pre-2002 documentation. 16+ MOTB fragments proven forgeries (2016-2020). Hobby Lobby paid $3M fine, returned artifacts to Iraq (2017-2018).\n";
 
 var PAPYRATES_SYSTEM_PROMPT = `You are a specialist in papyrus manuscript provenance, the ancient manuscript trade, and the history of papyrus collecting and scholarship in the 20th and 21st centuries. You have deep familiarity with the major figures, manuscripts, institutions, and scholarly debates in this field.
 
@@ -226,7 +220,7 @@ IMPORTANT — CONVERSATION CONTINUITY: This is a multi-turn research conversatio
 ═══════════════════════════════════════════════
 PILLAR 1 — DOMAIN EXPERTISE
 ═══════════════════════════════════════════════
-You are a papyrological expert. Key figures include: Bruce Ferrini, Martin Schoyen, James Robinson, Khalil Iskander Kando, William Kando, Farouk Ishak, Francois Antonovitch, E.G. Turner, T.C. Skeat, Rodolphe Kasser, H.C. Puech, P. Ramón Roca-Puig, A.S. Atiya, A. Chester Beatty, Martin Bodmer, Ludwig Koenen, and Albert Pietersma. Key manuscripts include MS 187 (Greek Exodus papyrus, 4th c.), the Bodmer Papyri, the Chester Beatty Papyri, the Nag Hammadi Codices, and the post-2002 Dead Sea Scrolls fragments.
+You are a papyrological expert. Key figures include: Bruce Ferrini, Martin Schoyen, James Robinson, Khalil Iskander Kando, William Kando, Farouk Ishak, Francois Antonovitch, E.G. Turner, T.C. Skeat, Rodolphe Kasser, H.C. Puech, P. Ramón Roca-Puig, A.S. Atiya, A. Chester Beatty, Martin Bodmer, Ludwig Koenen, and Albert Pietersma. Key manuscripts include MS 187 (Greek Exodus papyrus, 4th c.), the Bodmer Papyri, the Chester Beatty Papyri, the Nag Hammadi Codices, the Tchacos Codex, and the post-2002 Dead Sea Scrolls fragments.
 
 ═══════════════════════════════════════════════
 PILLAR 2 — EPISTEMIC HIERARCHY: PRIMARY SOURCES ARE AUTHORITATIVE
@@ -258,14 +252,10 @@ Supported types: bar, line, pie, doughnut, scatter, network, timeline`;
 
 // ── Follow-up detection ───────────────────────────────────────────────────────
 function isFollowUp(question) {
-  // Can't be a follow-up if there's no prior conversation
   if (sessionHistory.length < 2) return false;
-  // Never treat as follow-up if a file is attached — treat as new query
   if (attachedFile) return false;
-
   var q = question.toLowerCase().trim();
   var words = q.split(/\s+/);
-
   var followUpPhrases = [
     'tell me more','what about','can you elaborate','more about',
     'expand on','based on what you said','from those','about those',
@@ -279,18 +269,12 @@ function isFollowUp(question) {
     'going back','to clarify','in that case','given that',
     'which one','how many of','how often','what year','what date'
   ];
-
   for (var i = 0; i < followUpPhrases.length; i++) {
     if (q.indexOf(followUpPhrases[i]) >= 0) return true;
   }
-
-  // Short question with demonstrative pronouns pointing to prior context
   var pronounPattern = /\b(they|them|those|that|these|it|his|her|their|its|he|she)\b/;
   if (words.length <= 9 && pronounPattern.test(q)) return true;
-
-  // Very short standalone question (4 words or fewer) — almost always follow-up
   if (words.length <= 4 && sessionHistory.length >= 2) return true;
-
   return false;
 }
 
@@ -382,8 +366,6 @@ document.getElementById("questionInput").addEventListener("keydown",function(e){
 });
 
 // ── Search helpers ────────────────────────────────────────────────────────────
-function isDSSQuery(q){var ql=q.toLowerCase();for(var i=0;i<DSS_TRIGGERS.length;i++){if(ql.indexOf(DSS_TRIGGERS[i])>=0)return true;}return false;}
-
 function addMessage(type,content){
   var chat=document.getElementById("chat");var div=document.createElement("div");
   div.className="message "+type;div.innerHTML=content;chat.appendChild(div);
@@ -417,7 +399,6 @@ async function vectorSearch(question,limit){
 
 function getSearchTerms(question){
   var q=question.toLowerCase();var terms=[];
-  if(isDSSQuery(question))terms=terms.concat(ALL_DSS_TERMS.slice(0,30));
   var stop=["the","a","an","and","or","but","in","on","at","to","for","of","with","by","from","is","are","was","were","be","been","have","has","had","do","does","did","will","would","could","should","may","might","what","which","who","when","where","how","why","that","this","these","those","i","we","you","they","he","she","it","all","any","some","about","into","searching","articles","information","found","primary","sources","letters","database"];
   var words=q.replace(/[^\w\s]/g," ").split(/\s+/).filter(function(w){return w.length>3&&stop.indexOf(w)===-1;});
   terms=terms.concat(words);return Array.from(new Set(terms)).slice(0,25);
@@ -498,7 +479,7 @@ function buildMemoryContext(){
 // ── Query Planner ─────────────────────────────────────────────────────────────
 async function getContextLetters(question){
   try{
-    var planRes=await fetch('/api/query-plan-claude',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({question:question,conversation_length:sessionHistory.length,sessionMemory:useMemory&&loadedMemory.length>0?buildMemoryContext():null})});
+    var planRes=await fetch('/api/query-plan-claude',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({question:question,conversation_length:sessionHistory.length,sessionMemory:document.getElementById('useMemory').checked&&loadedMemory.length>0?buildMemoryContext():null})});
     var planData=await planRes.json();var plan=planData.plan;
     if(plan){
       var steps=(plan.strategy||[]).map(function(s){return'<span class="plan-step">'+s.replace(/_/g,' ')+'</span>';}).join('');
@@ -513,9 +494,7 @@ async function getContextLetters(question){
 
 // ── Claude API call ───────────────────────────────────────────────────────────
 async function askClaude(question,letters,names,useWeb,useMemory,isFollowUpMsg){
-  var dss=isDSSQuery(question);
   var sys=PAPYRATES_SYSTEM_PROMPT+"\n\n";
-  if(dss)sys+=DSS_SYSTEM_KNOWLEDGE+"\n";
   if(useMemory&&loadedMemory.length>0)sys+=buildMemoryContext();
 
   var userText="RESEARCH QUESTION:\n"+question+"\n\n";
@@ -545,7 +524,6 @@ async function askClaude(question,letters,names,useWeb,useMemory,isFollowUpMsg){
     sessionHistory.push({role:'user',content:userText});
   }
 
-  // Pass more history for better conversation continuity (last 10 turns)
   var historyToSend=sessionHistory.slice(-10);
   historyToSend[historyToSend.length-1]={role:'user',content:userContent};
 
@@ -572,31 +550,27 @@ async function sendQuestion(){
   input.value="";
   document.getElementById("sendBtn").disabled=true;
 
-  var dss=isDSSQuery(question);
   var followUp=isFollowUp(question);
   var fileNote=attachedFile?' <span style="background:#1a4a2a;color:#7ecfa0;font-size:10px;padding:2px 6px;border-radius:4px;margin-left:6px">📎 '+attachedFile.name+'</span>':"";
-  addMessage("user",question+(dss?' <span class="dss-badge">DSS Mode</span>':'')+(followUp?' <span class="followup-badge">↩ Follow-up</span>':'')+fileNote);
+  addMessage("user",question+(followUp?' <span class="followup-badge">↩ Follow-up</span>':'')+fileNote);
 
   var letters=[], names={};
 
   if(followUp&&cachedLetters.length>0){
-    // Follow-up: reuse cached letters, skip expensive search
     letters=cachedLetters;
     names=cachedNames;
     setSearchBadge("followup");
     addMessage("followup-notice","↩ <strong>Follow-up detected</strong> — using the "+letters.length+" documents from your previous query. No new search needed.");
     showThinking("Claude is building on previous results...");
   }else if(useDB&&!attachedFile){
-    // New query: search for documents
-    showThinking((vectorSearchAvailable?"Running semantic search...":"Searching database...")+(dss?" (DSS mode)":"")+"...");
+    showThinking(vectorSearchAvailable?"Running semantic search...":"Searching database...");
     letters=await getContextLetters(question);
     names=await loadPeopleNames(letters);
-    // Cache for follow-ups
     cachedLetters=letters;
     cachedNames=names;
     hideThinking();
     var modeBadge=lastSearchMode==="vector"?'<span class="vec-badge">semantic</span>':lastSearchMode==="hybrid"?'<span class="hybrid-badge">hybrid</span>':"";
-    var sd=addMessage("system","Found <strong>"+letters.length+"</strong> relevant documents "+modeBadge+(attachedFile?" + attached file":"")+(dss?" (DSS mode)":"")+(activeArticle?" + article context":"")+". Analyzing with Claude...");
+    var sd=addMessage("system","Found <strong>"+letters.length+"</strong> relevant documents "+modeBadge+(attachedFile?" + attached file":"")+(activeArticle?" + article context":"")+". Analyzing with Claude...");
     showThinking("Claude is reading and synthesizing...");
     var answer=await askClaude(question,letters,names,useWeb,useMemory,false);
     hideThinking();sd.remove();
