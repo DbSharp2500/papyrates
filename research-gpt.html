@@ -374,7 +374,7 @@ function buildMemoryContext(){
 // ── Query Planner ─────────────────────────────────────────────────────────────
 async function getContextLetters(question){
   try{
-    var planRes=await fetch('/api/query-plan-gpt',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({question:question,conversation_length:sessionHistory.length})});
+    var planRes=await fetch('/api/query-plan-gpt',{method:'POST',headers:{'Content-Type':'application/json'}, body:JSON.stringify({question:question,conversation_length:sessionHistory.length,sessionMemory:document.getElementById('useMemory').checked&&loadedMemory.length>0?buildMemoryContext():null})       });
     var planData=await planRes.json();var plan=planData.plan;
     if(plan){
       var steps=(plan.strategy||[]).map(function(s){return'<span class="plan-step">'+s.replace(/_/g,' ')+'</span>';}).join('');
