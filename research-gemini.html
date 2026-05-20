@@ -419,7 +419,7 @@ async function getContextLetters(query) {
   try {
     const planRes = await fetch('/api/query-plan-gemini', {
       method: 'POST', headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({question: query, conversation_length: chatHistory.length})
+      body: JSON.stringify({question: query, conversation_length: chatHistory.length, sessionMemory: memories.length > 0 ? memories.slice(0,5).map(function(m){return m.confirmed_findings||m.summary||'';}).filter(Boolean).join('\n\n') : null})
     });
     const planData = await planRes.json(); const plan = planData.plan;
     if (plan) {
