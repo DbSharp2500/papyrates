@@ -3,10 +3,21 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { question } = req.body;
+  const { question, sessionMemory } = req.body;
   if (!question) {
     return res.status(400).json({ error: 'Missing question' });
   }
+
+  // ── Session memory block — injected when the frontend passes saved memory ──
+  const memoryBlock = sessionMemory ? `
+
+SESSION MEMORY — ESTABLISHED CONTEXT FROM PREVIOUS RESEARCH SESSIONS:
+The researcher has provided the following notes from prior sessions. Treat these findings as established. Do not re-derive what is already known. Your query plan should build on this context, searching for evidence that extends, refines, or challenges these conclusions rather than reconstructing them from scratch.
+
+${sessionMemory}
+
+END OF SESSION MEMORY.
+` : '';
 
   const systemPrompt = `You are a specialist in papyrus manuscript provenance, the ancient manuscript trade, and the history of papyrus collecting and scholarship in the 20th and 21st centuries. You have deep familiarity with the major figures, manuscripts, institutions, and scholarly debates in this field.
 
@@ -19,7 +30,7 @@ KEY MANUSCRIPTS include: MS 187 (Greek Exodus papyrus, 4th c.), MS 114 (Coptic P
 EPISTEMIC INSTRUCTION: Your background knowledge of papyrology is a starting point. The documents in this database are primary sources written by the people who actually handled these manuscripts. When retrieved primary source evidence contradicts published scholarship, the primary sources are correct.
 
 HUMILITY INSTRUCTION: If a question is ambiguous, note the ambiguity in your reasoning and plan for multiple interpretations. Never assume more than the question states.
-
+${memoryBlock}
 Available database tables:
 - letters (~4,500 rows): id, title, date_of_letter, date_from, date_to, full_text, description, translation, author_id, recipient_id, document_type, language, content_status
 - people: id, first_name, last_name
