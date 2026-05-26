@@ -210,6 +210,8 @@ var activeArticle   = null;
 var attachedFile    = null;
 var vectorSearchAvailable = false;
 var lastSearchMode  = "keyword";
+var lastQueryPlan   = null;
+var cachedDossierCtx = '';
 
 var PAPYRATES_SYSTEM_PROMPT = `You are a specialist in papyrus manuscript provenance, the ancient manuscript trade, and the history of papyrus collecting and scholarship in the 20th and 21st centuries. You have deep familiarity with the major figures, manuscripts, institutions, and scholarly debates in this field.
 
@@ -236,6 +238,11 @@ Reason from scholarly criteria — language, material, date, text content, physi
 PILLAR 4 — EPISTEMIC HUMILITY: NEVER HALLUCINATE
 ═══════════════════════════════════════════════
 Never invent document contents, dates, names, prices, or transactions. If the database lacks evidence, say so. Always distinguish database evidence from training knowledge.
+
+═══════════════════════════════════════════════
+PILLAR 5 — DOSSIERS AND CORRECTIONS
+═══════════════════════════════════════════════
+When dossiers are provided in context, treat them as pre-synthesized knowledge derived from the full database. Cite dossier claims as [Dossier: Name]. Cite researcher_knowledge entries as [Researcher correction]. Researcher corrections override dossier content when they conflict. If the researcher explicitly asks to save a correction for future sessions, call the appropriate correction tool (save_dossier_correction or save_global_correction).
 
 ═══════════════════════════════════════════════
 RESPONSE GUIDELINES
@@ -306,7 +313,7 @@ function handleFileSelect(event){
     var base64=e.target.result.split(',')[1];
     attachedFile={name:file.name,mimeType:file.type,base64:base64};
     document.getElementById('fileBadge').style.display='flex';
-    document.getElementById('fileName').textContent='\uD83D\uDCCE '+file.name;
+    document.getElementById('fileName').textContent='📎 '+file.name;
   };
   reader.readAsDataURL(file);event.target.value='';
 }
@@ -476,12 +483,41 @@ function buildMemoryContext(){
   return ctx;
 }
 
+// ── Dossier loading ───────────────────────────────────────────────────────────
+async function loadDossiers(plan){
+  if(!plan)return'';
+  var names=[].concat(plan.person_names||[],plan.manuscript_names||[]);
+  if(!names.length)return'';
+  try{
+    var r=await fetch('/api/load-dossiers',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({names:names})});
+    var data=await r.json();
+    return formatDossierContext(data.dossiers||[],data.researcher_knowledge||[]);
+  }catch(e){console.warn('Dossier load failed:',e);return'';}
+}
+
+function formatDossierContext(dossiers,researcherKnowledge){
+  var ctx='';
+  if(researcherKnowledge.length){
+    ctx+='=== RESEARCHER KNOWLEDGE (applies to all queries) ===\n';
+    researcherKnowledge.forEach(function(rk){
+      ctx+='Topic: '+rk.topic+' [confidence: '+rk.confidence+']\n'+rk.assertion+'\n\n';
+    });
+  }
+  dossiers.forEach(function(d){
+    ctx+='=== DOSSIER: '+d.canonical_name+' [entity_type:'+d.entity_type+' | entity_id:'+d.entity_id+'] ===\n';
+    if(d.researcher_notes){ctx+='⚠️ RESEARCHER CORRECTIONS (override dossier content):\n'+d.researcher_notes+'\n\n';}
+    ctx+=d.content+'\n\n';
+  });
+  return ctx;
+}
+
 // ── Query Planner ─────────────────────────────────────────────────────────────
 async function getContextLetters(question){
   try{
     var planRes=await fetch('/api/query-plan-claude',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({question:question,conversation_length:sessionHistory.length,sessionMemory:document.getElementById('useMemory').checked&&loadedMemory.length>0?buildMemoryContext():null})});
     var planData=await planRes.json();var plan=planData.plan;
     if(plan){
+      lastQueryPlan=plan;
       var steps=(plan.strategy||[]).map(function(s){return'<span class="plan-step">'+s.replace(/_/g,' ')+'</span>';}).join('');
       var tags=[].concat((plan.person_names||[]).map(function(n){return'👤 '+n;}),(plan.keywords||[]).map(function(k){return'🔑 '+k;})).map(function(t){return'<span class="plan-tag">'+t+'</span>';}).join('');
       addMessage('system','<div class="plan-panel"><div class="plan-header"><span class="plan-model">🤖 Claude Query Plan</span><span class="plan-focus">Focus: <strong>'+(plan.primary_focus||'unknown')+'</strong></span></div><p class="plan-reasoning">'+(plan.reasoning||'')+'</p><div class="plan-steps">'+steps+'</div>'+(tags?'<div class="plan-tags">'+tags+'</div>':'')+'</div>');
@@ -493,9 +529,10 @@ async function getContextLetters(question){
 }
 
 // ── Claude API call ───────────────────────────────────────────────────────────
-async function askClaude(question,letters,names,useWeb,useMemory,isFollowUpMsg){
+async function askClaude(question,letters,names,useWeb,useMemory,isFollowUpMsg,dossierCtx){
   var sys=PAPYRATES_SYSTEM_PROMPT+"\n\n";
   if(useMemory&&loadedMemory.length>0)sys+=buildMemoryContext();
+  if(dossierCtx)sys+='\n\n'+dossierCtx;
 
   var userText="RESEARCH QUESTION:\n"+question+"\n\n";
   if(activeArticle)userText+="SCHOLARLY ARTICLE (provided by researcher):\n"+activeArticle+"\n\n";
@@ -527,7 +564,7 @@ async function askClaude(question,letters,names,useWeb,useMemory,isFollowUpMsg){
   var historyToSend=sessionHistory.slice(-10);
   historyToSend[historyToSend.length-1]={role:'user',content:userContent};
 
-  var r=await fetch("/api/chat",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({"model":"claude-sonnet-4-5","max_tokens":4096,"system":sys,"messages":historyToSend})});
+  var r=await fetch("/api/chat-with-tools",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({"model":"claude-sonnet-4-6","max_tokens":4096,"system":sys,"messages":historyToSend})});
   var data=await r.json();
   var reply="No response received.";
   if(data.content&&data.content[0])reply=data.content[0].text;
@@ -568,11 +605,13 @@ async function sendQuestion(){
     names=await loadPeopleNames(letters);
     cachedLetters=letters;
     cachedNames=names;
+    cachedDossierCtx=await loadDossiers(lastQueryPlan);
     hideThinking();
     var modeBadge=lastSearchMode==="vector"?'<span class="vec-badge">semantic</span>':lastSearchMode==="hybrid"?'<span class="hybrid-badge">hybrid</span>':"";
-    var sd=addMessage("system","Found <strong>"+letters.length+"</strong> relevant documents "+modeBadge+(attachedFile?" + attached file":"")+(activeArticle?" + article context":"")+". Analyzing with Claude...");
+    var dossierCount=(cachedDossierCtx.match(/=== DOSSIER:/g)||[]).length;
+    var sd=addMessage("system","Found <strong>"+letters.length+"</strong> relevant documents "+modeBadge+(dossierCount?' + <strong>'+dossierCount+'</strong> dossier(s)':'')+(attachedFile?" + attached file":"")+(activeArticle?" + article context":"")+". Analyzing with Claude...");
     showThinking("Claude is reading and synthesizing...");
-    var answer=await askClaude(question,letters,names,useWeb,useMemory,false);
+    var answer=await askClaude(question,letters,names,useWeb,useMemory,false,cachedDossierCtx);
     hideThinking();sd.remove();
     var fmt=formatResponse(answer);
     var src=buildSourceList(letters,names);
@@ -584,11 +623,12 @@ async function sendQuestion(){
     letters=await getContextLetters(question);
     names=await loadPeopleNames(letters);
     cachedLetters=letters;cachedNames=names;
+    cachedDossierCtx=await loadDossiers(lastQueryPlan);
   }
 
   hideThinking();
   showThinking(followUp?"Claude is building on previous results...":"Claude is analyzing...");
-  var answer=await askClaude(question,letters,names,useWeb,useMemory,followUp);
+  var answer=await askClaude(question,letters,names,useWeb,useMemory,followUp,cachedDossierCtx);
   hideThinking();
 
   var fmt=formatResponse(answer);
@@ -768,7 +808,7 @@ async function startSaveSession(){
   if(sessionHistory.length===0){addMessage("system","No conversation to save yet.");return;}
   hideSaveBar();savingSession=true;showThinking("Generating session summary...");
   var summaryPrompt="Please summarize the key research findings from our conversation today. Focus on:\n1. What was discovered or confirmed about specific manuscripts, dealers, or transactions\n2. Any contradictions found between private correspondence and public record\n3. Unanswered questions that need follow-up\n4. Specific letter references that were most significant\n\nKeep it concise but complete.";
-  var r=await fetch("/api/chat",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({"model":"claude-sonnet-4-5","max_tokens":1000,"messages":sessionHistory.concat([{role:"user",content:summaryPrompt}])})});
+  var r=await fetch("/api/chat",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({"model":"claude-sonnet-4-6","max_tokens":1000,"messages":sessionHistory.concat([{role:"user",content:summaryPrompt}])})});
   var data=await r.json();hideThinking();
   var summary="No summary generated.";if(data.content&&data.content[0])summary=data.content[0].text;
   pendingSummary=summary;
