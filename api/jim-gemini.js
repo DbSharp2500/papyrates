@@ -3,7 +3,7 @@
 // Handles one conversation turn: receives history, calls Gemini with
 // function calling, executes Supabase queries as needed, returns final text.
 
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+const GEMINI_API_KEY = process.env.GEMENI_API_KEY;
 const SUPABASE_URL   = 'https://vzfwobsnfqnnqvnsfksq.supabase.co';
 const SUPABASE_KEY   = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ6ZndvYnNuZnFubnF2bnNma3NxIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3Njg4ODA3MCwiZXhwIjoyMDkyNDY0MDcwfQ.J_TE4qWj9r6TIvGeptM58r2WtI6ytOe9zg7BBe29wHI';
 const MODEL          = 'gemini-2.5-flash';
@@ -146,7 +146,7 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  if (!GEMINI_API_KEY) return res.status(500).json({ error: 'GEMINI_API_KEY not configured in Vercel environment variables' });
+  if (!GEMINI_API_KEY) return res.status(500).json({ error: 'GEMENI_API_KEY not configured in Vercel environment variables' });
 
   const { messages, loadStartup } = req.body;
 
