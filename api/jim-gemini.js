@@ -6,7 +6,7 @@
 const GEMINI_API_KEY = process.env.GEMENI_API_KEY;
 const SUPABASE_URL   = 'https://vzfwobsnfqnnqvnsfksq.supabase.co';
 const SUPABASE_KEY   = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ6ZndvYnNuZnFubnF2bnNma3NxIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3Njg4ODA3MCwiZXhwIjoyMDkyNDY0MDcwfQ.J_TE4qWj9r6TIvGeptM58r2WtI6ytOe9zg7BBe29wHI';
-const MODEL          = 'gemini-2.5-flash';
+const MODEL          = 'gemini-2.0-flash';
 
 const DB_HEADERS = {
   'apikey':        SUPABASE_KEY,
@@ -170,7 +170,7 @@ export default async function handler(req, res) {
           system_instruction: { parts: [{ text: systemText }] },
           contents,
           tools: TOOLS,
-          generationConfig: { thinkingConfig: { thinkingBudget: 0 } },
+          generationConfig: { temperature: 0.7 },
         }),
       }
     );
