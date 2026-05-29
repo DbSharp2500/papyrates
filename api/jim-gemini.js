@@ -82,7 +82,12 @@ async function planQueries(userQuestion, conversationHistory) {
     .join('\n');
 
   const planSystem = `You are a SQL query planner for the Papyrates manuscript research database.
-Your only job is to return a JSON array of SQL SELECT queries needed to answer the researcher's question.
+
+CRITICAL OUTPUT RULE: Your ENTIRE response must be ONLY a raw JSON array.
+- Start your response with [ and end with ]
+- No explanation. No markdown. No code fences. No other text whatsoever.
+- CORRECT:   ["SELECT id, name FROM people WHERE name ILIKE '%kasser%'"]
+- INCORRECT: Here are the queries: \`\`\`json ["SELECT..."] \`\`\`
 
 DATABASE SCHEMA:
 - dossiers: entity_type, entity_id, canonical_name, content, researcher_notes, contradiction_count, source_document_count, generated_at
@@ -97,23 +102,28 @@ DATABASE SCHEMA:
 - contradictions: id, topic, standard_account, database_shows, source_documents, confidence, created_at
 - research_sessions: id, ai_model, session_date, topic, research_question, summary, key_findings, document_ids
 
-RULES:
-- Return ONLY a valid JSON array of SQL strings. Nothing else. No explanation.
-- Maximum 6 queries.
-- Use ILIKE for name searches. Use '%term%' wildcards.
-- Bodmer manuscript names follow format: 'bodmer PB X / TM XXXXX'
-- For people searches always start with: SELECT id, name FROM people WHERE name ILIKE '%term%'
-- For dossiers use: SELECT content, researcher_notes, contradiction_count, source_document_count, generated_at FROM dossiers WHERE entity_type='person' AND entity_id=X
-- If no database queries are needed return: []`;
+QUERY RULES:
+- Maximum 5 queries. Use ILIKE with '%term%' wildcards.
+- For any research question about a topic, search: dossiers (content ILIKE), letters (full_text ILIKE), contradictions, open_research_questions
+- For people: SELECT id, name FROM people WHERE name ILIKE '%term%' first, then fetch their dossier
+- For manuscripts: SELECT id, canonical_name FROM manuscripts WHERE canonical_name ILIKE '%term%'
+- For session startup / greeting messages only: return []
+- For ALL substantive research questions: return at least 2–3 queries`;
 
   const planContents = [{
     role: 'user',
-    parts: [{ text: `Previous conversation:\n${historyText}\n\nCurrent question: ${userQuestion}\n\nReturn the JSON array of queries needed.` }],
+    parts: [{ text: `Previous conversation:\n${historyText}\n\nCurrent question: ${userQuestion}\n\nReturn ONLY the JSON array (start with [, end with ]).` }],
   }];
 
   try {
     const raw = await callGemini(planSystem, planContents);
-    const match = raw.match(/\[[\s\S]*\]/);
+    // Strip thinking blocks and markdown fences before extracting JSON
+    const stripped = raw
+      .replace(/<thinking>[\s\S]*?<\/thinking>/gi, '')
+      .replace(/```[a-z]*\n?/gi, '')
+      .replace(/```/g, '')
+      .trim();
+    const match = stripped.match(/\[[\s\S]*\]/);
     if (!match) return [];
     return JSON.parse(match[0]);
   } catch {
@@ -133,8 +143,11 @@ Your prior knowledge is a hypothesis to be tested against the documents, not a b
 ## Session Startup
 You will be given a STARTUP CONTEXT block with researcher corrections and prior memory. Apply corrections as authoritative. Apply memory only if topically relevant. Report: "Database live: [N] person dossiers, [N] manuscript dossiers. [N] corrections, [N] memory entries loaded." Then wait for the question.
 
-## Database Results
-When DATABASE QUERY RESULTS are provided in the context, reason over them carefully. Cite documents inline as [Doc 1234]. Include sharing_link URLs when available as clickable links.
+## Database Access — CRITICAL RULES
+The system automatically runs SQL queries and injects results into your context before every response. You have full database access. You must NEVER ask the researcher to provide query results, run queries, or supply data themselves.
+
+- If DATABASE QUERY RESULTS appear above: reason over them carefully. Cite documents inline as [Doc 1234]. Include sharing_link URLs when available as clickable links.
+- If no DATABASE QUERY RESULTS appear: the system determined no queries were needed, OR the queries returned empty results. State clearly what the database showed (or did not show), then supplement from your knowledge. Do NOT ask the researcher to provide data.
 
 ## Memory and End of Session
 Never write to gemini_memory autonomously. When the researcher types "done", present:
