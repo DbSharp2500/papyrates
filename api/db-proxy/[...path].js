@@ -46,6 +46,10 @@ export default async function handler(req, res) {
 
   const targetUrl = `${SUPABASE_URL}/rest/v1/${pathStr}${queryStr ? '?' + queryStr : ''}`;
 
+  if (req.query.__debug) {
+    return res.status(200).json({ pathSegments, pathStr, query: req.query, targetUrl });
+  }
+
   const headers = {
     'apikey': SUPABASE_KEY,
     'Authorization': `Bearer ${SUPABASE_KEY}`,
