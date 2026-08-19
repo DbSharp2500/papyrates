@@ -75,6 +75,23 @@ body{font-family:Georgia,serif;background:#1a1408;min-height:100vh;display:flex;
 
 /* Footer */
 .footer{color:#4a3820;font-size:11px;letter-spacing:1px;margin-top:10px;}
+
+/* Comparative research question cards */
+.cq-list{width:100%;max-width:660px;padding:0 20px;margin-bottom:28px;display:flex;flex-direction:column;gap:10px;}
+.cq-card{background:#2a2010;border:1px solid #4a3820;border-radius:10px;padding:14px 16px;}
+.cq-card .cq-title{font-size:13px;font-weight:bold;color:#d4a96a;margin-bottom:4px;}
+.cq-card .cq-question{font-size:12px;color:#8a7050;line-height:1.4;margin-bottom:8px;max-height:2.8em;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;}
+.cq-card .cq-status{font-size:12px;margin-bottom:10px;}
+.cq-card .cq-status.done{color:#7ecfa0;}
+.cq-card .cq-status.pending{color:#d4a96a;}
+.cq-respond-row{display:flex;gap:8px;flex-wrap:wrap;}
+.cq-respond-btn{display:inline-block;text-decoration:none;font-size:12px;padding:6px 12px;border-radius:6px;font-family:Georgia,serif;border:1px solid;}
+.cq-respond-btn.claude{color:#d4a96a;border-color:#6a5030;background:rgba(212,169,106,0.08);}
+.cq-respond-btn.gpt{color:#5abf7a;border-color:#3a7a3a;background:rgba(90,191,122,0.08);}
+.cq-respond-btn.gemini{color:#a855f7;border-color:#7a4aaa;background:rgba(168,85,247,0.08);}
+.cq-respond-btn:hover{opacity:0.8;}
+.cq-empty{font-size:12px;color:#6a5a40;padding:8px 4px;}
+.cq-note{font-size:11px;color:#5a4a30;padding:0 4px;margin-top:-2px;margin-bottom:8px;}
 </style>
 </head>
 <body>
@@ -102,25 +119,25 @@ body{font-family:Georgia,serif;background:#1a1408;min-height:100vh;display:flex;
   <div id="section-research" style="display:none;width:100%;align-items:center;flex-direction:column;">
     <div class="section-label"><h2>Research &amp; Analysis</h2></div>
     <div class="tile-grid">
-      <a class="tile research" href="/research.html">
+      <a class="tile research" href="papyrates-jim://claude">
         <div class="tile-icon">🤖</div>
         <div class="tile-text">
-          <div class="tile-title">Claude Research</div>
-          <div class="tile-desc">AI-powered analysis with semantic search across all documents</div>
+          <div class="tile-title">Claude Jim</div>
+          <div class="tile-desc">Opens Claude-Jim on this computer (local only — requires the desktop app)</div>
         </div>
       </a>
-      <a class="tile gpt" href="/research-gpt.html">
+      <a class="tile gpt" href="papyrates-jim://gpt">
         <div class="tile-icon">🤖</div>
         <div class="tile-text">
-          <div class="tile-title">GPT-4o Research</div>
-          <div class="tile-desc">OpenAI powered analysis of the correspondence database</div>
+          <div class="tile-title">GPT Jim</div>
+          <div class="tile-desc">Opens GPT-Jim on this computer (local only — requires the desktop app)</div>
         </div>
       </a>
-      <a class="tile gemini" href="/research-gemini.html">
+      <a class="tile gemini" href="papyrates-jim://gemini">
         <div class="tile-icon">✦</div>
         <div class="tile-text">
-          <div class="tile-title">Gemini Research</div>
-          <div class="tile-desc">Google Gemini powered research portal</div>
+          <div class="tile-title">Gemini Jim</div>
+          <div class="tile-desc">Opens Gemini-Jim on this computer (local only — requires the desktop app)</div>
         </div>
       </a>
       <a class="tile" href="/database.html">
@@ -130,6 +147,12 @@ body{font-family:Georgia,serif;background:#1a1408;min-height:100vh;display:flex;
           <div class="tile-desc">Search and filter all 7,400+ documents by author, recipient, date, language</div>
         </div>
       </a>
+    </div>
+
+    <div class="section-label"><h2>Comparative Research Questions</h2></div>
+    <div class="cq-note">Buttons below open a Jim directly on this computer and ask it to respond — only works when you're on the machine the Jims are installed on.</div>
+    <div class="cq-list" id="cq-list">
+      <div class="cq-empty">Loading…</div>
     </div>
   </div>
 
@@ -272,12 +295,58 @@ function showMain(tier) {
   if (tier === "admin") {
     show("section-research");
     show("section-edit");
+    loadComparativeQuestions();
   } else if (tier === "research") {
     show("section-browse");
     show("section-edit");
   } else {
     show("section-browse");
   }
+}
+
+async function loadComparativeQuestions() {
+  const list = document.getElementById("cq-list");
+  try {
+    const res = await fetch("/api/comparative-status");
+    const data = await res.json();
+    const questions = data.questions || [];
+    if (!questions.length) {
+      list.innerHTML = '<div class="cq-empty">No comparative research questions logged yet.</div>';
+      return;
+    }
+    list.innerHTML = questions.map(renderComparativeCard).join("");
+  } catch (e) {
+    list.innerHTML = '<div class="cq-empty">Could not load comparative research questions.</div>';
+  }
+}
+
+function renderComparativeCard(q) {
+  const done = !q.still_needs;
+  const statusClass = done ? "done" : "pending";
+  const statusText = done ? "Fully answered" : ("Needs a response from " + q.still_needs);
+
+  const buttons = [];
+  if (!q.claude_answered) buttons.push(cqButton("claude", "Respond as Claude Jim", q.id));
+  if (!q.gpt_answered) buttons.push(cqButton("gpt", "Respond as GPT Jim", q.id));
+  if (!q.gemini_answered) buttons.push(cqButton("gemini", "Respond as Gemini Jim", q.id));
+
+  return `
+    <div class="cq-card">
+      <div class="cq-title">Comparative Research Question ${q.id}${q.topic ? " — " + escapeHtml(q.topic) : ""}</div>
+      <div class="cq-question">${escapeHtml(q.question_text)}</div>
+      <div class="cq-status ${statusClass}">${statusText}</div>
+      ${buttons.length ? `<div class="cq-respond-row">${buttons.join("")}</div>` : ""}
+    </div>`;
+}
+
+function cqButton(model, label, id) {
+  return `<a class="cq-respond-btn ${model}" href="papyrates-jim://${model}?q=${id}">${label}</a>`;
+}
+
+function escapeHtml(s) {
+  return String(s || "").replace(/[&<>"']/g, function(c) {
+    return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+  });
 }
 
 function show(id) {
