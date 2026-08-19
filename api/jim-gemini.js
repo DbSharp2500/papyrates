@@ -10,8 +10,8 @@
 // This avoids all Gemini function-calling complexity entirely.
 
 const GEMENI_API_KEY = process.env.GEMENI_API_KEY;
-const SUPABASE_URL   = 'https://vzfwobsnfqnnqvnsfksq.supabase.co';
-const SUPABASE_KEY   = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ6ZndvYnNuZnFubnF2bnNma3NxIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3Njg4ODA3MCwiZXhwIjoyMDkyNDY0MDcwfQ.J_TE4qWj9r6TIvGeptM58r2WtI6ytOe9zg7BBe29wHI';
+const SUPABASE_URL   = process.env.SUPABASE_URL;
+const SUPABASE_KEY   = process.env.SUPABASE_KEY;
 const MODEL          = 'gemini-2.5-flash';
 
 const DB_HEADERS = {

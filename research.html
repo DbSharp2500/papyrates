@@ -195,8 +195,11 @@ body{font-family:Arial,sans-serif;background:#1a1a2e;min-height:100vh;display:fl
 <script src="/query-plan-executor.js"></script>
 <script>
 // ── Configuration ─────────────────────────────────────────────────────────────
+// DEPRECATED PORTAL — Jim now runs locally (see index.html "Claude Jim" tile).
+// Key intentionally removed 2026-08-19 after it was found exposed here for ~4 months.
+// Do not re-add a hardcoded key. This page is dead and left broken on purpose.
 var SUPABASE_URL = "https://vzfwobsnfqnnqvnsfksq.supabase.co/rest/v1";
-var SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ6ZndvYnNuZnFubnF2bnNma3NxIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3Njg4ODA3MCwiZXhwIjoyMDkyNDY0MDcwfQ.J_TE4qWj9r6TIvGeptM58r2WtI6ytOe9zg7BBe29wHI";
+var SUPABASE_KEY = "";
 var SH = {"apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY};
 
 // ── State ─────────────────────────────────────────────────────────────────────
