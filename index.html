@@ -244,7 +244,7 @@ async function doLogin() {
     });
     const data = await res.json();
     if (res.ok && data.tier) {
-      setPapyratesSession(data.tier);
+      setPapyratesSession(data.tier, data.token);
       showMain(data.tier);
     } else {
       err.textContent = "Incorrect password.";

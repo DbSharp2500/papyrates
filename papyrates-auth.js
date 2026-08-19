@@ -10,7 +10,7 @@ function getPapyratesSession() {
     const raw = localStorage.getItem(PAPYRATES_SESSION_KEY);
     if (!raw) return null;
     const session = JSON.parse(raw);
-    if (!session.tier || !session.expires) return null;
+    if (!session.tier || !session.expires || !session.token) return null;
     if (Date.now() > session.expires) {
       localStorage.removeItem(PAPYRATES_SESSION_KEY);
       return null;
@@ -26,9 +26,17 @@ function getPapyratesTier() {
   return session ? session.tier : null;
 }
 
-function setPapyratesSession(tier) {
+// The signed token from /api/auth - send as "Authorization: Bearer <token>"
+// on any request to /api/db-proxy/... Returns null if not logged in.
+function getPapyratesToken() {
+  const session = getPapyratesSession();
+  return session ? session.token : null;
+}
+
+function setPapyratesSession(tier, token) {
   const session = {
     tier: tier,
+    token: token,
     expires: Date.now() + SESSION_DURATION_MS
   };
   localStorage.setItem(PAPYRATES_SESSION_KEY, JSON.stringify(session));

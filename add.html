@@ -192,7 +192,7 @@ var allInstitutions = [];
 
 async function loadInstitutions(){
   try{
-    var r = await fetch(SB+"/institutions?select=id,name,location&order=name.asc&limit=500", {headers:{"apikey":KEY,"Authorization":"Bearer "+KEY}});
+    var r = await fetch(SB+"/institutions?select=id,name,location&order=name.asc&limit=500", {headers:{"Authorization":"Bearer "+getPapyratesToken()}});
     allInstitutions = await r.json();
     renderInstPicker();
   } catch(e){ document.getElementById('inst-picker').innerHTML='<div style="color:#ef9a9a;padding:6px;font-size:13px;">Failed to load institutions</div>'; }
@@ -240,14 +240,15 @@ async function saveManuscriptInstitutions(manuscriptId){
   });
   await fetch(SB+"/manuscript_institutions", {
     method:"POST",
-    headers:{"apikey":KEY,"Authorization":"Bearer "+KEY,"Content-Type":"application/json","Prefer":"return=minimal"},
+    headers:{"Authorization":"Bearer "+getPapyratesToken(),"Content-Type":"application/json","Prefer":"return=minimal"},
     body: JSON.stringify(rows)
   });
 }
 
-var SB  = "https://vzfwobsnfqnnqvnsfksq.supabase.co/rest/v1";
-var KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ6ZndvYnNuZnFubnF2bnNma3NxIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3Njg4ODA3MCwiZXhwIjoyMDkyNDY0MDcwfQ.J_TE4qWj9r6TIvGeptM58r2WtI6ytOe9zg7BBe29wHI";
-var SH  = {"apikey":KEY,"Authorization":"Bearer "+KEY,"Content-Type":"application/json","Prefer":"return=representation"};
+// Proxied through /api/db-proxy (server-side, authenticated) instead of
+// hitting Supabase directly with a client-side key - see api/db-proxy/[...path].js.
+var SB  = "/api/db-proxy";
+var SH  = {"Authorization":"Bearer "+getPapyratesToken(),"Content-Type":"application/json","Prefer":"return=representation"};
 
 var currentTab = "person";
 var recentAdded = [];
@@ -311,19 +312,19 @@ async function checkDuplicates(type){
       var last = document.getElementById("p-last").value.trim();
       var first = document.getElementById("p-first").value.trim();
       // Search by last name similarity
-      var r = await fetch(`${SB}/people?select=id,first_name,last_name,description&last_name=ilike.*${encodeURIComponent(last.substring(0,4))}*&limit=50`, {headers:{"apikey":KEY,"Authorization":"Bearer "+KEY}});
+      var r = await fetch(`${SB}/people?select=id,first_name,last_name,description&last_name=ilike.*${encodeURIComponent(last.substring(0,4))}*&limit=50`, {headers:{"Authorization":"Bearer "+getPapyratesToken()}});
       var rows = await r.json();
       dupes = (rows||[]).filter(function(p){
         return isSimilar(last, p.last_name||"") || isSimilar(first, p.first_name||"");
       });
     } else if(type==="manuscript"){
       var name2 = document.getElementById("m-name").value.trim();
-      var r2 = await fetch(`${SB}/manuscripts?select=id,name,description&name=ilike.*${encodeURIComponent(name2.substring(0,6))}*&limit=50`, {headers:{"apikey":KEY,"Authorization":"Bearer "+KEY}});
+      var r2 = await fetch(`${SB}/manuscripts?select=id,name,description&name=ilike.*${encodeURIComponent(name2.substring(0,6))}*&limit=50`, {headers:{"Authorization":"Bearer "+getPapyratesToken()}});
       var rows2 = await r2.json();
       dupes = (rows2||[]).filter(function(m){ return isSimilar(name2, m.name||""); });
     } else {
       var name3 = document.getElementById("i-name").value.trim();
-      var r3 = await fetch(`${SB}/institutions?select=id,name,location,notes&name=ilike.*${encodeURIComponent(name3.substring(0,5))}*&limit=50`, {headers:{"apikey":KEY,"Authorization":"Bearer "+KEY}});
+      var r3 = await fetch(`${SB}/institutions?select=id,name,location,notes&name=ilike.*${encodeURIComponent(name3.substring(0,5))}*&limit=50`, {headers:{"Authorization":"Bearer "+getPapyratesToken()}});
       var rows3 = await r3.json();
       dupes = (rows3||[]).filter(function(i){ return isSimilar(name3, i.name||""); });
     }

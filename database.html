@@ -180,9 +180,10 @@ body{font-family:Arial,sans-serif;background:#f0f3fa;min-height:100vh;}
 </div>
 <script>
 
-var SURL = "https://vzfwobsnfqnnqvnsfksq.supabase.co/rest/v1";
-var SKEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ6ZndvYnNuZnFubnF2bnNma3NxIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3Njg4ODA3MCwiZXhwIjoyMDkyNDY0MDcwfQ.J_TE4qWj9r6TIvGeptM58r2WtI6ytOe9zg7BBe29wHI";
-var SH = {"apikey": SKEY, "Authorization": "Bearer " + SKEY};
+// Proxied through /api/db-proxy (server-side, authenticated) instead of
+// hitting Supabase directly with a client-side key - see api/db-proxy/[...path].js.
+var SURL = "/api/db-proxy";
+var SH = {"Authorization": "Bearer " + getPapyratesToken()};
 
 var people = {};
 var manuscripts = {};
@@ -246,7 +247,7 @@ function sq(path){
   return fetch(SURL+"/"+path,{headers:SH}).then(function(r){return r.ok?r.json():[];}).catch(function(){return[];});
 }
 function sqCount(path){
-  return fetch(SURL+"/"+path,{headers:{"apikey":SKEY,"Authorization":"Bearer "+SKEY,"Prefer":"count=exact"}})
+  return fetch(SURL+"/"+path,{headers:Object.assign({},SH,{"Prefer":"count=exact"})})
     .then(function(r){var ct=r.headers.get("content-range");if(ct){var m=ct.match(/\/(\d+)/);if(m)return parseInt(m[1]);}return 0;})
     .catch(function(){return 0;});
 }
