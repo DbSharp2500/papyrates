@@ -25,14 +25,26 @@ export default async function handler(req, res) {
   const SUPABASE_URL = process.env.SUPABASE_URL;
   const SUPABASE_KEY = process.env.SUPABASE_KEY;
 
-  // req.url is e.g. "/api/db-proxy/letters?select=id,title&author_id=eq.5" -
-  // strip the prefix and forward the rest exactly as-is, so PostgREST
-  // operators like "eq." and comma-separated select lists survive untouched.
-  const prefix = '/api/db-proxy/';
-  const idx = req.url.indexOf(prefix);
-  const suffix = idx === -1 ? '' : req.url.slice(idx + prefix.length);
+  // Rebuild the path from Vercel's catch-all segments (req.query.path) and
+  // the rest of req.query (everything except "path" itself), rather than
+  // parsing req.url by hand - that produced a mangled "...path" literal in
+  // testing, since Vercel doesn't guarantee req.url is the raw incoming URL
+  // for catch-all dynamic routes.
+  const pathSegments = req.query.path || [];
+  const pathStr = Array.isArray(pathSegments) ? pathSegments.join('/') : String(pathSegments);
 
-  const targetUrl = `${SUPABASE_URL}/rest/v1/${suffix}`;
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(req.query)) {
+    if (key === 'path') continue;
+    if (Array.isArray(value)) {
+      for (const v of value) params.append(key, v);
+    } else {
+      params.append(key, value);
+    }
+  }
+  const queryStr = params.toString();
+
+  const targetUrl = `${SUPABASE_URL}/rest/v1/${pathStr}${queryStr ? '?' + queryStr : ''}`;
 
   const headers = {
     'apikey': SUPABASE_KEY,
