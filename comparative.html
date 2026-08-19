@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Comparative Research Questions — Papyrates</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:Georgia,serif;background:#1a1408;min-height:100vh;display:flex;flex-direction:column;align-items:center;}
+
+.header{width:100%;max-width:660px;padding:24px 20px 0;display:flex;align-items:baseline;justify-content:space-between;}
+.header h1{color:#d4a96a;font-size:20px;font-weight:normal;letter-spacing:1px;}
+.home-btn{background:rgba(255,255,255,0.08);color:#a08050;border:1px solid #4a3820;padding:6px 14px;border-radius:6px;cursor:pointer;font-size:13px;font-family:Georgia,serif;text-decoration:none;}
+.home-btn:hover{background:rgba(255,255,255,0.14);color:#d4a96a;}
+
+.cq-note{width:100%;max-width:660px;padding:16px 20px 0;font-size:12px;color:#5a4a30;}
+
+.cq-list{width:100%;max-width:660px;padding:16px 20px 40px;display:flex;flex-direction:column;gap:10px;}
+.cq-card{background:#2a2010;border:1px solid #4a3820;border-radius:10px;padding:16px 18px;}
+.cq-card .cq-title{font-size:14px;font-weight:bold;color:#d4a96a;margin-bottom:6px;}
+.cq-card .cq-question{font-size:13px;color:#8a7050;line-height:1.5;margin-bottom:10px;}
+.cq-card .cq-status{font-size:12px;margin-bottom:10px;}
+.cq-card .cq-status.done{color:#7ecfa0;}
+.cq-card .cq-status.pending{color:#d4a96a;}
+.cq-respond-row{display:flex;gap:8px;flex-wrap:wrap;}
+.cq-respond-btn{display:inline-block;text-decoration:none;font-size:12px;padding:6px 12px;border-radius:6px;font-family:Georgia,serif;border:1px solid;}
+.cq-respond-btn.claude{color:#d4a96a;border-color:#6a5030;background:rgba(212,169,106,0.08);}
+.cq-respond-btn.gpt{color:#5abf7a;border-color:#3a7a3a;background:rgba(90,191,122,0.08);}
+.cq-respond-btn.gemini{color:#a855f7;border-color:#7a4aaa;background:rgba(168,85,247,0.08);}
+.cq-respond-btn:hover{opacity:0.8;}
+.cq-empty{font-size:13px;color:#6a5a40;padding:20px 4px;}
+
+.footer{color:#4a3820;font-size:11px;letter-spacing:1px;margin-top:auto;padding:24px 0;}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Comparative Research Questions</h1>
+  <a class="home-btn" href="/">&#8962; Home</a>
+</div>
+<div class="cq-note">Buttons below open a Jim directly on this computer and ask it to respond — only works when you're on the machine the Jims are installed on.</div>
+<div class="cq-list" id="cq-list">
+  <div class="cq-empty">Loading…</div>
+</div>
+
+<div class="footer">Papyrates Archive &mdash; Restricted Access</div>
+
+<script src="/papyrates-auth.js"></script>
+<script>
+requireAuth('admin');
+loadComparativeQuestions();
+
+async function loadComparativeQuestions() {
+  const list = document.getElementById("cq-list");
+  try {
+    const res = await fetch("/api/comparative-status");
+    const data = await res.json();
+    const questions = data.questions || [];
+    if (!questions.length) {
+      list.innerHTML = '<div class="cq-empty">No comparative research questions logged yet.</div>';
+      return;
+    }
+    list.innerHTML = questions.map(renderComparativeCard).join("");
+  } catch (e) {
+    list.innerHTML = '<div class="cq-empty">Could not load comparative research questions.</div>';
+  }
+}
+
+function renderComparativeCard(q) {
+  const done = !q.still_needs;
+  const statusClass = done ? "done" : "pending";
+  const statusText = done ? "Fully answered" : ("Needs a response from " + q.still_needs);
+
+  const buttons = [];
+  if (!q.claude_answered) buttons.push(cqButton("claude", "Respond as Claude Jim", q.id));
+  if (!q.gpt_answered) buttons.push(cqButton("gpt", "Respond as GPT Jim", q.id));
+  if (!q.gemini_answered) buttons.push(cqButton("gemini", "Respond as Gemini Jim", q.id));
+
+  return `
+    <div class="cq-card">
+      <div class="cq-title">Comparative Research Question ${q.id}${q.topic ? " — " + escapeHtml(q.topic) : ""}</div>
+      <div class="cq-question">${escapeHtml(q.question_text)}</div>
+      <div class="cq-status ${statusClass}">${statusText}</div>
+      ${buttons.length ? `<div class="cq-respond-row">${buttons.join("")}</div>` : ""}
+    </div>`;
+}
+
+function cqButton(model, label, id) {
+  return `<a class="cq-respond-btn ${model}" href="papyrates-jim://${model}?q=${id}">${label}</a>`;
+}
+
+function escapeHtml(s) {
+  return String(s || "").replace(/[&<>"']/g, function(c) {
+    return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+  });
+}
+</script>
+</body>
+</html>
