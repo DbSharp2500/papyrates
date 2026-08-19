@@ -25,17 +25,17 @@ export default async function handler(req, res) {
   const SUPABASE_URL = process.env.SUPABASE_URL;
   const SUPABASE_KEY = process.env.SUPABASE_KEY;
 
-  // Rebuild the path from Vercel's catch-all segments (req.query.path) and
-  // the rest of req.query (everything except "path" itself), rather than
-  // parsing req.url by hand - that produced a mangled "...path" literal in
-  // testing, since Vercel doesn't guarantee req.url is the raw incoming URL
-  // for catch-all dynamic routes.
-  const pathSegments = req.query.path || [];
+  // Rebuild the path from Vercel's catch-all segment. For a framework-less
+  // deployment (no Next.js), Vercel exposes a [...path].js segment under the
+  // literal key "...path" (dots included), not "path" as typical Next.js
+  // docs describe - confirmed via a temporary debug dump of req.query.
+  const PATH_KEY = '...path';
+  const pathSegments = req.query[PATH_KEY] || [];
   const pathStr = Array.isArray(pathSegments) ? pathSegments.join('/') : String(pathSegments);
 
   const params = new URLSearchParams();
   for (const [key, value] of Object.entries(req.query)) {
-    if (key === 'path') continue;
+    if (key === PATH_KEY) continue;
     if (Array.isArray(value)) {
       for (const v of value) params.append(key, v);
     } else {
@@ -45,10 +45,6 @@ export default async function handler(req, res) {
   const queryStr = params.toString();
 
   const targetUrl = `${SUPABASE_URL}/rest/v1/${pathStr}${queryStr ? '?' + queryStr : ''}`;
-
-  if (req.query.__debug) {
-    return res.status(200).json({ pathSegments, pathStr, query: req.query, targetUrl });
-  }
 
   const headers = {
     'apikey': SUPABASE_KEY,
