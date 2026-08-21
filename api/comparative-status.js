@@ -19,7 +19,30 @@ export default async function handler(req, res) {
     );
     if (!r.ok) throw new Error(`Supabase query failed: ${await r.text()}`);
     const rows = await r.json();
-    return res.status(200).json({ questions: Array.isArray(rows) ? rows : [] });
+
+    const evalRes = await fetch(
+      `${SUPABASE_URL}/rest/v1/comparative_evaluations?select=comparative_question_id,output_file_url,evaluated_at&order=evaluated_at.desc`,
+      { headers }
+    );
+    if (!evalRes.ok) throw new Error(`Supabase evaluations query failed: ${await evalRes.text()}`);
+    const evalRows = await evalRes.json();
+
+    // Keep only the latest verdict per question (rows are already ordered
+    // newest-first, so the first one seen per question id wins).
+    const latestVerdict = {};
+    for (const row of evalRows) {
+      if (!(row.comparative_question_id in latestVerdict)) {
+        latestVerdict[row.comparative_question_id] = row;
+      }
+    }
+
+    const questions = (Array.isArray(rows) ? rows : []).map((q) => ({
+      ...q,
+      judge_verdict_url: latestVerdict[q.id] ? latestVerdict[q.id].output_file_url : null,
+      judge_evaluated_at: latestVerdict[q.id] ? latestVerdict[q.id].evaluated_at : null,
+    }));
+
+    return res.status(200).json({ questions });
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }

@@ -27,6 +27,7 @@ body{font-family:Georgia,serif;background:#1a1408;min-height:100vh;display:flex;
 .cq-respond-btn.claude{color:#d4a96a;border-color:#6a5030;background:rgba(212,169,106,0.08);}
 .cq-respond-btn.gpt{color:#5abf7a;border-color:#3a7a3a;background:rgba(90,191,122,0.08);}
 .cq-respond-btn.gemini{color:#a855f7;border-color:#7a4aaa;background:rgba(168,85,247,0.08);}
+.cq-respond-btn.judge{color:#d9736c;border-color:#a8342e;background:rgba(168,52,46,0.1);}
 .cq-respond-btn:hover{opacity:0.8;}
 .cq-empty{font-size:13px;color:#6a5a40;padding:20px 4px;}
 
@@ -77,12 +78,23 @@ function renderComparativeCard(q) {
   if (!q.gpt_answered) buttons.push(cqButton("gpt", "Respond as GPT Jim", q.id));
   if (!q.gemini_answered) buttons.push(cqButton("gemini", "Respond as Gemini Jim", q.id));
 
+  // Judge only ever makes sense once all three models have answered. Once
+  // a verdict exists, swap the launch button for a link straight to the
+  // finished report instead of offering to re-launch Judge.
+  let judgeButton = "";
+  if (done) {
+    judgeButton = q.judge_verdict_url
+      ? `<a class="cq-respond-btn judge" href="papyrates-jim://viewfile?path=${encodeURIComponent(q.judge_verdict_url)}">View Analysis</a>`
+      : `<a class="cq-respond-btn judge" href="papyrates-jim://judge?q=${q.id}">Launch Comparative Analysis</a>`;
+  }
+
   return `
     <div class="cq-card">
       <div class="cq-title">Comparative Research Question ${q.id}${q.topic ? " — " + escapeHtml(q.topic) : ""}</div>
       <div class="cq-question">${escapeHtml(q.question_text)}</div>
       <div class="cq-status ${statusClass}">${statusText}</div>
       ${buttons.length ? `<div class="cq-respond-row">${buttons.join("")}</div>` : ""}
+      ${judgeButton ? `<div class="cq-respond-row">${judgeButton}</div>` : ""}
     </div>`;
 }
 
