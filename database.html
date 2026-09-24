@@ -282,8 +282,13 @@ function loadPeople(){
   }
   return fetchBatch();
 }
+// True once the manuscripts.aliases column exists in Supabase; until then alias features quietly stay off
+var msHasAliases=false;
 function loadManuscripts(){
-  return sq("manuscripts?select=id,name,description&limit=2000").then(function(rows){
+  return fetch(SURL+"/manuscripts?select=id,name,description,aliases&limit=2000",{headers:SH})
+    .then(function(r){if(!r.ok)throw new Error("no aliases column");msHasAliases=true;return r.json();})
+    .catch(function(){return sq("manuscripts?select=id,name,description&limit=2000");})
+    .then(function(rows){
     if(Array.isArray(rows)){
       rows.forEach(function(m){manuscripts[String(m.id)]=m;});
       allManuscriptOpts=rows.map(function(m){return{id:m.id,name:m.name||""};}).filter(function(x){return x.name;}).sort(function(a,b){return a.name.localeCompare(b.name);});
@@ -600,24 +605,28 @@ async function saveNewPerson(skipDuplicateCheck){
   }catch(err){modalState.saving=false;modalState.error="Error: "+err.message;render();}
 }
 
-// ── Create New Manuscript modal ───────────────────────────────────────────────
-var msModalState={open:false,name:"",description:"",saving:false,error:"",similar:[],showDuplicateWarning:false};
-
+// ── Manuscript matching (names, aliases, descriptions) ────────────────────────
 function romanToInt(r){
   var v={i:1,v:5,x:10,l:50,c:100},n=0;
   for(var i=0;i<r.length;i++){var a=v[r[i]],b=v[r[i+1]]||0;if(!a)return 0;n+=a<b?-a:a;}
   return n;
 }
-// Normalizes collection names so "P. Bodmer II", "Papyrus Bodmer 2" and "PB 2" all become "pb2"
+// Normalizes sigla so different spellings compare equal:
+// "P. Bodmer II" / "Papyrus Bodmer 2" / "PB 2" -> "pb2", "Lying Pen of Scribes 58" / "LP 58" -> "lp58",
+// "Schøyen MS 4612/1" -> "schoyen ms4612 1", "4Q 175" -> "4q175"
 function msNorm(s){
-  s=(s||"").toLowerCase().replace(/[.,;:()\[\]\/_\-]/g," ");
+  s=(s||"").toLowerCase().replace(/ø/g,"o").normalize("NFD").replace(/[̀-ͯ]/g,"");
+  s=s.replace(/[.,;:()\[\]\/_\-]/g," ");
+  s=s.replace(/\blying\s+pen(\s+of\s+scribes)?\b/g," lp ").replace(/\bmuseum\s+of\s+the\s+bible\b/g," motb ");
   s=s.replace(/\bchester\s+beatty\b/g," cb ").replace(/\bbeatty\b/g," cb ").replace(/\bbodmer\b/g," pb ");
   s=s.replace(/\bp\s+b\b/g," pb ").replace(/\bp\s*cb\b/g," cb ");
   s=s.replace(/\b(papyrus|papyri|pap|p)\s+(?=(pb|cb)\b)/g," ");
   s=s.replace(/\b(pb|cb)\s+([ivxlc]+)\b/g,function(m,c,r){var n=romanToInt(r);return n?c+" "+n:m;});
-  s=s.replace(/\b(pb|cb)\s+(\d+)/g,"$1$2");
+  s=s.replace(/\b([a-z]{1,4})\s+(\d+)/g,"$1$2").replace(/\b(\d+q)\s+(\d+)/g,"$1$2");
   return s.replace(/\s+/g," ").trim();
 }
+// Compact key for comparisons; keeps a marker between separate numbers so "4612/1" does not become "46121"
+function msKey(n){return n.replace(/(\d) (?=\d)/g,"$1|").replace(/ /g,"");}
 // Substring match that won't let "pb2" match inside "pb24"
 function msContains(hay,needle){
   if(!needle)return false;
@@ -632,24 +641,66 @@ function msContains(hay,needle){
   return false;
 }
 var MS_STOPWORDS={"of":1,"the":1,"and":1,"codex":1,"fragment":1,"fragments":1,"papyrus":1,"papyri":1,"p":1,"ms":1,"manuscript":1};
+function msAliases(id){var m=manuscripts[String(id)];return(m&&Array.isArray(m.aliases))?m.aliases.filter(Boolean):[];}
+function msScoreName(q,qk,qTokens,candidate){
+  var mn=msNorm(candidate),mk=msKey(mn);
+  if(!mk)return 0;
+  if(mk===qk)return 100;
+  if(msContains(mk,qk)||msContains(qk,mk))return 60;
+  var mTokens=mn.split(" "),score=0;
+  qTokens.forEach(function(t){if(mTokens.indexOf(t)>=0)score+=20;});
+  return score;
+}
+// Returns [{id,name,reason}] — reason says why it matched when it wasn't by the main name
 function findSimilarManuscripts(name){
-  var q=msNorm(name),qk=q.replace(/ /g,"");
+  var q=msNorm(name),qk=msKey(q);
   if(!qk)return[];
   var qTokens=q.split(" ").filter(function(t){return !MS_STOPWORDS[t]&&(t.length>1||/\d/.test(t));});
+  var qHasNum=/\d/.test(q);
   var scored=[];
-  allManuscriptOpts.forEach(function(m){
-    var mn=msNorm(m.name),mk=mn.replace(/ /g,""),score=0;
-    if(mk===qk)score=100;
-    else if(msContains(mk,qk)||msContains(qk,mk))score=60;
-    else{
-      var mTokens=mn.split(" ");
-      qTokens.forEach(function(t){if(mTokens.indexOf(t)>=0)score+=20;});
+  allManuscriptOpts.forEach(function(o){
+    var best=msScoreName(q,qk,qTokens,o.name),reason="";
+    msAliases(o.id).forEach(function(al){
+      var s=msScoreName(q,qk,qTokens,al);
+      if(s>best){best=s;reason="also known as "+al;}
+    });
+    // A siglum like "LP 58" or "4Q175" mentioned in the description counts too
+    if(best<40&&qHasNum){
+      var m=manuscripts[String(o.id)];
+      if(m&&m.description&&(" "+msNorm(m.description)+" ").indexOf(" "+q+" ")>=0){best=40;reason="mentioned in description";}
     }
-    if(score>0)scored.push({m:m,score:score});
+    if(best>0)scored.push({id:o.id,name:o.name,reason:reason,score:best});
   });
-  scored.sort(function(a,b){return b.score-a.score||a.m.name.localeCompare(b.m.name);});
-  return scored.slice(0,8).map(function(x){return x.m;});
+  scored.sort(function(a,b){return b.score-a.score||a.name.localeCompare(b.name);});
+  return scored.slice(0,8);
 }
+// Dropdown search: smart matches first, then plain substring matches on name
+function msSearchOpts(val){
+  if(!val)return allManuscriptOpts.slice(0,30);
+  var t=val.toLowerCase();
+  var opts=findSimilarManuscripts(val);
+  var seen={};opts.forEach(function(o){seen[o.id]=true;});
+  allManuscriptOpts.forEach(function(o){if(!seen[o.id]&&o.name.toLowerCase().indexOf(t)>=0)opts.push(o);});
+  return opts;
+}
+function msOptLabel(o){return escHtml(o.name)+(o.reason?' <span style="color:#999;font-size:11px;">('+escHtml(o.reason)+')</span>':'');}
+function msSameName(id,typed){
+  var k=msKey(msNorm(typed));
+  var m=manuscripts[String(id)];if(!m)return true;
+  return [m.name].concat(msAliases(id)).some(function(n){return msKey(msNorm(n))===k;});
+}
+function parseAliasInput(text){
+  var seen={};
+  return(text||"").split(/[\n;]/).map(function(s){return s.trim();}).filter(function(s){var k=s.toLowerCase();if(!s||seen[k])return false;seen[k]=true;return true;});
+}
+async function saveManuscriptAliases(id,aliases){
+  var r=await fetch(SURL+"/manuscripts?id=eq."+id,{method:"PATCH",headers:Object.assign({},SH,{"Content-Type":"application/json","Prefer":"return=representation"}),body:JSON.stringify({aliases:aliases})});
+  if(!r.ok)throw new Error("HTTP "+r.status);
+  var m=manuscripts[String(id)];if(m)m.aliases=aliases;
+}
+
+// ── Create New Manuscript modal ───────────────────────────────────────────────
+var msModalState={open:false,name:"",description:"",aliasText:"",rememberAlias:true,saving:false,error:"",similar:[],showDuplicateWarning:false};
 
 function openCreateMsModal(){
   if(getPapyratesTier()==='readonly'){return;}
@@ -657,24 +708,37 @@ function openCreateMsModal(){
   var typed=inp?inp.value.trim():"";
   if(inp)inp.value="";
   var dd=document.getElementById("eform-ms-drop");if(dd)dd.classList.remove("open");
-  msModalState={open:true,name:typed,description:"",saving:false,error:"",similar:[],showDuplicateWarning:false};
+  msModalState={open:true,name:typed,description:"",aliasText:"",rememberAlias:true,saving:false,error:"",similar:[],showDuplicateWarning:false};
   render();
   setTimeout(function(){var el=document.getElementById("ms-modal-name");if(el)el.focus();},50);
 }
 function closeCreateMsModal(){msModalState.open=false;render();}
 function msModalUpdate(field,val){
   msModalState[field]=val;
-  if(field==='name'){msModalState.showDuplicateWarning=false;msModalState.similar=[];}
+  if(field==='name'||field==='aliasText'){msModalState.showDuplicateWarning=false;msModalState.similar=[];}
 }
-function useExistingManuscript(id){
-  var m=manuscripts[String(id)];if(m)efAddRoleMs(m.id,m.name);
+async function useExistingManuscript(id){
+  var m=manuscripts[String(id)];if(!m)return;
+  // Remember what was typed (and any other names entered) as aliases of the existing record
+  if(msHasAliases&&msModalState.rememberAlias){
+    var extra=[msModalState.name].concat(parseAliasInput(msModalState.aliasText)).map(function(s){return s.trim();})
+      .filter(function(s){return s&&!msSameName(id,s);});
+    if(extra.length){
+      try{await saveManuscriptAliases(id,msAliases(id).concat(extra));}
+      catch(err){msModalState.error="Could not save the other name: "+err.message;render();return;}
+    }
+  }
+  efAddRoleMs(m.id,m.name);
   msModalState.open=false;render();
 }
 function toggleMsDetail(id){
   var box=document.getElementById("ms-desc-"+id);if(!box)return;
   var m=manuscripts[String(id)];var desc=m?(m.description||""):"";
+  var als=msAliases(id);
   if(box.style.display==="none"||box.style.display===""){
-    box.innerHTML=desc?'<div style="padding:6px 8px;background:white;border-radius:4px;font-size:12px;color:#555;line-height:1.5;">'+escHtml(desc)+'</div>':'<div style="padding:6px 8px;background:white;border-radius:4px;font-size:12px;color:#aaa;font-style:italic;">No description on file.</div>';
+    box.innerHTML='<div style="padding:6px 8px;background:white;border-radius:4px;font-size:12px;color:#555;line-height:1.5;">'
+      +(als.length?'<div style="margin-bottom:4px;"><strong>Also known as:</strong> '+escHtml(als.join("; "))+'</div>':'')
+      +(desc?escHtml(desc):'<span style="color:#aaa;font-style:italic;">No description on file.</span>')+'</div>';
     box.style.display="block";
   }else{box.style.display="none";}
 }
@@ -683,19 +747,22 @@ function createMsAnyway(){msModalState.showDuplicateWarning=false;msModalState.s
 function renderMsModal(){
   if(!msModalState.open)return"";
   var html='<div class="modal-overlay" onclick="if(event.target===this)closeCreateMsModal()">'
-    +'<div class="modal-box">'
+    +'<div class="modal-box" style="max-height:90vh;overflow-y:auto;">'
     +'<div class="modal-title">&#43; Create New Manuscript</div>'
     +'<div class="form-field"><label class="form-label">Name</label>'
-    +'<input class="form-input" id="ms-modal-name" type="text" value="'+esc(msModalState.name)+'" oninput="msModalUpdate(\'name\',this.value)" placeholder="e.g. PB 2, P66" autocomplete="off"></div>';
+    +'<input class="form-input" id="ms-modal-name" type="text" value="'+esc(msModalState.name)+'" oninput="msModalUpdate(\'name\',this.value)" placeholder="e.g. PB 2, P66" autocomplete="off"></div>'
+    +'<div class="form-field"><label class="form-label">Also known as <span style="font-weight:normal;color:#aaa;font-size:10px">(optional — one per line, e.g. 4Q number, LP number, library shelfmark)</span></label>'
+    +'<textarea class="form-textarea" rows="2" oninput="msModalUpdate(\'aliasText\',this.value)" placeholder="LP 58&#10;Schøyen MS 4612/1">'+escText(msModalState.aliasText)+'</textarea></div>';
   if(msModalState.showDuplicateWarning&&msModalState.similar.length>0){
     html+='<div style="background:#fff8e1;border:1px solid #f9a825;border-radius:6px;padding:12px;margin-bottom:12px;">'
       +'<div style="font-size:13px;font-weight:600;color:#5d4037;margin-bottom:8px;">&#9888; Similar manuscripts already exist — is this one of them?</div>';
     msModalState.similar.forEach(function(o){
-      var m=manuscripts[String(o.id)];var desc=m?(m.description||""):"";
+      var m=manuscripts[String(o.id)];var hasMore=m&&(m.description||msAliases(o.id).length);
       html+='<div style="padding:6px 0;border-bottom:1px solid #ffe082;">'
         +'<div style="display:flex;align-items:center;justify-content:space-between;">'
-        +'<span onclick="toggleMsDetail(\''+o.id+'\')" style="font-size:13px;color:#2d4a8a;cursor:pointer;text-decoration:underline;text-underline-offset:2px;" title="Click to see description">'
-        +escHtml(o.name)+(desc?' &#9432;':'')+'</span>'
+        +'<span onclick="toggleMsDetail(\''+o.id+'\')" style="font-size:13px;color:#2d4a8a;cursor:pointer;" title="Click to see description">'
+        +'<span style="text-decoration:underline;text-underline-offset:2px;">'+escHtml(o.name)+'</span>'+(hasMore?' &#9432;':'')
+        +(o.reason?'<div style="font-size:11px;color:#8d6e63;">'+escHtml(o.reason)+'</div>':'')+'</span>'
         +'<button onclick="useExistingManuscript(\''+o.id+'\')" '
         +'style="background:#2d4a8a;color:white;border:none;padding:4px 10px;border-radius:4px;cursor:pointer;font-size:12px;white-space:nowrap;margin-left:8px;">'
         +'Yes, use this one</button>'
@@ -703,6 +770,11 @@ function renderMsModal(){
         +'<div id="ms-desc-'+o.id+'" style="display:none;"></div>'
         +'</div>';
     });
+    if(msHasAliases&&msModalState.name.trim()){
+      html+='<label style="display:flex;gap:6px;align-items:flex-start;font-size:12px;color:#5d4037;margin-top:8px;cursor:pointer;">'
+        +'<input type="checkbox" '+(msModalState.rememberAlias?'checked':'')+' onchange="msModalState.rememberAlias=this.checked">'
+        +'<span>If I pick one, save &quot;'+escHtml(msModalState.name.trim())+'&quot; as another name for it</span></label>';
+    }
     html+='<div style="margin-top:10px;display:flex;gap:8px;">'
       +'<button onclick="createMsAnyway()" style="flex:1;background:#c62828;color:white;border:none;padding:8px;border-radius:6px;cursor:pointer;font-size:13px;">No — create as a new manuscript</button>'
       +'<button onclick="msModalState.showDuplicateWarning=false;render();" style="background:none;border:1px solid #ccc;color:#666;padding:8px 12px;border-radius:6px;cursor:pointer;font-size:13px;">Go back</button>'
@@ -725,13 +797,23 @@ async function saveNewManuscript(skipDuplicateCheck){
   if(getPapyratesTier()==='readonly'){msModalState.error="You do not have permission to create manuscripts.";render();return;}
   var name=msModalState.name.trim();
   if(!name){msModalState.error="Please enter a manuscript name.";render();return;}
+  var aliases=parseAliasInput(msModalState.aliasText);
   if(!skipDuplicateCheck){
-    var similar=findSimilarManuscripts(name);
-    if(similar.length>0){msModalState.similar=similar;msModalState.showDuplicateWarning=true;render();return;}
+    // Check the main name and every "also known as" name against names, aliases and descriptions
+    var found={},similar=[];
+    [name].concat(aliases).forEach(function(n){
+      findSimilarManuscripts(n).forEach(function(o){if(!found[o.id]){found[o.id]=true;similar.push(o);}});
+    });
+    if(similar.length>0){msModalState.similar=similar.slice(0,10);msModalState.showDuplicateWarning=true;render();return;}
   }
   msModalState.saving=true;msModalState.error="";render();
+  var desc=msModalState.description.trim();
+  var payload={name:name,description:desc||null};
+  if(msHasAliases)payload.aliases=aliases;
+  // Before the aliases column exists, keep the other names searchable by putting them in the description
+  else if(aliases.length)payload.description=(desc?desc+"\n\n":"")+"Also known as: "+aliases.join("; ");
   try{
-    var r=await fetch(SURL+"/manuscripts",{method:"POST",headers:Object.assign({},SH,{"Content-Type":"application/json","Prefer":"return=representation"}),body:JSON.stringify({name:name,description:msModalState.description.trim()||null})});
+    var r=await fetch(SURL+"/manuscripts",{method:"POST",headers:Object.assign({},SH,{"Content-Type":"application/json","Prefer":"return=representation"}),body:JSON.stringify(payload)});
     if(!r.ok)throw new Error("HTTP "+r.status);
     var data=await r.json();var m=data[0];
     manuscripts[String(m.id)]=m;
@@ -742,6 +824,21 @@ async function saveNewManuscript(skipDuplicateCheck){
   }catch(err){msModalState.saving=false;msModalState.error="Error: "+err.message;render();}
 }
 
+// ── Aliases on the manuscript page ────────────────────────────────────────────
+async function addMsAliasFromView(id){
+  var inp=document.getElementById("ms-alias-inp");if(!inp)return;
+  var extra=parseAliasInput(inp.value).filter(function(s){return !msSameName(id,s);});
+  if(!extra.length){inp.value="";return;}
+  try{await saveManuscriptAliases(id,msAliases(id).concat(extra));render();}
+  catch(err){alert("Could not save: "+err.message);}
+}
+async function removeMsAliasFromView(id,idx){
+  var als=msAliases(id).slice();
+  if(!confirm('Remove "'+als[idx]+'" as another name for this manuscript?'))return;
+  als.splice(idx,1);
+  try{await saveManuscriptAliases(id,als);render();}
+  catch(err){alert("Could not save: "+err.message);}
+}
 function buildAuthorOpts(){
   var p=state.recipientId?sq("letters?recipient_id=eq."+state.recipientId+"&select=author_id&limit=5000"):sq("letters?select=author_id&limit=5000");
   return p.then(function(rows){
@@ -758,7 +855,7 @@ function buildRecipOpts(){
 }
 function filteredAuthorOpts(){if(!state.authorText)return allAuthorOpts;var t=state.authorText.toLowerCase();return allAuthorOpts.filter(function(o){return o.name.toLowerCase().indexOf(t)>=0;});}
 function filteredRecipOpts(){if(!state.recipientText)return allRecipOpts;var t=state.recipientText.toLowerCase();return allRecipOpts.filter(function(o){return o.name.toLowerCase().indexOf(t)>=0;});}
-function filteredManuscriptOpts(){if(!state.manuscriptText)return allManuscriptOpts;var t=state.manuscriptText.toLowerCase();return allManuscriptOpts.filter(function(o){return o.name.toLowerCase().indexOf(t)>=0;});}
+function filteredManuscriptOpts(){if(!state.manuscriptText)return allManuscriptOpts;return msSearchOpts(state.manuscriptText);}
 function allPeopleSorted(){
   return Object.values(people).map(function(p){return{id:p.id,name:pname(p.id)};}).filter(function(x){return x.name&&x.name!=="Unknown";}).sort(function(a,b){return a.name.localeCompare(b.name);});
 }
@@ -1043,16 +1140,10 @@ function efAddRoleMs(id,name){
 function efRemoveRoleMs(idx){if(!state.editForm)return;state.editForm.roleMss.splice(idx,1);render();}
 function efAddMsInput(val){
   var dd=document.getElementById("eform-ms-drop");if(!dd)return;
-  var t=(val||"").toLowerCase();
-  var opts;
-  if(val){
-    // Smart matches first (e.g. "P. Bodmer 2" finds "PB 2"), then plain substring matches
-    opts=findSimilarManuscripts(val);
-    var seen={};opts.forEach(function(o){seen[o.id]=true;});
-    allManuscriptOpts.forEach(function(o){if(!seen[o.id]&&o.name.toLowerCase().indexOf(t)>=0)opts.push(o);});
-  }else opts=allManuscriptOpts.slice(0,30);
+  // Matches names, "also known as" names and sigla in descriptions (e.g. "P. Bodmer 2" finds "PB 2")
+  var opts=msSearchOpts(val);
   dd.classList.add("open");
-  var items=opts.slice(0,50).map(function(o){return'<div class="form-ac-item" onmousedown="event.preventDefault();efAddRoleMs('+o.id+',\''+o.name.replace(/\\/g,"\\\\").replace(/'/g,"\\'")+'\')">'+escHtml(o.name)+'</div>';}).join("");
+  var items=opts.slice(0,50).map(function(o){return'<div class="form-ac-item" onmousedown="event.preventDefault();efAddRoleMs('+o.id+',\''+o.name.replace(/\\/g,"\\\\").replace(/'/g,"\\'")+'\')">'+msOptLabel(o)+'</div>';}).join("");
   if(val&&!opts.length)items='<div class="form-ac-item" style="color:#999">No matches</div>';
   if(getPapyratesTier()!=='readonly')items+='<div class="form-ac-item" style="color:#2d4a8a;border-top:1px solid #e8ecf5;font-weight:500;" onmousedown="event.preventDefault();openCreateMsModal()">&#43; Create new manuscript…</div>';
   dd.innerHTML=items;
@@ -1497,6 +1588,13 @@ function renderManuscript(){
   var html='<div class="detail-header"><button class="back-btn" onclick="goBack()">&#8592; Back</button><span style="font-size:16px;font-weight:500">'+escHtml(m.name)+'</span><span></span></div>';
   html+='<div class="detail-body">';
   if(m.description)html+='<div class="field-label">Description</div><div class="field-value">'+escHtml(m.description)+'</div>';
+  var als=msAliases(m.id),canEdit=msHasAliases&&getPapyratesTier()!=='readonly';
+  if(als.length||canEdit){
+    html+='<div class="field-label">Also Known As</div><div class="field-value">';
+    html+=als.length?als.map(function(a,i){return'<span class="role-person-tag manuscript" style="margin:2px;">'+escHtml(a)+(canEdit?'<button class="remove-tag" onclick="removeMsAliasFromView('+m.id+','+i+')">&#215;</button>':'')+'</span>';}).join(""):'<span style="color:#aaa;font-size:13px;">None recorded</span>';
+    if(canEdit)html+='<div style="display:flex;gap:6px;margin-top:6px;"><input class="form-input" id="ms-alias-inp" type="text" placeholder="Add another name, e.g. 4Q175 or LP 58" onkeydown="if(event.key===\'Enter\')addMsAliasFromView('+m.id+')" style="font-size:13px;padding:6px 8px;"><button class="page-btn" onclick="addMsAliasFromView('+m.id+')">Add</button></div>';
+    html+='</div>';
+  }
   if(mv.loading){html+='<div class="loading">Loading…</div></div>';return html;}
   if(mv.institutions.length>0){
     html+='<div class="section-title">Holding Institutions</div>';
