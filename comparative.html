@@ -55,7 +55,15 @@ loadComparativeQuestions();
 async function loadComparativeQuestions() {
   const list = document.getElementById("cq-list");
   try {
-    const res = await fetch("/api/comparative-status");
+    const res = await fetch("/api/comparative-status", {
+      headers: { "Authorization": "Bearer " + getPapyratesToken() }
+    });
+    if (res.status === 401) {
+      // Token missing/expired/invalid server-side: send back to the login page.
+      clearPapyratesSession();
+      window.location.href = '/index.html';
+      return;
+    }
     const data = await res.json();
     const questions = data.questions || [];
     if (!questions.length) {

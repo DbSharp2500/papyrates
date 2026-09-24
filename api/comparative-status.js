@@ -1,8 +1,16 @@
+import { tierFromRequest, hasTierAccess } from './_session.js';
+
 export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-  if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
+
+  // Admin only, matching comparative.html's own requireAuth('admin'). That
+  // page-level check only runs in the browser, so on its own it never
+  // protected this endpoint - anyone could GET it directly. No CORS headers
+  // either: the dashboard is same-origin, so nothing else needs to call this.
+  const tier = tierFromRequest(req);
+  if (!tier || !hasTierAccess(tier, 'admin')) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
 
   const SUPABASE_URL = process.env.SUPABASE_URL;
   const SUPABASE_KEY = process.env.SUPABASE_KEY;
