@@ -600,6 +600,148 @@ async function saveNewPerson(skipDuplicateCheck){
   }catch(err){modalState.saving=false;modalState.error="Error: "+err.message;render();}
 }
 
+// ── Create New Manuscript modal ───────────────────────────────────────────────
+var msModalState={open:false,name:"",description:"",saving:false,error:"",similar:[],showDuplicateWarning:false};
+
+function romanToInt(r){
+  var v={i:1,v:5,x:10,l:50,c:100},n=0;
+  for(var i=0;i<r.length;i++){var a=v[r[i]],b=v[r[i+1]]||0;if(!a)return 0;n+=a<b?-a:a;}
+  return n;
+}
+// Normalizes collection names so "P. Bodmer II", "Papyrus Bodmer 2" and "PB 2" all become "pb2"
+function msNorm(s){
+  s=(s||"").toLowerCase().replace(/[.,;:()\[\]\/_\-]/g," ");
+  s=s.replace(/\bchester\s+beatty\b/g," cb ").replace(/\bbeatty\b/g," cb ").replace(/\bbodmer\b/g," pb ");
+  s=s.replace(/\bp\s+b\b/g," pb ").replace(/\bp\s*cb\b/g," cb ");
+  s=s.replace(/\b(papyrus|papyri|pap|p)\s+(?=(pb|cb)\b)/g," ");
+  s=s.replace(/\b(pb|cb)\s+([ivxlc]+)\b/g,function(m,c,r){var n=romanToInt(r);return n?c+" "+n:m;});
+  s=s.replace(/\b(pb|cb)\s+(\d+)/g,"$1$2");
+  return s.replace(/\s+/g," ").trim();
+}
+// Substring match that won't let "pb2" match inside "pb24"
+function msContains(hay,needle){
+  if(!needle)return false;
+  var i=hay.indexOf(needle);
+  while(i>=0){
+    var before=hay[i-1]||"",after=hay[i+needle.length]||"";
+    var okAfter=!/\d$/.test(needle)||!/\d/.test(after);
+    var okBefore=!/^\d/.test(needle)||!/\d/.test(before);
+    if(okAfter&&okBefore)return true;
+    i=hay.indexOf(needle,i+1);
+  }
+  return false;
+}
+var MS_STOPWORDS={"of":1,"the":1,"and":1,"codex":1,"fragment":1,"fragments":1,"papyrus":1,"papyri":1,"p":1,"ms":1,"manuscript":1};
+function findSimilarManuscripts(name){
+  var q=msNorm(name),qk=q.replace(/ /g,"");
+  if(!qk)return[];
+  var qTokens=q.split(" ").filter(function(t){return !MS_STOPWORDS[t]&&(t.length>1||/\d/.test(t));});
+  var scored=[];
+  allManuscriptOpts.forEach(function(m){
+    var mn=msNorm(m.name),mk=mn.replace(/ /g,""),score=0;
+    if(mk===qk)score=100;
+    else if(msContains(mk,qk)||msContains(qk,mk))score=60;
+    else{
+      var mTokens=mn.split(" ");
+      qTokens.forEach(function(t){if(mTokens.indexOf(t)>=0)score+=20;});
+    }
+    if(score>0)scored.push({m:m,score:score});
+  });
+  scored.sort(function(a,b){return b.score-a.score||a.m.name.localeCompare(b.m.name);});
+  return scored.slice(0,8).map(function(x){return x.m;});
+}
+
+function openCreateMsModal(){
+  if(getPapyratesTier()==='readonly'){return;}
+  var inp=document.getElementById("eform-ms-inp");
+  var typed=inp?inp.value.trim():"";
+  if(inp)inp.value="";
+  var dd=document.getElementById("eform-ms-drop");if(dd)dd.classList.remove("open");
+  msModalState={open:true,name:typed,description:"",saving:false,error:"",similar:[],showDuplicateWarning:false};
+  render();
+  setTimeout(function(){var el=document.getElementById("ms-modal-name");if(el)el.focus();},50);
+}
+function closeCreateMsModal(){msModalState.open=false;render();}
+function msModalUpdate(field,val){
+  msModalState[field]=val;
+  if(field==='name'){msModalState.showDuplicateWarning=false;msModalState.similar=[];}
+}
+function useExistingManuscript(id){
+  var m=manuscripts[String(id)];if(m)efAddRoleMs(m.id,m.name);
+  msModalState.open=false;render();
+}
+function toggleMsDetail(id){
+  var box=document.getElementById("ms-desc-"+id);if(!box)return;
+  var m=manuscripts[String(id)];var desc=m?(m.description||""):"";
+  if(box.style.display==="none"||box.style.display===""){
+    box.innerHTML=desc?'<div style="padding:6px 8px;background:white;border-radius:4px;font-size:12px;color:#555;line-height:1.5;">'+escHtml(desc)+'</div>':'<div style="padding:6px 8px;background:white;border-radius:4px;font-size:12px;color:#aaa;font-style:italic;">No description on file.</div>';
+    box.style.display="block";
+  }else{box.style.display="none";}
+}
+function createMsAnyway(){msModalState.showDuplicateWarning=false;msModalState.similar=[];saveNewManuscript(true);}
+
+function renderMsModal(){
+  if(!msModalState.open)return"";
+  var html='<div class="modal-overlay" onclick="if(event.target===this)closeCreateMsModal()">'
+    +'<div class="modal-box">'
+    +'<div class="modal-title">&#43; Create New Manuscript</div>'
+    +'<div class="form-field"><label class="form-label">Name</label>'
+    +'<input class="form-input" id="ms-modal-name" type="text" value="'+esc(msModalState.name)+'" oninput="msModalUpdate(\'name\',this.value)" placeholder="e.g. PB 2, P66" autocomplete="off"></div>';
+  if(msModalState.showDuplicateWarning&&msModalState.similar.length>0){
+    html+='<div style="background:#fff8e1;border:1px solid #f9a825;border-radius:6px;padding:12px;margin-bottom:12px;">'
+      +'<div style="font-size:13px;font-weight:600;color:#5d4037;margin-bottom:8px;">&#9888; Similar manuscripts already exist — is this one of them?</div>';
+    msModalState.similar.forEach(function(o){
+      var m=manuscripts[String(o.id)];var desc=m?(m.description||""):"";
+      html+='<div style="padding:6px 0;border-bottom:1px solid #ffe082;">'
+        +'<div style="display:flex;align-items:center;justify-content:space-between;">'
+        +'<span onclick="toggleMsDetail(\''+o.id+'\')" style="font-size:13px;color:#2d4a8a;cursor:pointer;text-decoration:underline;text-underline-offset:2px;" title="Click to see description">'
+        +escHtml(o.name)+(desc?' &#9432;':'')+'</span>'
+        +'<button onclick="useExistingManuscript(\''+o.id+'\')" '
+        +'style="background:#2d4a8a;color:white;border:none;padding:4px 10px;border-radius:4px;cursor:pointer;font-size:12px;white-space:nowrap;margin-left:8px;">'
+        +'Yes, use this one</button>'
+        +'</div>'
+        +'<div id="ms-desc-'+o.id+'" style="display:none;"></div>'
+        +'</div>';
+    });
+    html+='<div style="margin-top:10px;display:flex;gap:8px;">'
+      +'<button onclick="createMsAnyway()" style="flex:1;background:#c62828;color:white;border:none;padding:8px;border-radius:6px;cursor:pointer;font-size:13px;">No — create as a new manuscript</button>'
+      +'<button onclick="msModalState.showDuplicateWarning=false;render();" style="background:none;border:1px solid #ccc;color:#666;padding:8px 12px;border-radius:6px;cursor:pointer;font-size:13px;">Go back</button>'
+      +'</div></div>';
+  }
+  html+='<div class="form-field"><label class="form-label">Description <span style="font-weight:normal;color:#aaa;font-size:10px">(optional)</span></label>'
+    +'<textarea class="form-textarea" rows="3" oninput="msModalUpdate(\'description\',this.value)" placeholder="Contents, date, provenance...">'+escText(msModalState.description)+'</textarea></div>'
+    +(msModalState.error?'<div class="modal-error">'+esc(msModalState.error)+'</div>':"");
+  if(!msModalState.showDuplicateWarning){
+    html+='<div class="modal-actions">'
+      +'<button class="modal-save-btn" onclick="saveNewManuscript()" '+(msModalState.saving?"disabled":"")+'>'+(msModalState.saving?"Saving…":"&#10003; Create Manuscript")+'</button>'
+      +'<button class="modal-cancel-btn" onclick="closeCreateMsModal()">Cancel</button>'
+      +'</div>';
+  }
+  html+='</div></div>';
+  return html;
+}
+
+async function saveNewManuscript(skipDuplicateCheck){
+  if(getPapyratesTier()==='readonly'){msModalState.error="You do not have permission to create manuscripts.";render();return;}
+  var name=msModalState.name.trim();
+  if(!name){msModalState.error="Please enter a manuscript name.";render();return;}
+  if(!skipDuplicateCheck){
+    var similar=findSimilarManuscripts(name);
+    if(similar.length>0){msModalState.similar=similar;msModalState.showDuplicateWarning=true;render();return;}
+  }
+  msModalState.saving=true;msModalState.error="";render();
+  try{
+    var r=await fetch(SURL+"/manuscripts",{method:"POST",headers:Object.assign({},SH,{"Content-Type":"application/json","Prefer":"return=representation"}),body:JSON.stringify({name:name,description:msModalState.description.trim()||null})});
+    if(!r.ok)throw new Error("HTTP "+r.status);
+    var data=await r.json();var m=data[0];
+    manuscripts[String(m.id)]=m;
+    allManuscriptOpts.push({id:m.id,name:m.name});
+    allManuscriptOpts.sort(function(a,b){return a.name.localeCompare(b.name);});
+    efAddRoleMs(m.id,m.name);
+    msModalState.open=false;render();
+  }catch(err){msModalState.saving=false;msModalState.error="Error: "+err.message;render();}
+}
+
 function buildAuthorOpts(){
   var p=state.recipientId?sq("letters?recipient_id=eq."+state.recipientId+"&select=author_id&limit=5000"):sq("letters?select=author_id&limit=5000");
   return p.then(function(rows){
@@ -902,9 +1044,18 @@ function efRemoveRoleMs(idx){if(!state.editForm)return;state.editForm.roleMss.sp
 function efAddMsInput(val){
   var dd=document.getElementById("eform-ms-drop");if(!dd)return;
   var t=(val||"").toLowerCase();
-  var opts=val?allManuscriptOpts.filter(function(o){return o.name.toLowerCase().indexOf(t)>=0;}):allManuscriptOpts.slice(0,30);
+  var opts;
+  if(val){
+    // Smart matches first (e.g. "P. Bodmer 2" finds "PB 2"), then plain substring matches
+    opts=findSimilarManuscripts(val);
+    var seen={};opts.forEach(function(o){seen[o.id]=true;});
+    allManuscriptOpts.forEach(function(o){if(!seen[o.id]&&o.name.toLowerCase().indexOf(t)>=0)opts.push(o);});
+  }else opts=allManuscriptOpts.slice(0,30);
   dd.classList.add("open");
-  dd.innerHTML=opts.slice(0,50).map(function(o){return'<div class="form-ac-item" onmousedown="event.preventDefault();efAddRoleMs('+o.id+',\''+o.name.replace(/\\/g,"\\\\").replace(/'/g,"\\'")+'\')">'+o.name+'</div>';}).join("")||'<div class="form-ac-item" style="color:#999">No matches</div>';
+  var items=opts.slice(0,50).map(function(o){return'<div class="form-ac-item" onmousedown="event.preventDefault();efAddRoleMs('+o.id+',\''+o.name.replace(/\\/g,"\\\\").replace(/'/g,"\\'")+'\')">'+escHtml(o.name)+'</div>';}).join("");
+  if(val&&!opts.length)items='<div class="form-ac-item" style="color:#999">No matches</div>';
+  if(getPapyratesTier()!=='readonly')items+='<div class="form-ac-item" style="color:#2d4a8a;border-top:1px solid #e8ecf5;font-weight:500;" onmousedown="event.preventDefault();openCreateMsModal()">&#43; Create new manuscript…</div>';
+  dd.innerHTML=items;
 }
 
 function efInstitutionInput(val){
@@ -1499,9 +1650,9 @@ function render(){
   else app.innerHTML=renderList();
   var existing=document.getElementById("modal-container");
   if(existing)existing.remove();
-  if(modalState.open){
+  if(modalState.open||msModalState.open){
     var mc=document.createElement("div");mc.id="modal-container";
-    mc.innerHTML=renderModal();
+    mc.innerHTML=modalState.open?renderModal():renderMsModal();
     document.body.appendChild(mc);
   }
 }
