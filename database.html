@@ -536,7 +536,7 @@ function togglePersonDetail(id){
     descBox.style.display="block";
   }else{descBox.style.display="none";}
 }
-function createPersonAnyway(){modalState.showDuplicateWarning=false;modalState.similarPeople=[];saveNewPerson();}
+function createPersonAnyway(){modalState.showDuplicateWarning=false;modalState.similarPeople=[];saveNewPerson(true);}
 
 function renderModal(){
   if(!modalState.open)return"";
@@ -581,10 +581,10 @@ function renderModal(){
   return html;
 }
 
-async function saveNewPerson(){
+async function saveNewPerson(skipDuplicateCheck){
   if(getPapyratesTier()==='readonly'){modalState.error="You do not have permission to create people.";render();return;}
   if(!modalState.firstName.trim()&&!modalState.lastName.trim()){modalState.error="Please enter at least a first or last name.";render();return;}
-  if(!modalState.showDuplicateWarning){
+  if(!skipDuplicateCheck){
     var similar=findSimilarPeople();
     if(similar.length>0){modalState.similarPeople=similar;modalState.showDuplicateWarning=true;render();return;}
   }
