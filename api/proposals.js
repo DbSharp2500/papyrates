@@ -138,6 +138,33 @@ async function declineIds(ids) {
   return gone.length;
 }
 
+// Which (question, Jim) pairs the given suggestions belong to - read BEFORE they are decided (deleted rows are gone after).
+async function pairsOf(ids) {
+  const rows = await sb(`pending_proposals?id=in.(${ids.join(',')})&select=id,request_id,question_id,ai_model`) || [];
+  const seen = new Map();
+  for (const r of rows) {
+    const kind = r.request_id ? 'ask' : 'answer', ref = r.request_id || r.question_id;
+    seen.set(`${kind}:${ref}:${r.ai_model}`, { kind, ref, model: r.ai_model });
+  }
+  return [...seen.values()];
+}
+
+// After a decision: for every (question, Jim) that now has NO suggestion left waiting, set reviewed_at on that Jim's
+// answer row so the Desktop can close its idle window. Never allowed to fail the decision itself (e.g. before the
+// column exists).
+async function markReviewed(pairs) {
+  for (const p of pairs) {
+    try {
+      const col = p.kind === 'ask' ? 'request_id' : 'question_id';
+      const left = await sb(`pending_proposals?${col}=eq.${p.ref}&ai_model=eq.${p.model}&status=eq.pending&select=id&limit=1`) || [];
+      if (left.length) continue;                                       // something is still waiting: not finished
+      const where = p.kind === 'ask' ? `research_results?request_id=eq.${p.ref}` : `comparative_answers?comparative_question_id=eq.${p.ref}`;
+      await sb(`${where}&ai_model=eq.${p.model}`, { method: 'PATCH', body: { reviewed_at: new Date().toISOString() } });
+    } catch (e) {
+      console.error('api/proposals: could not record review finished:', e && e.message);
+    }
+  }
+}
 const idList = (v, max) => {
   const a = [...new Set((Array.isArray(v) ? v : []).map(posInt))];
   return a.includes(null) || a.length > max ? null : a;
@@ -146,8 +173,10 @@ const idList = (v, max) => {
 async function decide(req, res, action) {
   const ids = idList(req.body.ids, 50);
   if (!ids || !ids.length) return res.status(400).json({ error: 'Choose 1 to 50 items' });
-  if (action === 'decline') return res.status(200).json({ declined: await declineIds(ids) });
+  const pairs = await pairsOf(ids).catch(() => []);
+  if (action === 'decline') { const declined = await declineIds(ids); await markReviewed(pairs); return res.status(200).json({ declined }); }
   const { saved, problems } = await acceptIds(ids);
+  await markReviewed(pairs);
   return res.status(problems.length && !saved.length ? 500 : 200).json({ accepted: saved.length, problems });
 }
 
@@ -157,9 +186,11 @@ async function decideBatch(req, res) {
   if (accept === null || decline === null) return res.status(400).json({ error: 'Invalid list of items' });
   if (!accept.length && !decline.length) return res.status(400).json({ error: 'Nothing to decide' });
   if (accept.some((i) => decline.includes(i))) return res.status(400).json({ error: 'An item cannot be both saved and discarded' });
+  const pairs = await pairsOf([...accept, ...decline]).catch(() => []);
   const { saved, problems } = await acceptIds(accept);
   // an item that could not be saved stays pending (and is NOT discarded); the rest of the unticked ones are discarded
   const declined = await declineIds(decline);
+  await markReviewed(pairs);                       // nothing left waiting -> the Jim's idle window may be closed
   return res.status(problems.length && !saved.length && !declined ? 500 : 200).json({ accepted: saved.length, declined, problems });
 }
 

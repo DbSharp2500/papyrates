@@ -87,6 +87,9 @@ async function create(req, res, tier) {
   const waiting = await sb('jim_jobs?status=eq.queued&select=id');
   if (waiting && waiting.length >= MAX_WAITING) return res.status(429).json({ error: 'Too many jobs are waiting already. Try again shortly.' });
 
+  // a new follow-up means a new report to review: forget that this question's review was finished (the new window must not be closed)
+  try { await sb(`research_results?request_id=eq.${rid}&ai_model=eq.${model}`, { method: 'PATCH', body: { reviewed_at: null } }); } catch (e) { console.error('api/followups: could not reset the review marker:', e && e.message); }
+
   const made = await sb('followups', { method: 'POST', body: { request_id: rid, ai_model: model, message }, prefer: 'return=representation' });
   const fid = made && made[0] && made[0].id;
   if (!fid) throw new Error('follow-up was not created');
