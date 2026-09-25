@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Report — Papyrates</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{height:100%;}
+body{font-family:Georgia,serif;background:#1a1408;display:flex;flex-direction:column;}
+.bar{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid #4a3820;background:#221a0c;}
+.bar .name{flex:1;color:#d4a96a;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.btn{background:rgba(255,255,255,0.08);color:#a08050;border:1px solid #4a3820;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:13px;font-family:Georgia,serif;text-decoration:none;white-space:nowrap;}
+.btn:hover{background:rgba(255,255,255,0.14);color:#d4a96a;}
+.msg{color:#8a7050;font-size:14px;padding:28px 20px;line-height:1.6;max-width:640px;}
+iframe{flex:1;width:100%;border:0;background:#fff;}
+pre{flex:1;overflow:auto;color:#cbb994;font-size:12px;line-height:1.5;padding:14px 16px;white-space:pre-wrap;word-break:break-word;}
+</style>
+</head>
+<body>
+<div class="bar">
+  <a class="btn" href="/reports.html">&#8592; Reports</a>
+  <div class="name" id="name"></div>
+  <a class="btn" href="/">&#8962; Home</a>
+</div>
+<div class="msg" id="msg">Loading&hellip;</div>
+
+<script src="/papyrates-auth.js"></script>
+<script>
+requireAuth('research');
+
+const KEY_RE = /^(claude|gpt|gemini|judge)\/[A-Za-z0-9._-]{1,180}\.(html|log|pdf)$/;
+const key = new URLSearchParams(location.search).get('f') || '';
+const msg = document.getElementById('msg');
+document.getElementById('name').textContent = key.replace(/^[a-z]+\//, '');
+
+// Same naming rule the server uses for stored files.
+function safeName(n) { return String(n || '').replace(/[^A-Za-z0-9._-]/g, '_').replace(/\.{2,}/g, '.').replace(/^\.+/, '_').slice(0, 180); }
+
+// A report may link to another report by its old local path (file:///C:/Users/.../Papyrates AI summaries/Claude Discussions/x.html).
+// Turn those into links to this viewer; everything else opens in a new tab.
+function fixLinks(doc) {
+  doc.querySelectorAll('a[href]').forEach(function (a) {
+    const h = a.getAttribute('href') || '';
+    const m = /^file:\/\/\/.*Papyrates(?:%20|\s)AI(?:%20|\s)summaries\/([^\/]+)\/([^?#]+)/i.exec(h);
+    if (m) {
+      let folder, name;
+      try { folder = decodeURIComponent(m[1]).split(' ')[0].toLowerCase(); name = decodeURIComponent(m[2]); } catch (e) { return; }
+      const k = folder + '/' + safeName(name);
+      if (KEY_RE.test(k)) { a.setAttribute('href', '/report.html?f=' + encodeURIComponent(k)); a.setAttribute('target', '_blank'); }
+    } else if (/^(https?:|mailto:)/i.test(h)) {
+      a.setAttribute('target', '_blank'); a.setAttribute('rel', 'noopener noreferrer');
+    }
+  });
+}
+
+async function show() {
+  if (!KEY_RE.test(key)) { msg.textContent = 'That is not a valid report name.'; return; }
+  let res;
+  try {
+    res = await fetch('/api/reports?f=' + encodeURIComponent(key), { headers: { Authorization: 'Bearer ' + getPapyratesToken() } });
+  } catch (e) { msg.textContent = 'Could not reach the site. Check your connection.'; return; }
+  if (res.status === 401) { clearPapyratesSession(); window.location.href = '/index.html'; return; }
+  if (res.status === 404) { msg.textContent = 'This report is not in the cloud yet. The Desktop copies new reports every couple of minutes, so try again shortly. (Older reports are copied the first time the Desktop syncs.)'; return; }
+  if (!res.ok) { msg.textContent = 'Could not load the report (' + res.status + ').'; return; }
+
+  const ext = key.split('.').pop();
+  if (ext === 'html') {
+    const doc = new DOMParser().parseFromString(await res.text(), 'text/html');
+    fixLinks(doc);
+    msg.remove();
+    const f = document.createElement('iframe');
+    // Scripts inside a report may run (many reports have expand/collapse code) but WITHOUT allow-same-origin,
+    // so the report is walled off from this site: it cannot read your login or call the site as you.
+    f.setAttribute('sandbox', 'allow-scripts allow-popups allow-popups-to-escape-sandbox');
+    f.srcdoc = '<!DOCTYPE html>' + doc.documentElement.outerHTML;
+    document.body.appendChild(f);
+  } else if (ext === 'log') {
+    msg.remove();
+    const p = document.createElement('pre'); p.textContent = await res.text(); document.body.appendChild(p);
+  } else {
+    const url = URL.createObjectURL(await res.blob());
+    msg.innerHTML = '';
+    const a = document.createElement('a'); a.className = 'btn'; a.href = url; a.target = '_blank'; a.textContent = 'Open the PDF';
+    msg.appendChild(a);
+  }
+}
+show();
+</script>
+</body>
+</html>

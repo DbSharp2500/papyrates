@@ -53,7 +53,7 @@ button.cq-respond-btn:disabled{opacity:0.45;cursor:default;}
 
 <div class="header">
   <h1>Comparative Research Questions</h1>
-  <a class="home-btn" href="/">&#8962; Home</a>
+  <span><a class="home-btn" href="/reports.html">Reports</a> <a class="home-btn" href="/">&#8962; Home</a></span>
 </div>
 <div class="cq-note">Buttons below queue a job. The always-on Desktop picks it up within about half a minute and opens that Jim there &mdash; this works from any computer. To watch it or chat with it, connect to the Desktop with Chrome Remote Desktop.</div>
 <div class="srv-panel">
@@ -112,7 +112,7 @@ function renderComparativeCard(q) {
   let judgeButton = "";
   if (done) {
     judgeButton = q.judge_verdict_url
-      ? `<a class="cq-respond-btn judge" href="papyrates-jim://viewfile?path=${encodeURIComponent(q.judge_verdict_url)}">View Analysis</a>`
+      ? `<a class="cq-respond-btn judge" href="${reportHref(q.judge_verdict_url)}">View Analysis</a>`
       : `<button type="button" class="cq-respond-btn judge" data-model="judge" data-q="${q.id}" onclick="queueJob(this)">Launch Comparative Analysis</button>`;
   }
 
@@ -124,6 +124,15 @@ function renderComparativeCard(q) {
       ${buttons.length ? `<div class="cq-respond-row">${buttons.join("")}</div>` : ""}
       ${judgeButton ? `<div class="cq-respond-row">${judgeButton}</div>` : ""}
     </div>`;
+}
+
+// The database stores a report's original local path (C:\...\Papyrates AI summaries\Judge Discussions\x.html).
+// The Desktop copies each report into the cloud under folder/name, so the same path gives the viewer address.
+function reportHref(p) {
+  const m = /Papyrates AI summaries[\\\/]+([^\\\/]+)[\\\/]+([^\\\/]+)$/i.exec(p || "");
+  const folder = m ? m[1].split(" ")[0].toLowerCase() : "";
+  if (!m || ["claude", "gpt", "gemini", "judge"].indexOf(folder) < 0) return "/reports.html";
+  return "/report.html?f=" + encodeURIComponent(folder + "/" + m[2].replace(/[^A-Za-z0-9._-]/g, "_").replace(/\.{2,}/g, ".").replace(/^\.+/, "_").slice(0, 180));
 }
 
 function cqButton(model, label, id) {
