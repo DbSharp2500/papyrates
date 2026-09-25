@@ -1,13 +1,17 @@
 // api/worker/claim.js
 // Called every ~20 seconds by the launcher on the always-on Desktop (worker token required).
-// One call does three things:
+// One call does four things:
 //   1. heartbeat  - records "the Desktop is alive" so the dashboard can show Online/Offline
 //   2. cleanup    - a job claimed more than 10 minutes ago that was never reported on is marked failed
-//   3. claim      - hands back the oldest waiting job, atomically, or { job: null }
+//   3. housekeeping - auto-Judge for finished comparative questions and phone alerts (see _housekeeping.js)
+//   4. claim      - hands back the oldest waiting job that is allowed to start, atomically, or { job: null }
 // Nothing here runs a command; it only returns a job (model + kind + question id).
 
 import { sb } from '../_sb.js';
 import { workerAuthorized } from '../_worker.js';
+import { housekeeping } from '../_housekeeping.js';
+
+const BUSY_WINDOW_MS = 2 * 60 * 60 * 1000;
 
 function cleanInfo(i) {
   const o = (i && typeof i === 'object') ? i : {};
@@ -38,8 +42,32 @@ export default async function handler(req, res) {
       body: { status: 'failed', error_text: 'The launcher picked this job up but never reported back' },
     });
 
-    const next = await sb('jim_jobs?status=eq.queued&order=id.asc&limit=1&select=id');
-    if (!next || next.length === 0) return res.status(200).json({ job: null });
+    await housekeeping(now);      // auto-Judge and phone alerts; never throws
+
+    // One question at a time per Jim: while a Jim's earlier "answer" job was launched less than 2 hours ago and
+    // its answer has not been logged yet, further answer jobs for that same Jim wait. (Stops six GPT windows
+    // opening at once and burning the 5-hour usage window; other Jims are not held up. The 2-hour cap means a
+    // Jim that died without logging an answer cannot block the line forever.)
+    // (Applies to both kinds of answering job: comparative "answer" jobs and everyday "ask" jobs.)
+    const busy = new Set();
+    const since = encodeURIComponent(new Date(now.getTime() - BUSY_WINDOW_MS).toISOString());
+    const running = await sb(`jim_jobs?kind=in.(answer,ask)&status=eq.launched&launched_at=gte.${since}&select=model,kind,question_id,request_id`) || [];
+    if (running.length) {
+      const qids = [...new Set(running.filter((j) => j.kind === 'answer').map((j) => j.question_id))];
+      const rids = [...new Set(running.filter((j) => j.kind === 'ask').map((j) => j.request_id))];
+      const cDone = qids.length ? await sb(`comparative_answers?comparative_question_id=in.(${qids.join(',')})&select=comparative_question_id,ai_model`) || [] : [];
+      const rDone = rids.length ? await sb(`research_results?request_id=in.(${rids.join(',')})&select=request_id,ai_model`) || [] : [];
+      for (const j of running) {
+        const finished = j.kind === 'answer'
+          ? cDone.some((a) => a.comparative_question_id === j.question_id && a.ai_model === j.model)
+          : rDone.some((a) => a.request_id === j.request_id && a.ai_model === j.model);
+        if (!finished) busy.add(j.model);
+      }
+    }
+
+    const waiting = await sb('jim_jobs?status=eq.queued&order=id.asc&limit=50&select=id,kind,model') || [];
+    const next = waiting.filter((j) => !((j.kind === 'answer' || j.kind === 'ask') && busy.has(j.model)));
+    if (next.length === 0) return res.status(200).json({ job: null });
 
     // atomic claim: only succeeds if the job is STILL queued when this update lands
     const claimed = await sb(`jim_jobs?id=eq.${next[0].id}&status=eq.queued`, {
@@ -50,7 +78,7 @@ export default async function handler(req, res) {
     if (!claimed || claimed.length === 0) return res.status(200).json({ job: null });
 
     const j = claimed[0];
-    return res.status(200).json({ job: { id: j.id, kind: j.kind, model: j.model, question_id: j.question_id } });
+    return res.status(200).json({ job: { id: j.id, kind: j.kind, model: j.model, question_id: j.question_id, request_id: j.request_id } });
   } catch (err) {
     console.error('api/worker/claim error:', err && err.message);
     return res.status(500).json({ error: 'Server error' });

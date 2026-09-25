@@ -5,6 +5,7 @@
 //   GET     -> the 25 most recent jobs + whether the Desktop's launcher is online
 //   POST    -> queue a job:  { model: 'claude'|'gpt'|'gemini'|'judge', question_id?: n }
 //                 model + question_id  -> that Jim answers that comparative question
+//                 model + request_id   -> that Jim answers that everyday question (research_requests)
 //                 model only           -> just open that Jim on the Desktop (for a chat over remote access)
 //                 judge + question_id  -> Judge evaluates that question
 //   DELETE  -> ?id=n  cancels a job that is still waiting
@@ -26,7 +27,7 @@ export default async function handler(req, res) {
 
   try {
     if (req.method === 'GET') {
-      const jobs = await sb('jim_jobs?select=id,created_at,kind,model,question_id,status,claimed_at,launched_at,error_text&order=id.desc&limit=25');
+      const jobs = await sb('jim_jobs?select=id,created_at,kind,model,question_id,request_id,status,claimed_at,launched_at,error_text&order=id.desc&limit=25');
       const srv = await sb('jim_server?id=eq.1&select=last_seen,info');
       const row = srv && srv[0] ? srv[0] : null;
       const last = row ? new Date(row.last_seen).getTime() : 0;
@@ -41,23 +42,32 @@ export default async function handler(req, res) {
       const model = String(body.model || '');
       if (!MODELS.includes(model)) return res.status(400).json({ error: 'Unknown model' });
 
-      let qid = null;
+      let qid = null, rid = null;
       if (body.question_id !== undefined && body.question_id !== null && body.question_id !== '') {
         qid = Number(body.question_id);
         if (!Number.isInteger(qid) || qid < 1 || qid > 1000000) return res.status(400).json({ error: 'Invalid question id' });
       }
+      if (body.request_id !== undefined && body.request_id !== null && body.request_id !== '') {
+        rid = Number(body.request_id);
+        if (!Number.isInteger(rid) || rid < 1 || rid > 1000000) return res.status(400).json({ error: 'Invalid request id' });
+      }
+      if (qid !== null && rid !== null) return res.status(400).json({ error: 'Give a question id or a request id, not both' });
       if (model === 'judge' && qid === null) return res.status(400).json({ error: 'Judge needs a question id' });
-      const kind = model === 'judge' ? 'evaluate' : (qid === null ? 'open' : 'answer');
+      if (model === 'judge' && rid !== null) return res.status(400).json({ error: 'Judge needs a question id' });
+      const kind = model === 'judge' ? 'evaluate' : (rid !== null ? 'ask' : (qid === null ? 'open' : 'answer'));
 
       if (qid !== null) {
         const q = await sb(`comparative_questions?id=eq.${qid}&select=id`);
         if (!q || q.length === 0) return res.status(404).json({ error: 'No such comparative question' });
       }
+      if (rid !== null) {
+        const q = await sb(`research_requests?id=eq.${rid}&select=id`);
+        if (!q || q.length === 0) return res.status(404).json({ error: 'No such question' });
+      }
 
       // don't queue the same thing twice while one is waiting or being picked up
-      const dup = await sb(
-        `jim_jobs?model=eq.${model}&kind=eq.${kind}&status=in.(queued,claimed)` +
-        (qid === null ? '&question_id=is.null' : `&question_id=eq.${qid}`) + '&select=id&limit=1');
+      const which = rid !== null ? `&request_id=eq.${rid}` : (qid === null ? '&question_id=is.null&request_id=is.null' : `&question_id=eq.${qid}`);
+      const dup = await sb(`jim_jobs?model=eq.${model}&kind=eq.${kind}&status=in.(queued,claimed)${which}&select=id&limit=1`);
       if (dup && dup.length) return res.status(409).json({ error: 'That job is already queued', id: dup[0].id });
 
       const waiting = await sb('jim_jobs?status=eq.queued&select=id');
@@ -65,7 +75,7 @@ export default async function handler(req, res) {
 
       const created = await sb('jim_jobs', {
         method: 'POST',
-        body: { kind, model, question_id: qid, requested_by: tier },
+        body: { kind, model, question_id: qid, request_id: rid, requested_by: tier },
         prefer: 'return=representation',
       });
       return res.status(201).json({ job: created && created[0] });

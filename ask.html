@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ask a Research Question — Papyrates</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:Georgia,serif;background:#1a1408;min-height:100vh;display:flex;flex-direction:column;align-items:center;}
+.header{width:100%;max-width:700px;padding:18px 16px 0;display:flex;align-items:center;justify-content:space-between;gap:10px;}
+.header h1{color:#d4a96a;font-size:18px;font-weight:normal;letter-spacing:.5px;}
+.nav{display:flex;gap:6px;flex-shrink:0;}
+.nb{background:rgba(255,255,255,0.08);color:#a08050;border:1px solid #4a3820;padding:6px 10px;border-radius:6px;font-size:12px;font-family:Georgia,serif;text-decoration:none;white-space:nowrap;}
+.nb:hover{background:rgba(255,255,255,0.14);color:#d4a96a;}
+.wrap{width:100%;max-width:700px;padding:10px 16px 40px;}
+.srv{font-size:12px;color:#8a7050;display:flex;align-items:center;gap:7px;margin-bottom:10px;}
+.dot{width:9px;height:9px;border-radius:50%;background:#6a5a40;display:inline-block;flex-shrink:0;}
+.dot.on{background:#5abf7a;} .dot.off{background:#c0563f;}
+.card{background:#2a2010;border:1px solid #4a3820;border-radius:10px;padding:12px;}
+textarea,input[type=text]{width:100%;background:#1a1408;border:1px solid #4a3820;color:#e8d5a8;border-radius:6px;padding:9px 11px;font-size:16px;font-family:Georgia,serif;}
+textarea{min-height:110px;resize:vertical;line-height:1.45;}
+textarea:focus,input[type=text]:focus{outline:none;border-color:#8a6a3a;}
+.picks{display:flex;gap:8px;margin-top:10px;}
+.pick{flex:1;text-align:center;padding:10px 4px;border:1px solid #4a3820;border-radius:8px;cursor:pointer;font-size:14px;user-select:none;color:#8a7050;}
+.pick input{display:none;}
+.pick.claude.on{color:#d4a96a;border-color:#d4a96a;background:rgba(212,169,106,0.14);}
+.pick.gpt.on{color:#5abf7a;border-color:#5abf7a;background:rgba(90,191,122,0.14);}
+.pick.gemini.on{color:#a855f7;border-color:#a855f7;background:rgba(168,85,247,0.14);}
+.hint{font-size:11px;color:#6a5a40;margin-top:6px;}
+.tag-link{font-size:12px;color:#8a7050;text-decoration:underline;cursor:pointer;display:inline-block;margin-top:8px;}
+#topic{margin-top:8px;display:none;}
+.go{margin-top:10px;width:100%;background:#d4a96a;color:#1a1408;border:0;border-radius:8px;padding:12px;font-size:16px;font-family:Georgia,serif;cursor:pointer;font-weight:bold;}
+.go:disabled{opacity:0.5;cursor:default;}
+.msg{font-size:13px;margin-top:8px;color:#d4a96a;line-height:1.4;}
+.msg.err{color:#d9736c;}
+h2{color:#8a7050;font-size:12px;font-weight:normal;letter-spacing:1px;margin:20px 0 8px;}
+.q{background:#2a2010;border:1px solid #4a3820;border-radius:10px;padding:10px 12px;margin-bottom:8px;}
+.qh{display:flex;justify-content:space-between;gap:8px;align-items:baseline;cursor:pointer;}
+.qt{font-size:13px;color:#d4a96a;line-height:1.35;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;flex:1;}
+.qw{font-size:11px;color:#6a5a40;white-space:nowrap;}
+.badge{font-size:10px;border:1px solid #a8342e;color:#d9736c;border-radius:8px;padding:0 6px;margin-left:5px;white-space:nowrap;}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;}
+.chip{display:inline-flex;align-items:center;gap:6px;font-size:12px;padding:3px 9px;border:1px solid #4a3820;border-radius:12px;color:#8a7050;text-decoration:none;}
+.chip i{width:7px;height:7px;border-radius:50%;background:#6a5a40;display:inline-block;}
+.chip.working{color:#d4a96a;border-color:#8a6a3a;} .chip.working i{background:#d4a96a;animation:p 1.4s infinite;}
+.chip.done{color:#7ecfa0;border-color:#3a7a3a;} .chip.done i{background:#5abf7a;}
+.chip.failed{color:#d9736c;border-color:#a8342e;} .chip.failed i{background:#c0563f;}
+.chip.sched{color:#a08050;}
+@keyframes p{50%{opacity:.3;}}
+.detail{margin-top:9px;padding-top:9px;border-top:1px solid #3a2c16;}
+.detail .full{font-size:13px;color:#a08a60;line-height:1.5;white-space:pre-wrap;word-break:break-word;margin-bottom:8px;}
+.dl{font-size:12px;color:#8a7050;padding:3px 0;line-height:1.5;}
+.dl b{color:#a08050;font-weight:normal;}
+.dl a{color:#d4a96a;text-decoration:underline;cursor:pointer;margin-left:6px;}
+.empty{font-size:13px;color:#6a5a40;}
+.foot{color:#4a3820;font-size:11px;letter-spacing:1px;margin-top:auto;padding:20px 0;}
+/* pop-up */
+#ov{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:flex-end;justify-content:center;z-index:10;}
+#ov.show{display:flex;}
+.sheet{background:#2a2010;border:1px solid #6a5030;border-radius:14px 14px 0 0;width:100%;max-width:700px;padding:18px 16px 22px;}
+.sheet p{color:#e8d5a8;font-size:15px;line-height:1.45;margin-bottom:6px;}
+.sheet .sub{color:#8a7050;font-size:12px;margin-bottom:14px;}
+.sheet button{width:100%;padding:12px;border-radius:8px;font-size:15px;font-family:Georgia,serif;cursor:pointer;margin-top:8px;border:1px solid #6a5030;background:transparent;color:#d4a96a;}
+.sheet button.primary{background:#d4a96a;color:#1a1408;border-color:#d4a96a;font-weight:bold;}
+.sheet .cancel{border:0;font-size:13px;color:#8a7050;text-decoration:underline;}
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>Ask a Research Question</h1>
+  <span class="nav"><a class="nb" href="/reports.html">Reports</a><a class="nb" href="/">&#8962;</a></span>
+</div>
+
+<div class="wrap">
+  <div class="srv"><span class="dot" id="dot"></span><span id="srv-text">Checking the Desktop&hellip;</span></div>
+
+  <div class="card">
+    <textarea id="question" placeholder="Type your question&hellip;"></textarea>
+    <div class="picks" id="picks">
+      <label class="pick claude"><input type="checkbox" value="claude">Claude</label>
+      <label class="pick gpt"><input type="checkbox" value="gpt">GPT</label>
+      <label class="pick gemini"><input type="checkbox" value="gemini">Gemini</label>
+    </div>
+    <div class="hint">Most questions need just one Jim. Pick more only to compare answers.</div>
+    <a class="tag-link" id="taglink" onclick="showTag()">+ add a topic tag</a>
+    <input type="text" id="topic" maxlength="120" placeholder="Topic tag (optional)">
+    <button class="go" id="go" onclick="ask()">Ask</button>
+    <div class="msg" id="msg"></div>
+  </div>
+
+  <h2>RECENT QUESTIONS</h2>
+  <div id="list"><div class="empty">Loading&hellip;</div></div>
+</div>
+<div class="foot">Papyrates Archive &mdash; Restricted Access</div>
+
+<div id="ov"><div class="sheet">
+  <p>You picked all three Jims. Log this as a <b>comparative research question</b>, to be compared and judged?</p>
+  <div class="sub">If you say yes, the Judge starts on its own once all three have answered. You can also change your mind later, from any finished report.</div>
+  <button class="primary" onclick="confirmSend(true)">Yes, log it as comparative</button>
+  <button onclick="confirmSend(false)">No, just ask all three</button>
+  <button class="cancel" onclick="closeSheet()">Cancel</button>
+</div></div>
+
+<script src="/papyrates-auth.js"></script>
+<script>
+requireAuth('admin');
+
+const NAMES = { claude: 'Claude', gpt: 'GPT', gemini: 'Gemini' };
+let timer = null;
+const openCards = {};
+
+function hdrs() { return { 'Authorization': 'Bearer ' + getPapyratesToken(), 'Content-Type': 'application/json' }; }
+function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+function goLogin() { clearPapyratesSession(); window.location.href = '/index.html'; }
+function say(t, err) { const m = document.getElementById('msg'); m.textContent = t; m.className = 'msg' + (err ? ' err' : ''); }
+function showTag() { document.getElementById('topic').style.display = 'block'; document.getElementById('taglink').style.display = 'none'; document.getElementById('topic').focus(); }
+
+// the three Jim buttons
+document.querySelectorAll('.pick').forEach(function (l) {
+  const box = l.querySelector('input');
+  box.addEventListener('change', function () { l.classList.toggle('on', box.checked); });
+});
+function chosen() { return Array.prototype.map.call(document.querySelectorAll('.pick input:checked'), function (c) { return c.value; }); }
+
+// ---- sending ----
+function ask() {
+  const question = document.getElementById('question').value.trim();
+  const models = chosen();
+  if (question.length < 10) return say('Please write the question out first.', true);
+  if (!models.length) return say('Tap at least one of Claude, GPT or Gemini.', true);
+  if (models.length === 3) { document.getElementById('ov').classList.add('show'); return; }   // ask about comparative first
+  send(false);
+}
+function closeSheet() { document.getElementById('ov').classList.remove('show'); }
+function confirmSend(comparative) { closeSheet(); send(comparative); }
+
+async function send(comparative) {
+  const question = document.getElementById('question').value.trim();
+  const topic = document.getElementById('topic').value.trim();
+  const models = chosen();
+  const btn = document.getElementById('go'); btn.disabled = true; say('Sending…');
+  try {
+    const body = { question: question, topic: topic, models: models };
+    if (models.length === 3) body.comparative = comparative;
+    const res = await fetch('/api/ask', { method: 'POST', headers: hdrs(), body: JSON.stringify(body) });
+    if (res.status === 401) return goLogin();
+    const data = await res.json();
+    if (res.status === 201) {
+      say('Saved as ' + (data.comparative ? 'Comparative Question ' : 'Question ') + data.id + '.' + (data.failed && data.failed.length ? ' Could not queue: ' + data.failed.join(', ') + '.' : '') + ' The Desktop will start it shortly.');
+      document.getElementById('question').value = ''; document.getElementById('topic').value = '';
+      document.querySelectorAll('.pick').forEach(function (l) { l.classList.remove('on'); l.querySelector('input').checked = false; });
+      load();
+    } else {
+      say(data.error || ('Something went wrong (' + res.status + ').'), true);
+    }
+  } catch (e) { say('Could not reach the site. Your question was not sent — check the connection and try again.', true); }
+  setTimeout(function () { btn.disabled = false; }, 2500);
+}
+
+// ---- job actions ----
+async function jobAction(fn) { try { const r = await fn(); if (r.status === 401) return goLogin(); } catch (e) { } load(); }
+function cancelJob(id) { jobAction(function () { return fetch('/api/jobs?id=' + id, { method: 'DELETE', headers: hdrs() }); }); }
+function retryBy(model, type, id) {
+  const body = { model: model }; body[type === 'research' ? 'request_id' : 'question_id'] = id;
+  jobAction(function () { return fetch('/api/jobs', { method: 'POST', headers: hdrs(), body: JSON.stringify(body) }); });
+}
+function toggle(k) { openCards[k] = !openCards[k]; draw(); }
+
+// ---- drawing ----
+let items = [];
+function reportLink(it, m, key) {
+  let u = '/report.html?f=' + encodeURIComponent(key);
+  if (m !== 'judge') u += '&m=' + m + (it.type === 'research' ? '&r=' + it.id : '&q=' + it.id + (it.request_id ? '&r=' + it.request_id : ''));
+  return u;
+}
+function label(m, s) {
+  if (s.state === 'done') return NAMES[m] + ' ✓';
+  if (s.state === 'working') return NAMES[m] + ' · ' + s.minutes + ' min';
+  if (s.state === 'waiting') return NAMES[m] + ' · waiting';
+  if (s.state === 'failed') return NAMES[m] + ' · failed';
+  return NAMES[m] + ' · cancelled';
+}
+function chip(it, m, s) {
+  const cls = 'chip ' + (s.state === 'done' ? 'done' : s.state === 'working' ? 'working' : s.state === 'failed' ? 'failed' : '');
+  if (s.state === 'done' && s.report) return '<a class="' + cls + '" href="' + reportLink(it, m, s.report) + '"><i></i>' + label(m, s) + '</a>';
+  return '<span class="' + cls + '"><i></i>' + label(m, s) + '</span>';
+}
+function judgeChip(it) {
+  const j = it.judge; if (!j || j.state === 'none') return '';
+  if (j.state === 'done') return j.report ? '<a class="chip done" href="' + reportLink(it, 'judge', j.report) + '"><i></i>Judge ✓</a>' : '<span class="chip done"><i></i>Judge ✓</span>';
+  if (j.state === 'working') return '<span class="chip working"><i></i>Judge · ' + j.minutes + ' min</span>';
+  if (j.state === 'waiting') return '<span class="chip"><i></i>Judge · waiting</span>';
+  if (j.state === 'scheduled') return '<span class="chip sched"><i></i>Judge · starts after all three</span>';
+  if (j.state === 'failed') return '<span class="chip failed"><i></i>Judge · failed</span>';
+  return '';
+}
+function detail(it) {
+  const lines = ['claude', 'gpt', 'gemini'].map(function (m) {
+    const s = it.models[m]; if (!s || s.state === 'none') return '';
+    let t = '';
+    if (s.state === 'waiting') t = 'waiting in line <a onclick="cancelJob(' + s.job_id + ')">cancel</a>';
+    else if (s.state === 'working') t = 'working, started ' + s.minutes + ' min ago' + (s.minutes > 90 ? ' — taking long; a usage limit may have stopped it' : '');
+    else if (s.state === 'failed') t = 'failed: ' + esc(s.error) + ' <a onclick="retryBy(\'' + m + '\',\'' + it.type + '\',' + it.id + ')">try again</a>';
+    else if (s.state === 'cancelled') t = 'cancelled <a onclick="retryBy(\'' + m + '\',\'' + it.type + '\',' + it.id + ')">queue again</a>';
+    else t = s.report ? 'done <a href="' + reportLink(it, m, s.report) + '">read report</a>' : 'done (report link not available)';
+    return '<div class="dl"><b>' + NAMES[m] + '</b> ' + t + '</div>';
+  }).join('');
+  return '<div class="detail"><div class="full">' + esc(it.question_text) + '</div>' + lines + '</div>';
+}
+function card(it) {
+  const k = it.type + it.id;
+  const when = it.created_at ? new Date(it.created_at).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : '';
+  const title = (it.type === 'comparative' ? 'C' : '#') + it.id + ' · ' + esc(it.topic || it.question_text);
+  const chips = ['claude', 'gpt', 'gemini'].map(function (m) { const s = it.models[m]; return s && s.state !== 'none' ? chip(it, m, s) : ''; }).join('') + judgeChip(it);
+  return '<div class="q"><div class="qh" onclick="toggle(\'' + k + '\')"><div class="qt">' + title + (it.type === 'comparative' ? '<span class="badge">comparative</span>' : '') + '</div><div class="qw">' + esc(when) + '</div></div>' +
+    '<div class="chips">' + (chips || '<span class="hint">No Jim has been asked this one.</span>') + '</div>' + (openCards[k] ? detail(it) : '') + '</div>';
+}
+function draw() { document.getElementById('list').innerHTML = items.length ? items.map(card).join('') : '<div class="empty">No questions yet.</div>'; }
+
+async function load() {
+  clearTimeout(timer);
+  try {
+    const res = await fetch('/api/ask', { headers: { 'Authorization': 'Bearer ' + getPapyratesToken() } });
+    if (res.status === 401) return goLogin();
+    const data = await res.json();
+    const on = data.server && data.server.online;
+    document.getElementById('dot').className = 'dot ' + (on ? 'on' : 'off');
+    document.getElementById('srv-text').textContent = on ? 'The Desktop is online.' : 'The Desktop is not answering. Questions are saved and will start when it is back.';
+    items = data.items || [];
+    draw();
+    const active = items.some(function (it) {
+      return ['claude', 'gpt', 'gemini'].some(function (m) { const s = it.models[m].state; return s === 'working' || s === 'waiting'; }) ||
+        (it.judge && (it.judge.state === 'working' || it.judge.state === 'waiting' || it.judge.state === 'scheduled'));
+    });
+    timer = setTimeout(load, active ? 15000 : 60000);
+  } catch (e) {
+    document.getElementById('srv-text').textContent = 'Could not reach the site.';
+    timer = setTimeout(load, 30000);
+  }
+}
+load();
+</script>
+</body>
+</html>

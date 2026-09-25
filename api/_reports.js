@@ -23,6 +23,16 @@ export function safeName(name) {
   return String(name || '').replace(/[^A-Za-z0-9._-]/g, '_').replace(/\.{2,}/g, '.').replace(/^\.+/, '_').slice(0, 180);
 }
 
+// The database stores a report's original local path; this gives the cloud key for it, or null.
+export function keyFromPath(p) {
+  const m = /Papyrates AI summaries[\\/]+([^\\/]+)[\\/]+([^\\/]+)$/i.exec(String(p || ''));
+  if (!m) return null;
+  const folder = m[1].split(' ')[0].toLowerCase();
+  if (!FOLDERS.includes(folder)) return null;
+  const key = `${folder}/${safeName(m[2])}`;
+  return KEY_RE.test(key) ? key : null;
+}
+
 export function extOf(name) {
   const m = /\.([A-Za-z0-9]+)$/.exec(String(name || ''));
   return m ? m[1].toLowerCase() : '';

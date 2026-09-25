@@ -55,7 +55,7 @@ button.cq-respond-btn:disabled{opacity:0.45;cursor:default;}
   <h1>Comparative Research Questions</h1>
   <span><a class="home-btn" href="/reports.html">Reports</a> <a class="home-btn" href="/">&#8962; Home</a></span>
 </div>
-<div class="cq-note">Buttons below queue a job. The always-on Desktop picks it up within about half a minute and opens that Jim there &mdash; this works from any computer. To watch it or chat with it, connect to the Desktop with Chrome Remote Desktop.</div>
+<div class="cq-note">Buttons below queue a job. The always-on Desktop picks it up within about half a minute and that Jim answers on its own &mdash; this works from any computer. Progress shows on the <a href="/ask.html" style="color:#a08050;">Ask a research question</a> page; finished reports open under Reports.</div>
 <div class="srv-panel">
   <div class="srv-status"><span class="srv-dot" id="srv-dot"></span><span id="srv-text">Checking the Desktop&hellip;</span></div>
   <div class="job-list" id="job-list"></div>
@@ -199,7 +199,7 @@ async function refreshJobs() {
       ? "Desktop online (checked in " + ago(s.last_seen) + ")"
       : "Desktop offline" + (s.last_seen ? " (last seen " + ago(s.last_seen) + ")" : "") + " — jobs wait in the queue until it is back";
     const rows = (data.jobs || []).slice(0, 8).map(function(j) {
-      const what = (MODEL_NAME[j.model] || j.model) + (j.kind === "open" ? " — open" : j.kind === "evaluate" ? " — evaluate Q" + j.question_id : " — Q" + j.question_id);
+      const what = (MODEL_NAME[j.model] || j.model) + (j.kind === "open" ? " — open" : j.kind === "evaluate" ? " — evaluate Q" + j.question_id : j.kind === "ask" ? " — question #" + j.request_id : " — Q" + j.question_id);
       const cancel = j.status === "queued" ? ' <span class="job-cancel" onclick="cancelJob(' + j.id + ')">cancel</span>' : "";
       const err = j.status === "failed" && j.error_text ? " &mdash; " + escapeHtml(j.error_text) : "";
       return '<div class="job-row"><span class="job-st ' + j.status + '">' + j.status + '</span><span>' + escapeHtml(what) + '</span><span>' + ago(j.created_at) + '</span>' + cancel + err + '</div>';
