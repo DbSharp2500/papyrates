@@ -14,6 +14,7 @@
 
 import { tierFromRequest, hasTierAccess } from './_session.js';
 import { sb } from './_sb.js';
+import { requestIsAssistants, questionIsAssistants } from './_owner.js';
 
 const MODELS = ['claude', 'gpt', 'gemini', 'judge'];
 const ONLINE_WINDOW_MS = 90 * 1000;
@@ -21,9 +22,12 @@ const MAX_WAITING = 20;
 
 export default async function handler(req, res) {
   const tier = tierFromRequest(req);
-  if (!tier || !hasTierAccess(tier, 'admin')) {
+  if (!tier || !hasTierAccess(tier, 'research')) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
+  // The Research Assistant may only cancel or retry THEIR OWN question jobs (never list all jobs, open a Jim, or run Judge).
+  const isAdmin = hasTierAccess(tier, 'admin');
+  if (!isAdmin && req.method === 'GET') return res.status(401).json({ error: 'Unauthorized' });
 
   try {
     if (req.method === 'GET') {
@@ -55,6 +59,11 @@ export default async function handler(req, res) {
       if (model === 'judge' && qid === null) return res.status(400).json({ error: 'Judge needs a question id' });
       if (model === 'judge' && rid !== null) return res.status(400).json({ error: 'Judge needs a question id' });
       const kind = model === 'judge' ? 'evaluate' : (rid !== null ? 'ask' : (qid === null ? 'open' : 'answer'));
+      if (!isAdmin) {
+        if (kind !== 'ask' && kind !== 'answer') return res.status(401).json({ error: 'Unauthorized' });
+        const mine = kind === 'ask' ? await requestIsAssistants(rid) : await questionIsAssistants(qid);
+        if (!mine) return res.status(401).json({ error: 'Unauthorized' });
+      }
 
       if (qid !== null) {
         const q = await sb(`comparative_questions?id=eq.${qid}&select=id`);
@@ -84,6 +93,10 @@ export default async function handler(req, res) {
     if (req.method === 'DELETE') {
       const id = Number(req.query && req.query.id);
       if (!Number.isInteger(id) || id < 1) return res.status(400).json({ error: 'Invalid job id' });
+      if (!isAdmin) {
+        const mine = await sb(`jim_jobs?id=eq.${id}&requested_by=eq.research&select=id`) || [];
+        if (!mine.length) return res.status(401).json({ error: 'Unauthorized' });
+      }
       const r = await sb(`jim_jobs?id=eq.${id}&status=eq.queued`, {
         method: 'PATCH', body: { status: 'cancelled' }, prefer: 'return=representation',
       });

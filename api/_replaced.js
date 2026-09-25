@@ -9,11 +9,13 @@
 //                                          question and Jim is listed, including the latest follow-up's.
 // (Nothing depends on these windows: the report is a file and the suggestions live in the database. A follow-up starts a
 // brand-new session anyway.)
-//   -> [ { kind: 'ask' | 'followup' | 'answer', id, model } ]      (the last 14 days are considered)
+//   3. the run belongs to the RESEARCH ASSISTANT: they never review, so nothing else would ever close it - it is listed a\n//      few minutes after it finishes.\n//   -> [ { kind: 'ask' | 'followup' | 'answer', id, model } ]      (the last 14 days are considered)
 
 import { sb } from './_sb.js';
+import { requestIsAssistants, questionIsAssistants } from './_owner.js';
 
 const LOOKBACK_MS = 14 * 24 * 60 * 60 * 1000;
+const ASSISTANT_GRACE_MS = 4 * 60 * 1000;
 
 export async function replacedWindows() {
   const since = encodeURIComponent(new Date(Date.now() - LOOKBACK_MS).toISOString());
@@ -46,5 +48,17 @@ export async function replacedWindows() {
   } catch (e) {
     console.error('api/_replaced: review lookup failed:', e && e.message);      // e.g. the column does not exist yet
   }
-  return items;
+
+  // 3) the Research Assistant's runs: they cannot review, so close their windows a few minutes after they finish
+  try {
+    const settled = encodeURIComponent(new Date(Date.now() - ASSISTANT_GRACE_MS).toISOString());
+    const rr2 = await sb(`research_results?answered_at=gte.${since}&answered_at=lt.${settled}&select=request_id,ai_model&order=answered_at.desc&limit=60`) || [];
+    for (const d of rr2) if (await requestIsAssistants(d.request_id)) add('ask', d.request_id, d.ai_model);
+    const fu2 = await sb(`followups?finished_at=gte.${since}&finished_at=lt.${settled}&select=id,request_id,ai_model&order=finished_at.desc&limit=60`) || [];
+    for (const f of fu2) if (await requestIsAssistants(f.request_id)) add('followup', f.id, f.ai_model);
+    const ca2 = await sb(`comparative_answers?answered_at=gte.${since}&answered_at=lt.${settled}&select=comparative_question_id,ai_model&order=answered_at.desc&limit=60`) || [];
+    for (const d of ca2) if (await questionIsAssistants(d.comparative_question_id)) add('answer', d.comparative_question_id, d.ai_model);
+  } catch (e) {
+    console.error('api/_replaced: assistant lookup failed:', e && e.message);
+  }  return items;
 }

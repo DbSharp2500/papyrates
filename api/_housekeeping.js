@@ -7,6 +7,7 @@
 
 import { sb } from './_sb.js';
 import { pushOnce, NAMES } from './_push.js';
+import { requestIsAssistants, questionIsAssistants, followupIsAssistants } from './_owner.js';
 
 export const JUDGE_DELAY_MS = 10 * 60 * 1000;
 const ALERT_LOOKBACK_MS = 60 * 60 * 1000;
@@ -45,12 +46,20 @@ async function alerts(now) {
 
   // Each kind of alert is its own section, so one failing query (say a table that is not there yet) can never
   // stop the other alerts in the same pass.
+  // No phone alerts for anything the Research Assistant started - the alerts are the owner's, for the owner's own work.
+  const memo = new Map();
+  const assistants = async (kind, id) => {
+    const k = kind + ':' + id;
+    if (!memo.has(k)) memo.set(k, kind === 'r' ? await requestIsAssistants(id) : kind === 'q' ? await questionIsAssistants(id) : await followupIsAssistants(id));
+    return memo.get(k);
+  };
   const section = async (name, fn) => { try { await fn(); } catch (e) { console.error('alerts/' + name + ':', e && e.message); } };
 
   // an everyday question answered by one Jim
   await section('results', async () => {
     const rr = await sb(`research_results?answered_at=gte.${since}&answered_at=lt.${settled}&select=request_id,ai_model`) || [];
     for (const a of rr) {
+      if (await assistants('r', a.request_id)) continue;
       const pend = await sb(`pending_proposals?request_id=eq.${a.request_id}&ai_model=eq.${a.ai_model}&status=eq.pending&select=id`) || [];
       const n = pend.length;
       await pushOnce(`result:${a.request_id}:${a.ai_model}`, `${NAMES[a.ai_model]} finished`,
@@ -63,6 +72,7 @@ async function alerts(now) {
     const ca = await sb(`comparative_answers?answered_at=gte.${since}&answered_at=lt.${settled}&select=comparative_question_id,ai_model`) || [];
     const qs = new Set();
     for (const a of ca) {
+      if (await assistants('q', a.comparative_question_id)) continue;
       qs.add(a.comparative_question_id);
       const pend = await sb(`pending_proposals?question_id=eq.${a.comparative_question_id}&ai_model=eq.${a.ai_model}&status=eq.pending&select=id`) || [];
       const n = pend.length;
@@ -83,6 +93,7 @@ async function alerts(now) {
   await section('judge', async () => {
     const ev = await sb(`comparative_evaluations?evaluated_at=gte.${since}&select=id,comparative_question_id`) || [];
     for (const e of ev) {
+      if (await assistants('q', e.comparative_question_id)) continue;
       await pushOnce(`judge:${e.id}`, 'Judge finished', `The Judge finished Comparative Question ${e.comparative_question_id}.`);
     }
   });
@@ -91,6 +102,7 @@ async function alerts(now) {
   await section('followups', async () => {
     const fu = await sb(`followups?finished_at=gte.${since}&finished_at=lt.${settled}&select=id,request_id,ai_model`) || [];
     for (const f of fu) {
+      if (await assistants('r', f.request_id)) continue;
       await pushOnce(`followup:${f.id}`, `${NAMES[f.ai_model]} finished your follow-up`,
         `${NAMES[f.ai_model]} finished your follow-up on Question ${f.request_id}. The updated report appears on the site in a minute or two.`);
     }
@@ -98,8 +110,10 @@ async function alerts(now) {
 
   // anything that could not start
   await section('failed', async () => {
-    const failed = await sb(`jim_jobs?status=eq.failed&claimed_at=gte.${since}&select=id,model,kind,question_id,request_id,followup_id`) || [];
+    const failed = await sb(`jim_jobs?status=eq.failed&claimed_at=gte.${since}&select=id,model,kind,question_id,request_id,followup_id,requested_by`) || [];
     for (const j of failed) {
+      if (j.requested_by === 'research') continue;                       // the assistant's jobs never alert
+      if (j.kind === 'evaluate' && await assistants('q', j.question_id)) continue;
       let label = j.request_id ? `Question ${j.request_id}` : `Comparative Question ${j.question_id}`;
       if (j.followup_id) {
         const f = await sb(`followups?id=eq.${j.followup_id}&select=request_id`) || [];

@@ -95,7 +95,7 @@ h2{color:#8a7050;font-size:12px;font-weight:normal;letter-spacing:1px;margin:20p
   <h2>RECENT QUESTIONS</h2>
   <div id="list"><div class="empty">Loading&hellip;</div></div>
 </div>
-<div class="foot">Papyrates Archive &mdash; Restricted Access<br><a class="tag-link" onclick="testAlert()">Send a test alert to my phone</a><div class="msg" id="alertmsg" style="text-align:center;letter-spacing:0;"></div></div>
+<div class="foot">Papyrates Archive &mdash; Restricted Access<span id="admin-only"><br><a class="tag-link" onclick="testAlert()">Send a test alert to my phone</a><div class="msg" id="alertmsg" style="text-align:center;letter-spacing:0;"></div></span></div>
 
 <div id="ov"><div class="sheet">
   <p>You picked all three Jims. Log this as a <b>comparative research question</b>, to be compared and judged?</p>
@@ -107,7 +107,8 @@ h2{color:#8a7050;font-size:12px;font-weight:normal;letter-spacing:1px;margin:20p
 
 <script src="/papyrates-auth.js"></script>
 <script>
-requireAuth('admin');
+requireAuth('research');
+const IS_ADMIN = getPapyratesTier() === 'admin';
 
 const NAMES = { claude: 'Claude', gpt: 'GPT', gemini: 'Gemini' };
 let timer = null;
@@ -228,7 +229,7 @@ function card(it) {
   const when = it.created_at ? new Date(it.created_at).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : '';
   const title = (it.type === 'comparative' ? 'C' : '#') + it.id + ' · ' + esc(it.topic || it.question_text);
   const chips = ['claude', 'gpt', 'gemini'].map(function (m) { const s = it.models[m]; return s && s.state !== 'none' ? chip(it, m, s) : ''; }).join('') + judgeChip(it);
-  return '<div class="q"><div class="qh" onclick="toggle(\'' + k + '\')"><div class="qt">' + title + (it.type === 'comparative' ? '<span class="badge">comparative</span>' : '') + '</div><div class="qw">' + esc(when) + '</div></div>' +
+  return '<div class="q"><div class="qh" onclick="toggle(\'' + k + '\')"><div class="qt">' + title + (it.type === 'comparative' ? '<span class="badge">comparative</span>' : '') + (it.by === 'assistant' && IS_ADMIN ? '<span class="badge" style="border-color:#4a6a8a;color:#8ab4d9;">assistant</span>' : '') + '</div><div class="qw">' + esc(when) + '</div></div>' +
     '<div class="chips">' + (chips || '<span class="hint">No Jim has been asked this one.</span>') + '</div>' + (openCards[k] ? detail(it) : '') + '</div>';
 }
 function draw() { document.getElementById('list').innerHTML = items.length ? items.map(card).join('') : '<div class="empty">No questions yet.</div>'; }
@@ -254,6 +255,7 @@ async function load() {
     timer = setTimeout(load, 30000);
   }
 }
+if (!IS_ADMIN) { const ao = document.getElementById('admin-only'); if (ao) ao.style.display = 'none'; }   // the phone-alert test is the owner's
 load();
 </script>
 </body>

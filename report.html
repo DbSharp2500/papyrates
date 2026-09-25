@@ -149,16 +149,20 @@ function rvHdrs() { return { 'Authorization': 'Bearer ' + getPapyratesToken(), '
 function rvEsc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
 
 async function loadReview() {
-  if (!getPapyratesToken() || getPapyratesTier() !== 'admin') return;       // the review tools are admin-only
-  let url = '/api/proposals?';
-  if (RID || QID) url += (RID ? 'request=' + RID + '&' : '') + (QID ? 'question=' + QID : '');
-  else url += 'report=' + encodeURIComponent(key);
-  let res;
-  try { res = await fetch(url, { headers: rvHdrs() }); } catch (e) { return; }
-  if (!res.ok) return;
-  rv = await res.json();
-  if (!RID && rv.request_id) RID = String(rv.request_id);
-  if (!QID && rv.question_id) QID = String(rv.question_id);
+  if (!getPapyratesToken()) return;
+  // Reviewing / saving suggestions and "make comparative" are the ADMIN's. The Research Assistant only ever gets the
+  // follow-up button, and only on their own questions (their link from the Ask page carries the question number).
+  if (getPapyratesTier() === 'admin') {
+    let url = '/api/proposals?';
+    if (RID || QID) url += (RID ? 'request=' + RID + '&' : '') + (QID ? 'question=' + QID : '');
+    else url += 'report=' + encodeURIComponent(key);
+    let res;
+    try { res = await fetch(url, { headers: rvHdrs() }); } catch (e) { return; }
+    if (!res.ok) return;
+    rv = await res.json();
+    if (!RID && rv.request_id) RID = String(rv.request_id);
+    if (!QID && rv.question_id) QID = String(rv.question_id);
+  }
   await loadFollowups();
   refreshBar();
 }
@@ -216,11 +220,11 @@ function drawFollowup(msg) {
     else a = '<div class="fu-a"><span class="rv-tag">Cancelled</span></div>';
     return q + a;
   }).join('');
-  const intro = '<h3>Ask ' + name + ' a follow-up</h3><div class="fu-note">' + name + ' rereads its report and research log, does the extra research you ask for, and rewrites the whole report \u2014 everything in it now, plus what you add. Nothing is saved to memory until you review it. You will get an alert when it is done.</div>';
+  const intro = '<h3>Ask ' + name + ' a follow-up</h3><div class="fu-note">' + name + ' rereads its report and research log, does the extra research you ask for, and rewrites the whole report \u2014 everything in it now, plus what you add.' + (getPapyratesTier() === 'admin' ? ' Nothing is saved to memory until you review it. You will get an alert when it is done.' : ' Reload the report when it has finished.') + '</div>';
   const active = fuActive();
   const box = fu.can_ask
     ? '<textarea id="fu-text" placeholder="e.g. You missed Docs 2541\u20132545 \u2014 please check them and update the report."></textarea><div class="rv-btns" style="margin-top:8px;"><button class="primary" id="fu-send" onclick="fuSend()">Send follow-up</button></div>'
-    : '<div class="fu-note">' + rvEsc(active ? name + ' is working on the current follow-up. You can close this and come back \u2014 you will get an alert.' : (fu.why || '')) + '</div>';
+    : '<div class="fu-note">' + rvEsc(active ? name + ' is working on the current follow-up. You can close this and come back \u2014 reload the report when it has finished.' + (getPapyratesTier() === 'admin' ? ' You will get an alert.' : '') + '' : (fu.why || '')) + '</div>';
   document.getElementById('fu-sheet').innerHTML = '<div class="rv-list">' + intro + items + '</div><div class="rv-foot">' + box + (msg ? '<div class="rv-msg">' + rvEsc(msg) + '</div>' : '') + '<button class="rv-close" onclick="closeFollowup()">Close</button></div>';
 }
 function openFollowup() { drawFollowup(''); document.getElementById('fu-ov').classList.add('show'); }
@@ -238,7 +242,7 @@ async function fuSend() {
   } catch (e) { fu.can_ask = true; return drawFollowup('Could not reach the site. Nothing was sent.'); }
   fuJustFinished = false;
   await loadFollowups(); refreshBar();
-  drawFollowup(res.status === 201 ? 'Sent. You will get an alert when it is done.' : (data.error || 'Could not send it.'));
+  drawFollowup(res.status === 201 ? (getPapyratesTier() === 'admin' ? 'Sent. You will get an alert when it is done.' : 'Sent. Come back in a few minutes and reload the report.') : (data.error || 'Could not send it.'));
 }
 async function fuWithdraw(id) {
   try { await fetch('/api/followups?id=' + id, { method: 'DELETE', headers: rvHdrs() }); } catch (e) { }

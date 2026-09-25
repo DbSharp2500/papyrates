@@ -1,5 +1,8 @@
 // api/ask.js
-// "Ask a research question" - ADMIN tier only.
+// "Ask a research question" - admin and Research Assistant tiers.
+//   The Research Assistant may ask anything (any Jims, comparative too, no limit) but sees only THEIR OWN questions;
+//   only the admin can use the test-alert action. Everything the assistant starts is marked requested_by = 'research'
+//   (no phone alerts are sent for it, and its finished Jim windows are closed as soon as they finish).
 //
 //   POST { question, topic?, models: ['claude','gpt','gemini'], comparative?: true }
 //     - one or two Jims (or three with comparative:false): an everyday question. It is stored in research_requests
@@ -25,10 +28,10 @@ const MIN_Q = 10, MAX_Q = 8000;
 
 export default async function handler(req, res) {
   const tier = tierFromRequest(req);
-  if (!tier || !hasTierAccess(tier, 'admin')) return res.status(401).json({ error: 'Unauthorized' });
+  if (!tier || !hasTierAccess(tier, 'research')) return res.status(401).json({ error: 'Unauthorized' });
 
   try {
-    if (req.method === 'GET') return await list(res);
+    if (req.method === 'GET') return await list(res, tier);
     if (req.method === 'POST') return await create(req, res, tier);
     return res.status(405).json({ error: 'Method not allowed' });
   } catch (err) {
@@ -41,7 +44,10 @@ async function create(req, res, tier) {
   const b = req.body || {};
 
   // { test_alert: true } -> sends a real test alert to the phone and reports exactly what happened (never returns the topic)
-  if (b.test_alert === true) return res.status(200).json(await pushDiagnose());
+  if (b.test_alert === true) {
+    if (!hasTierAccess(tier, 'admin')) return res.status(401).json({ error: 'Unauthorized' });
+    return res.status(200).json(await pushDiagnose());
+  }
 
   const question = String(b.question || '').replace(/\r\n/g, '\n').trim();
   if (question.length < MIN_Q) return res.status(400).json({ error: 'Please write the question out (at least a sentence).' });
@@ -99,10 +105,19 @@ function modelState(ans, jobs, now) {
   return { state: 'cancelled' };
 }
 
-async function list(res) {
+async function list(res, tier) {
   const now = Date.now();
-  const reqs = await sb('research_requests?select=id,question_text,topic,created_at,comparative_question_id&order=id.desc&limit=12') || [];
-  const cqs = await sb('comparative_questions?select=id,question_text,topic,created_at&order=id.desc&limit=8') || [];
+  const isAdmin = hasTierAccess(tier, 'admin');
+
+  // which comparative questions did the assistant start? (their answer jobs are marked requested_by = 'research')
+  const aJobs = await sb('jim_jobs?kind=eq.answer&requested_by=eq.research&select=question_id&order=id.desc&limit=200') || [];
+  const assistantQ = new Set(aJobs.map((j) => j.question_id));
+
+  // the admin sees everything (assistant's questions carry a badge); the assistant sees only their own
+  const reqs = await sb('research_requests?select=id,question_text,topic,created_at,comparative_question_id,requested_by' + (isAdmin ? '' : '&requested_by=eq.research') + '&order=id.desc&limit=12') || [];
+  let cqs;
+  if (isAdmin) cqs = await sb('comparative_questions?select=id,question_text,topic,created_at&order=id.desc&limit=8') || [];
+  else cqs = assistantQ.size ? await sb(`comparative_questions?id=in.(${[...assistantQ].join(',')})&select=id,question_text,topic,created_at&order=id.desc&limit=8`) || [] : [];
 
   const rids = reqs.map((r) => r.id), qids = cqs.map((q) => q.id);
   const inR = `(${rids.join(',')})`, inQ = `(${qids.join(',')})`;
@@ -138,7 +153,7 @@ async function list(res) {
         else if (job.status === 'claimed' || job.status === 'launched') models[m].followup = { state: 'working', minutes: job.launched_at ? Math.max(0, Math.round((now - new Date(job.launched_at).getTime()) / 60000)) : 0 };
       }
     }
-    items.push({ type: 'research', id: r.id, topic: r.topic, question_text: r.question_text, created_at: r.created_at, models });
+    items.push({ type: 'research', id: r.id, topic: r.topic, question_text: r.question_text, created_at: r.created_at, models, by: r.requested_by === 'research' ? 'assistant' : null });
   }
 
   for (const q of cqs) {
@@ -153,7 +168,7 @@ async function list(res) {
     let judge = modelState(ev ? { output_file_url: ev.output_file_url } : null, ejobs, now);
     if (judge.state === 'none' && au && !au.judge_queued_at) judge = { state: 'scheduled' };
     const pr = promoted.find((p) => p.comparative_question_id === q.id);
-    items.push({ type: 'comparative', id: q.id, request_id: pr ? pr.id : null, topic: q.topic, question_text: q.question_text, created_at: q.created_at, models, judge, auto_judge: !!au });
+    items.push({ type: 'comparative', id: q.id, request_id: pr ? pr.id : null, topic: q.topic, question_text: q.question_text, created_at: q.created_at, models, judge, auto_judge: !!au, by: assistantQ.has(q.id) ? 'assistant' : null });
   }
 
   items.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));

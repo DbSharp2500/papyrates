@@ -151,8 +151,28 @@ body{font-family:Georgia,serif;background:#1a1408;min-height:100vh;display:flex;
     </div>
   </div>
 
-  <!-- DATA ENTRY SECTION — admin and research only -->
-  <div id="section-edit" style="display:none;width:100%;align-items:center;flex-direction:column;">
+  <!-- RESEARCH ASSISTANT SECTION — research tier only (admin has these tiles in the Research & Analysis section) -->
+  <div id="section-assistant" style="display:none;width:100%;align-items:center;flex-direction:column;">
+    <div class="section-label"><h2>Research</h2></div>
+    <div class="tile-grid">
+      <a class="tile research" href="/ask.html" target="_blank" rel="noopener">
+        <div class="tile-icon">✍️</div>
+        <div class="tile-text">
+          <div class="tile-title">Ask a research question</div>
+          <div class="tile-desc">Type a question, choose the Jims, and read their reports when they finish</div>
+        </div>
+      </a>
+      <a class="tile" href="/reports.html">
+        <div class="tile-icon">📑</div>
+        <div class="tile-text">
+          <div class="tile-title">Reports</div>
+          <div class="tile-desc">Read every finished Jim and Judge report</div>
+        </div>
+      </a>
+    </div>
+  </div>
+
+  <!-- DATA ENTRY SECTION — admin and research only -->  <div id="section-edit" style="display:none;width:100%;align-items:center;flex-direction:column;">
     <div class="section-label"><h2>Data Entry &amp; Maintenance</h2></div>
     <div class="tile-grid">
       <a class="tile" href="/database.html?action=add">
@@ -286,7 +306,7 @@ function showMain(tier) {
   badge.className = "tier-badge " + tier;
 
   // Hide all sections first
-  ["section-research", "section-browse", "section-edit"].forEach(function(id) {
+  ["section-research", "section-assistant", "section-browse", "section-edit"].forEach(function(id) {
     var el = document.getElementById(id);
     if (el) el.style.display = "none";
   });
@@ -296,6 +316,7 @@ function showMain(tier) {
     show("section-research");
     show("section-edit");
   } else if (tier === "research") {
+    show("section-assistant");
     show("section-browse");
     show("section-edit");
   } else {

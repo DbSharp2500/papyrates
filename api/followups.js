@@ -1,5 +1,5 @@
 // api/followups.js
-// Follow-up questions on a finished report - ADMIN tier only.
+// Follow-up questions on a finished report - admin, and the Research Assistant on THEIR OWN questions only.
 //
 //   GET    ?request=R&model=M  -> the conversation so far for that Jim's report, whether a new follow-up can be asked,
 //                                 and where the current one stands (waiting / working / done / failed)
@@ -13,6 +13,7 @@
 
 import { tierFromRequest, hasTierAccess } from './_session.js';
 import { sb } from './_sb.js';
+import { requestIsAssistants } from './_owner.js';
 
 const MODELS = ['claude', 'gpt', 'gemini'];
 const MIN_LEN = 5, MAX_LEN = 4000;
@@ -22,11 +23,11 @@ const posInt = (v) => { const n = Number(v); return Number.isInteger(n) && n >= 
 
 export default async function handler(req, res) {
   const tier = tierFromRequest(req);
-  if (!tier || !hasTierAccess(tier, 'admin')) return res.status(401).json({ error: 'Unauthorized' });
+  if (!tier || !hasTierAccess(tier, 'research')) return res.status(401).json({ error: 'Unauthorized' });
   try {
-    if (req.method === 'GET') return await thread(req, res);
+    if (req.method === 'GET') return await thread(req, res, tier);
     if (req.method === 'POST') return await create(req, res, tier);
-    if (req.method === 'DELETE') return await withdraw(req, res);
+    if (req.method === 'DELETE') return await withdraw(req, res, tier);
     return res.status(405).json({ error: 'Method not allowed' });
   } catch (err) {
     console.error('api/followups error:', err && err.message);
@@ -62,9 +63,10 @@ async function canAsk(rid, model) {
   return { ok: true };
 }
 
-async function thread(req, res) {
+async function thread(req, res, tier) {
   const rid = posInt(req.query && req.query.request), model = String((req.query && req.query.model) || '');
   if (!rid || !MODELS.includes(model)) return res.status(400).json({ error: 'Give a question number and a Jim' });
+  if (!hasTierAccess(tier, 'admin') && !(await requestIsAssistants(rid))) return res.status(401).json({ error: 'Unauthorized' });
   const rows = await sb(`followups?request_id=eq.${rid}&ai_model=eq.${model}&select=id,message,reply,created_at,finished_at&order=id.asc&limit=50`) || [];
   const ids = rows.map((f) => f.id);
   const jobs = ids.length ? await sb(`jim_jobs?followup_id=in.(${ids.join(',')})&select=id,followup_id,status,launched_at,error_text&order=id.asc`) || [] : [];
@@ -79,6 +81,7 @@ async function create(req, res, tier) {
   const rid = posInt(b.request_id), model = String(b.model || '');
   const message = String(b.message || '').replace(/\r\n/g, '\n').trim();
   if (!rid || !MODELS.includes(model)) return res.status(400).json({ error: 'Give a question number and a Jim' });
+  if (!hasTierAccess(tier, 'admin') && !(await requestIsAssistants(rid))) return res.status(401).json({ error: 'Unauthorized' });
   if (message.length < MIN_LEN) return res.status(400).json({ error: 'Please write your follow-up out first.' });
   if (message.length > MAX_LEN) return res.status(400).json({ error: 'That follow-up is too long (limit ' + MAX_LEN + ' characters).' });
 
@@ -102,9 +105,13 @@ async function create(req, res, tier) {
   return res.status(201).json({ id: fid });
 }
 
-async function withdraw(req, res) {
+async function withdraw(req, res, tier) {
   const id = posInt(req.query && req.query.id);
   if (!id) return res.status(400).json({ error: 'Invalid follow-up' });
+  if (!hasTierAccess(tier, 'admin')) {
+    const own = await sb(`followups?id=eq.${id}&select=request_id`) || [];
+    if (!own.length || !(await requestIsAssistants(own[0].request_id))) return res.status(401).json({ error: 'Unauthorized' });
+  }
   const jobs = await sb(`jim_jobs?followup_id=eq.${id}&select=id,status`) || [];
   if (!jobs.length || jobs.some((j) => j.status !== 'queued')) return res.status(409).json({ error: 'It has already started.' });
   await sb(`followups?id=eq.${id}&finished_at=is.null`, { method: 'DELETE' });     // its job goes with it
