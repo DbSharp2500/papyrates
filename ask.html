@@ -4,6 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Ask a Research Question — Papyrates</title>
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#1a1408">
+<link rel="icon" type="image/png" href="/icon-192.png">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:Georgia,serif;background:#1a1408;min-height:100vh;display:flex;flex-direction:column;align-items:center;}
@@ -91,7 +95,7 @@ h2{color:#8a7050;font-size:12px;font-weight:normal;letter-spacing:1px;margin:20p
   <h2>RECENT QUESTIONS</h2>
   <div id="list"><div class="empty">Loading&hellip;</div></div>
 </div>
-<div class="foot">Papyrates Archive &mdash; Restricted Access</div>
+<div class="foot">Papyrates Archive &mdash; Restricted Access<br><a class="tag-link" onclick="testAlert()">Send a test alert to my phone</a><div class="msg" id="alertmsg" style="text-align:center;letter-spacing:0;"></div></div>
 
 <div id="ov"><div class="sheet">
   <p>You picked all three Jims. Log this as a <b>comparative research question</b>, to be compared and judged?</p>
@@ -155,6 +159,17 @@ async function send(comparative) {
     }
   } catch (e) { say('Could not reach the site. Your question was not sent — check the connection and try again.', true); }
   setTimeout(function () { btn.disabled = false; }, 2500);
+}
+
+async function testAlert() {
+  const m = document.getElementById('alertmsg'); m.className = 'msg'; m.textContent = 'Sending…';
+  try {
+    const res = await fetch('/api/push-test', { method: 'POST', headers: hdrs() });
+    if (res.status === 401) return goLogin();
+    const d = await res.json();
+    if (d.sent) { m.textContent = 'Sent. It should reach your phone in a few seconds.'; }
+    else { m.className = 'msg err'; m.textContent = d.problem || d.error || 'Something went wrong.'; }
+  } catch (e) { m.className = 'msg err'; m.textContent = 'Could not reach the site.'; }
 }
 
 // ---- job actions ----

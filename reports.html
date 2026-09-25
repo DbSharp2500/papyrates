@@ -21,6 +21,8 @@ body{font-family:Georgia,serif;background:#1a1408;min-height:100vh;display:flex;
 .item .d{font-size:11px;color:#6a5a40;}
 .item a{font-size:12px;color:#a08050;border:1px solid #4a3820;border-radius:5px;padding:3px 9px;text-decoration:none;}
 .item a:hover{color:#d4a96a;border-color:#8a6a3a;}
+.item a.del{cursor:pointer;color:#8a5a4a;border-color:#4a2a20;}
+.item a.del:hover{color:#d9736c;border-color:#a8342e;}
 .empty{font-size:13px;color:#6a5a40;padding:20px 4px;line-height:1.6;}
 .footer{color:#4a3820;font-size:11px;letter-spacing:1px;margin-top:auto;padding:24px 0;}
 </style>
@@ -91,8 +93,25 @@ function draw() {
     const links = ['html', 'pdf', 'log'].filter(function (e) { return g.files[e]; }).map(function (e) {
       return '<a href="/report.html?f=' + encodeURIComponent(g.files[e].key) + '">' + (e === 'html' ? 'Open' : e === 'pdf' ? 'PDF' : 'Log') + '</a>';
     }).join('');
-    return '<div class="item"><div class="t">' + esc(name) + '</div><span class="d">' + esc(LABELS[g.folder]) + '</span>' + links + '</div>';
+    const delLink = getPapyratesTier() === 'admin' ? '<a class="del" data-base="' + esc(g.base) + '">delete</a>' : '';
+    return '<div class="item"><div class="t">' + esc(name) + '</div><span class="d">' + esc(LABELS[g.folder]) + '</span>' + links + delLink + '</div>';
   }).join('');
+  list.querySelectorAll('a.del').forEach(function (a) { a.onclick = function () { deleteReport(a.getAttribute('data-base')); }; });
+}
+
+// admin only: removes the cloud copy of a report (its html / pdf / log). The original in OneDrive is not touched.
+async function deleteReport(base) {
+  const keys = files.filter(function (f) { return f.key.replace(/\.(html|log|pdf)$/, '') === base; }).map(function (f) { return f.key; });
+  if (!keys.length) return;
+  if (!confirm('Delete "' + base.replace(/^[a-z]+\//, '') + '" from the website?\n\nThis removes the cloud copy only. The original in OneDrive is not touched.')) return;
+  try {
+    for (const k of keys) {
+      const res = await fetch('/api/reports?f=' + encodeURIComponent(k), { method: 'DELETE', headers: { Authorization: 'Bearer ' + getPapyratesToken() } });
+      if (res.status === 401) { clearPapyratesSession(); window.location.href = '/index.html'; return; }
+      if (!res.ok) throw new Error(res.status);
+    }
+  } catch (e) { alert('Could not delete it. Nothing more was changed.'); }
+  load();
 }
 load();
 </script>

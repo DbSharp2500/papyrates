@@ -78,6 +78,14 @@ export async function putObject(key, buffer, ext) {
   }
 }
 
+// Removes one object from the cloud copy (never touches OneDrive). Returns true if it is gone afterwards.
+export async function deleteObject(key) {
+  const r = await storageFetch(`object/${BUCKET}/${key}`, { method: 'DELETE' });
+  if (r.status === 404 || r.status === 400) return true;      // already gone / no bucket yet
+  if (!r.ok) throw new Error(`storage delete failed (${r.status})`);
+  return true;
+}
+
 // Returns a Buffer, or null if the object (or the whole bucket) does not exist yet.
 export async function getObject(key) {
   const r = await storageFetch(`object/${BUCKET}/${key}`);

@@ -1,0 +1,19 @@
+{
+  "name": "Papyrates",
+  "short_name": "Papyrates",
+  "description": "Ask the research Jims a question and read their reports",
+  "start_url": "/ask.html",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#1a1408",
+  "theme_color": "#1a1408",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Ask a question", "url": "/ask.html", "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Reports", "url": "/reports.html", "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }] }
+  ]
+}

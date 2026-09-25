@@ -7,16 +7,25 @@
 // from being run as part of the site if someone ever opens the URL directly.
 
 import { tierFromRequest, hasTierAccess } from './_session.js';
-import { FOLDERS, KEY_RE, CONTENT_TYPES, extOf, getObject, listFolder } from './_reports.js';
+import { FOLDERS, KEY_RE, CONTENT_TYPES, extOf, getObject, listFolder, deleteObject } from './_reports.js';
 
 export default async function handler(req, res) {
-  if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
+  if (req.method !== 'GET' && req.method !== 'DELETE') return res.status(405).json({ error: 'Method not allowed' });
 
   const tier = tierFromRequest(req);
   if (!tier || !hasTierAccess(tier, 'research')) return res.status(401).json({ error: 'Unauthorized' });
 
   try {
     const q = req.query || {};
+
+    // DELETE ?f=<key> - removes the cloud copy of one report file. ADMIN only. OneDrive is never touched.
+    if (req.method === 'DELETE') {
+      if (!hasTierAccess(tier, 'admin')) return res.status(401).json({ error: 'Unauthorized' });
+      const dkey = String(q.f || '');
+      if (!KEY_RE.test(dkey) || dkey.includes('..')) return res.status(400).json({ error: 'Bad file name' });
+      await deleteObject(dkey);
+      return res.status(200).json({ deleted: dkey });
+    }
 
     if (q.list) {
       const lists = await Promise.all(FOLDERS.map((f) => listFolder(f)));
