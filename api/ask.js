@@ -102,6 +102,12 @@ async function list(res) {
   const inR = `(${rids.join(',')})`, inQ = `(${qids.join(',')})`;
   const rJobs = rids.length ? await sb(`jim_jobs?kind=eq.ask&request_id=in.${inR}&select=id,model,request_id,status,launched_at,error_text&order=id.asc`) || [] : [];
   const rRes = rids.length ? await sb(`research_results?request_id=in.${inR}&select=request_id,ai_model,output_file_url`) || [] : [];
+  // follow-ups still in progress (asked, not yet finished) on these questions
+  let fRows = [], fJobs = [];
+  try {                                     // never let the follow-up lookup break the whole page
+    fRows = rids.length ? await sb(`followups?request_id=in.${inR}&finished_at=is.null&select=id,request_id,ai_model&order=id.asc`) || [] : [];
+    fJobs = fRows.length ? await sb(`jim_jobs?followup_id=in.(${fRows.map((f) => f.id).join(',')})&select=id,followup_id,status,launched_at&order=id.asc`) || [] : [];
+  } catch (e) { console.error('api/ask: follow-up lookup failed:', e && e.message); }
   const cJobs = qids.length ? await sb(`jim_jobs?kind=in.(answer,evaluate)&question_id=in.${inQ}&select=id,kind,model,question_id,status,launched_at,error_text&order=id.asc`) || [] : [];
   const cAns = qids.length ? await sb(`comparative_answers?comparative_question_id=in.${inQ}&select=comparative_question_id,ai_model,output_file_url`) || [] : [];
   const cEval = qids.length ? await sb(`comparative_evaluations?comparative_question_id=in.${inQ}&select=comparative_question_id,output_file_url,evaluated_at&order=evaluated_at.desc`) || [] : [];
@@ -117,6 +123,14 @@ async function list(res) {
     const models = {};
     for (const m of MODELS) {
       models[m] = modelState(rRes.find((a) => a.request_id === r.id && a.ai_model === m), rJobs.filter((j) => j.request_id === r.id && j.model === m), now);
+      // a follow-up that is waiting or working shows on the Jim's chip
+      const open = fRows.filter((f) => f.request_id === r.id && f.ai_model === m);
+      for (const f of open) {
+        const jobs = fJobs.filter((j) => j.followup_id === f.id);
+        const job = jobs.length ? jobs[jobs.length - 1] : null;
+        if (!job || job.status === 'queued') models[m].followup = { state: 'waiting' };
+        else if (job.status === 'claimed' || job.status === 'launched') models[m].followup = { state: 'working', minutes: job.launched_at ? Math.max(0, Math.round((now - new Date(job.launched_at).getTime()) / 60000)) : 0 };
+      }
     }
     items.push({ type: 'research', id: r.id, topic: r.topic, question_text: r.question_text, created_at: r.created_at, models });
   }

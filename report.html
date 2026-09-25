@@ -18,8 +18,16 @@ pre{flex:1;overflow:auto;color:#cbb994;font-size:12px;line-height:1.5;padding:14
 /* review bar + sheet */
 #rv-bar{order:99;display:none;align-items:center;justify-content:space-between;gap:10px;padding:10px 14px;border-top:1px solid #6a5030;background:#2a2010;}
 #rv-bar span{color:#d4a96a;font-size:13px;}
-#rv-ov{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:flex-end;justify-content:center;z-index:10;}
-#rv-ov.show{display:flex;}
+#rv-ov,#fu-ov{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:flex-end;justify-content:center;z-index:10;}
+#rv-ov.show,#fu-ov.show{display:flex;}
+#rv-bar .rv-acts{display:flex;gap:8px;flex-shrink:0;}
+#rv-bar #rv-text{flex:1;}
+.fu-q,.fu-a{padding:9px 0;border-top:1px solid #3a2c16;font-size:13px;line-height:1.5;color:#cbb994;white-space:pre-wrap;word-break:break-word;}
+.fu-a{color:#e8d5a8;}
+.fu-a a{color:#d4a96a;text-decoration:underline;cursor:pointer;margin-left:6px;}
+#fu-text{width:100%;min-height:96px;resize:vertical;background:#1a1408;border:1px solid #4a3820;color:#e8d5a8;border-radius:6px;padding:9px 11px;font-size:16px;font-family:Georgia,serif;line-height:1.45;}
+#fu-text:focus{outline:none;border-color:#8a6a3a;}
+.fu-note{font-size:12px;color:#8a7050;line-height:1.5;margin:6px 0 2px;}
 .rv-sheet{background:#2a2010;border:1px solid #6a5030;border-radius:14px 14px 0 0;width:100%;max-width:700px;max-height:86vh;display:flex;flex-direction:column;overflow:hidden;}
 .rv-list{overflow:auto;flex:1 1 auto;padding:16px 16px 8px;}
 .rv-foot{flex:0 0 auto;padding:10px 16px 14px;border-top:1px solid #6a5030;background:#2a2010;}
@@ -43,8 +51,9 @@ pre{flex:1;overflow:auto;color:#cbb994;font-size:12px;line-height:1.5;padding:14
   <a class="btn" href="/">&#8962; Home</a>
 </div>
 <div class="msg" id="msg">Loading&hellip;</div>
-<div id="rv-bar"><span id="rv-text"></span><button class="btn" onclick="openReview()">Review &#9656;</button></div>
+<div id="rv-bar"><span id="rv-text"></span><span class="rv-acts"><button class="btn" id="fu-reload" style="display:none" onclick="location.reload()">Reload report</button><button class="btn" id="fu-btn" style="display:none" onclick="openFollowup()">Ask follow-up</button><button class="btn" id="rv-btn" style="display:none" onclick="openReview()">Review &#9656;</button></span></div>
 <div id="rv-ov"><div class="rv-sheet" id="rv-sheet"></div></div>
+<div id="fu-ov"><div class="rv-sheet" id="fu-sheet"></div></div>
 
 <script src="/papyrates-auth.js"></script>
 <script>
@@ -150,15 +159,90 @@ async function loadReview() {
   rv = await res.json();
   if (!RID && rv.request_id) RID = String(rv.request_id);
   if (!QID && rv.question_id) QID = String(rv.question_id);
-  const pending = (rv.proposals || []).filter(function (p) { return p.status === 'pending'; });
-  const canPromote = !!RID && !rv.promoted_question_id && !QID && rv.results > 0;
-  const bar = document.getElementById('rv-bar');
+  await loadFollowups();
+  refreshBar();
+}
+
+// ---- follow-up questions: the Jim that wrote this report rereads it, researches more, and rewrites the whole report ----
+const MODEL = key.split('/')[0] || '';
+let fu = null, fuTimer = null, fuWasActive = false, fuJustFinished = false;
+function fuAllowed() { return !!RID && !QID && ['claude', 'gpt', 'gemini'].indexOf(MODEL) >= 0 && !(rv && rv.promoted_question_id); }
+function fuActive() { return fu ? (fu.followups || []).find(function (f) { return f.state === 'working' || f.state === 'waiting'; }) : null; }
+
+async function loadFollowups() {
+  if (!fuAllowed()) { fu = null; return; }
+  let res;
+  try { res = await fetch('/api/followups?request=' + RID + '&model=' + MODEL, { headers: rvHdrs() }); } catch (e) { return; }
+  if (!res.ok) return;
+  fu = await res.json();
+  const active = fuActive();
+  if (fuWasActive && !active && (fu.followups || []).some(function (f) { return f.state === 'done'; })) fuJustFinished = true;   // finished since we last looked
+  fuWasActive = !!active;
+  clearTimeout(fuTimer);
+  if (active) fuTimer = setTimeout(async function () {
+    await loadFollowups(); refreshBar();
+    if (document.getElementById('fu-ov').classList.contains('show')) drawFollowup('');
+  }, 15000);
+}
+
+function refreshBar() {
+  const pending = rv ? (rv.proposals || []).filter(function (p) { return p.status === 'pending'; }) : [];
+  const canPromote = !!RID && !!rv && !rv.promoted_question_id && !QID && rv.results > 0;
+  const active = fuActive();
+  const showFu = !!fu && (fu.can_ask || fu.busy || (fu.followups || []).length > 0);
   const bits = [];
+  if (active) bits.push((JIM[MODEL] || 'The Jim') + (active.state === 'working' ? ' is working on your follow-up (' + active.minutes + ' min)' : ': follow-up waiting'));
+  else if (fuJustFinished) bits.push('Follow-up finished \u2014 the updated report appears within a minute or two');
   if (pending.length) bits.push(pending.length + ' suggestion' + (pending.length === 1 ? '' : 's') + ' to review');
   if (canPromote) bits.push('make comparative?');
-  if (!bits.length) { bar.style.display = 'none'; return; }
+  const bar = document.getElementById('rv-bar');
+  if (!bits.length && !showFu) { bar.style.display = 'none'; return; }
   document.getElementById('rv-text').textContent = bits.join(' \u00b7 ');
+  document.getElementById('fu-btn').style.display = showFu ? '' : 'none';
+  document.getElementById('rv-btn').style.display = (pending.length || canPromote) ? '' : 'none';
+  document.getElementById('fu-reload').style.display = fuJustFinished ? '' : 'none';
   bar.style.display = 'flex';
+}
+
+function drawFollowup(msg) {
+  const name = JIM[MODEL] || 'The Jim';
+  const items = (fu.followups || []).map(function (f) {
+    const q = '<div class="fu-q"><span class="rv-tag">You</span>' + rvEsc(f.message) + '</div>';
+    let a;
+    if (f.state === 'done') a = '<div class="fu-a"><span class="rv-tag">' + name + '</span>' + rvEsc(f.reply || 'Done.') + '</div>';
+    else if (f.state === 'working') a = '<div class="fu-a"><span class="rv-tag">' + name + ' is working on it \u00b7 ' + f.minutes + ' min</span></div>';
+    else if (f.state === 'waiting') a = '<div class="fu-a"><span class="rv-tag">Waiting in line</span><a onclick="fuWithdraw(' + f.id + ')">withdraw</a></div>';
+    else if (f.state === 'failed') a = '<div class="fu-a"><span class="rv-tag">Could not run: ' + rvEsc(f.error) + '</span></div>';
+    else a = '<div class="fu-a"><span class="rv-tag">Cancelled</span></div>';
+    return q + a;
+  }).join('');
+  const intro = '<h3>Ask ' + name + ' a follow-up</h3><div class="fu-note">' + name + ' rereads its report and research log, does the extra research you ask for, and rewrites the whole report \u2014 everything in it now, plus what you add. Nothing is saved to memory until you review it. You will get an alert when it is done.</div>';
+  const active = fuActive();
+  const box = fu.can_ask
+    ? '<textarea id="fu-text" placeholder="e.g. You missed Docs 2541\u20132545 \u2014 please check them and update the report."></textarea><div class="rv-btns" style="margin-top:8px;"><button class="primary" id="fu-send" onclick="fuSend()">Send follow-up</button></div>'
+    : '<div class="fu-note">' + rvEsc(active ? name + ' is working on the current follow-up. You can close this and come back \u2014 you will get an alert.' : (fu.why || '')) + '</div>';
+  document.getElementById('fu-sheet').innerHTML = '<div class="rv-list">' + intro + items + '</div><div class="rv-foot">' + box + (msg ? '<div class="rv-msg">' + rvEsc(msg) + '</div>' : '') + '<button class="rv-close" onclick="closeFollowup()">Close</button></div>';
+}
+function openFollowup() { drawFollowup(''); document.getElementById('fu-ov').classList.add('show'); }
+function closeFollowup() { document.getElementById('fu-ov').classList.remove('show'); }
+
+async function fuSend() {
+  const box = document.getElementById('fu-text'), text = (box.value || '').trim();
+  if (text.length < 5) return drawFollowup('Please write your follow-up first.');
+  document.getElementById('fu-send').disabled = true;
+  let res, data;
+  try {
+    res = await fetch('/api/followups', { method: 'POST', headers: rvHdrs(), body: JSON.stringify({ request_id: Number(RID), model: MODEL, message: text }) });
+    if (res.status === 401) { clearPapyratesSession(); window.location.href = '/index.html'; return; }
+    data = await res.json();
+  } catch (e) { fu.can_ask = true; return drawFollowup('Could not reach the site. Nothing was sent.'); }
+  fuJustFinished = false;
+  await loadFollowups(); refreshBar();
+  drawFollowup(res.status === 201 ? 'Sent. You will get an alert when it is done.' : (data.error || 'Could not send it.'));
+}
+async function fuWithdraw(id) {
+  try { await fetch('/api/followups?id=' + id, { method: 'DELETE', headers: rvHdrs() }); } catch (e) { }
+  await loadFollowups(); refreshBar(); drawFollowup('');
 }
 
 function itemText(p) {

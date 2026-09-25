@@ -189,6 +189,7 @@ function reportLink(it, m, key) {
   return u;
 }
 function label(m, s) {
+  if (s.followup) return NAMES[m] + ' · follow-up' + (s.followup.state === 'working' ? ' · ' + s.followup.minutes + ' min' : ' · waiting');
   if (s.state === 'done') return NAMES[m] + ' ✓';
   if (s.state === 'working') return NAMES[m] + ' · ' + s.minutes + ' min';
   if (s.state === 'waiting') return NAMES[m] + ' · waiting';
@@ -196,7 +197,7 @@ function label(m, s) {
   return NAMES[m] + ' · cancelled';
 }
 function chip(it, m, s) {
-  const cls = 'chip ' + (s.state === 'done' ? 'done' : s.state === 'working' ? 'working' : s.state === 'failed' ? 'failed' : '');
+  const cls = 'chip ' + (s.followup ? (s.followup.state === 'working' ? 'working' : '') : (s.state === 'done' ? 'done' : s.state === 'working' ? 'working' : s.state === 'failed' ? 'failed' : ''));
   if (s.state === 'done' && s.report) return '<a class="' + cls + '" href="' + reportLink(it, m, s.report) + '"><i></i>' + label(m, s) + '</a>';
   return '<span class="' + cls + '"><i></i>' + label(m, s) + '</span>';
 }
@@ -244,7 +245,7 @@ async function load() {
     items = data.items || [];
     draw();
     const active = items.some(function (it) {
-      return ['claude', 'gpt', 'gemini'].some(function (m) { const s = it.models[m].state; return s === 'working' || s === 'waiting'; }) ||
+      return ['claude', 'gpt', 'gemini'].some(function (m) { const s = it.models[m].state; return s === 'working' || s === 'waiting' || !!it.models[m].followup; }) ||
         (it.judge && (it.judge.state === 'working' || it.judge.state === 'waiting' || it.judge.state === 'scheduled'));
     });
     timer = setTimeout(load, active ? 15000 : 60000);

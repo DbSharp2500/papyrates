@@ -51,22 +51,26 @@ export default async function handler(req, res) {
     // (Applies to both kinds of answering job: comparative "answer" jobs and everyday "ask" jobs.)
     const busy = new Set();
     const since = encodeURIComponent(new Date(now.getTime() - BUSY_WINDOW_MS).toISOString());
-    const running = await sb(`jim_jobs?kind=in.(answer,ask)&status=eq.launched&launched_at=gte.${since}&select=model,kind,question_id,request_id`) || [];
+    const running = await sb(`jim_jobs?kind=in.(answer,ask,followup)&status=eq.launched&launched_at=gte.${since}&select=model,kind,question_id,request_id,followup_id`) || [];
     if (running.length) {
       const qids = [...new Set(running.filter((j) => j.kind === 'answer').map((j) => j.question_id))];
       const rids = [...new Set(running.filter((j) => j.kind === 'ask').map((j) => j.request_id))];
+      const fids = [...new Set(running.filter((j) => j.kind === 'followup').map((j) => j.followup_id))];
       const cDone = qids.length ? await sb(`comparative_answers?comparative_question_id=in.(${qids.join(',')})&select=comparative_question_id,ai_model`) || [] : [];
       const rDone = rids.length ? await sb(`research_results?request_id=in.(${rids.join(',')})&select=request_id,ai_model`) || [] : [];
+      const fDone = fids.length ? await sb(`followups?id=in.(${fids.join(',')})&select=id,finished_at`) || [] : [];
       for (const j of running) {
         const finished = j.kind === 'answer'
           ? cDone.some((a) => a.comparative_question_id === j.question_id && a.ai_model === j.model)
-          : rDone.some((a) => a.request_id === j.request_id && a.ai_model === j.model);
+          : j.kind === 'ask'
+            ? rDone.some((a) => a.request_id === j.request_id && a.ai_model === j.model)
+            : fDone.some((f) => f.id === j.followup_id && f.finished_at);
         if (!finished) busy.add(j.model);
       }
     }
 
     const waiting = await sb('jim_jobs?status=eq.queued&order=id.asc&limit=50&select=id,kind,model') || [];
-    const next = waiting.filter((j) => !((j.kind === 'answer' || j.kind === 'ask') && busy.has(j.model)));
+    const next = waiting.filter((j) => !((j.kind === 'answer' || j.kind === 'ask' || j.kind === 'followup') && busy.has(j.model)));
     if (next.length === 0) return res.status(200).json({ job: null });
 
     // atomic claim: only succeeds if the job is STILL queued when this update lands
@@ -78,7 +82,7 @@ export default async function handler(req, res) {
     if (!claimed || claimed.length === 0) return res.status(200).json({ job: null });
 
     const j = claimed[0];
-    return res.status(200).json({ job: { id: j.id, kind: j.kind, model: j.model, question_id: j.question_id, request_id: j.request_id } });
+    return res.status(200).json({ job: { id: j.id, kind: j.kind, model: j.model, question_id: j.question_id, request_id: j.request_id, followup_id: j.followup_id } });
   } catch (err) {
     console.error('api/worker/claim error:', err && err.message);
     return res.status(500).json({ error: 'Server error' });

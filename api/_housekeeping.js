@@ -43,45 +43,70 @@ async function alerts(now) {
   const t = now.getTime();
   const since = iso(t - ALERT_LOOKBACK_MS), settled = iso(t - ALERT_SETTLE_MS);
 
+  // Each kind of alert is its own section, so one failing query (say a table that is not there yet) can never
+  // stop the other alerts in the same pass.
+  const section = async (name, fn) => { try { await fn(); } catch (e) { console.error('alerts/' + name + ':', e && e.message); } };
+
   // an everyday question answered by one Jim
-  const rr = await sb(`research_results?answered_at=gte.${since}&answered_at=lt.${settled}&select=request_id,ai_model`) || [];
-  for (const a of rr) {
-    const pend = await sb(`pending_proposals?request_id=eq.${a.request_id}&ai_model=eq.${a.ai_model}&status=eq.pending&select=id`) || [];
-    const n = pend.length;
-    await pushOnce(`result:${a.request_id}:${a.ai_model}`, `${NAMES[a.ai_model]} finished`,
-      `${NAMES[a.ai_model]} finished Question ${a.request_id}.` + (n ? ` ${n} suggestion${n === 1 ? '' : 's'} to review.` : ''));
-  }
+  await section('results', async () => {
+    const rr = await sb(`research_results?answered_at=gte.${since}&answered_at=lt.${settled}&select=request_id,ai_model`) || [];
+    for (const a of rr) {
+      const pend = await sb(`pending_proposals?request_id=eq.${a.request_id}&ai_model=eq.${a.ai_model}&status=eq.pending&select=id`) || [];
+      const n = pend.length;
+      await pushOnce(`result:${a.request_id}:${a.ai_model}`, `${NAMES[a.ai_model]} finished`,
+        `${NAMES[a.ai_model]} finished Question ${a.request_id}.` + (n ? ` ${n} suggestion${n === 1 ? '' : 's'} to review.` : ''));
+    }
+  });
 
   // a comparative question answered by one Jim (and, when all three are in, a heads-up about the Judge)
-  const ca = await sb(`comparative_answers?answered_at=gte.${since}&answered_at=lt.${settled}&select=comparative_question_id,ai_model`) || [];
-  const qs = new Set();
-  for (const a of ca) {
-    qs.add(a.comparative_question_id);
-    const pend = await sb(`pending_proposals?question_id=eq.${a.comparative_question_id}&ai_model=eq.${a.ai_model}&status=eq.pending&select=id`) || [];
-    const n = pend.length;
-    await pushOnce(`answer:${a.comparative_question_id}:${a.ai_model}`, `${NAMES[a.ai_model]} finished`,
-      `${NAMES[a.ai_model]} finished Comparative Question ${a.comparative_question_id}.` + (n ? ` ${n} suggestion${n === 1 ? '' : 's'} to review.` : ''));
-  }
-  for (const q of qs) {
-    const all = await sb(`comparative_answers?comparative_question_id=eq.${q}&select=ai_model`) || [];
-    if (!MODELS.every((m) => all.some((a) => a.ai_model === m))) continue;
-    const auto = await sb(`comparative_auto_judge?question_id=eq.${q}&judge_queued_at=is.null&select=question_id`) || [];
-    await pushOnce(`all3:${q}`, 'All three answered',
-      auto.length ? `All three Jims answered Comparative Question ${q}. The Judge will start in about 10 minutes.`
-                  : `All three Jims answered Comparative Question ${q}. You can start the Judge from the Comparative page.`);
-  }
+  await section('comparative', async () => {
+    const ca = await sb(`comparative_answers?answered_at=gte.${since}&answered_at=lt.${settled}&select=comparative_question_id,ai_model`) || [];
+    const qs = new Set();
+    for (const a of ca) {
+      qs.add(a.comparative_question_id);
+      const pend = await sb(`pending_proposals?question_id=eq.${a.comparative_question_id}&ai_model=eq.${a.ai_model}&status=eq.pending&select=id`) || [];
+      const n = pend.length;
+      await pushOnce(`answer:${a.comparative_question_id}:${a.ai_model}`, `${NAMES[a.ai_model]} finished`,
+        `${NAMES[a.ai_model]} finished Comparative Question ${a.comparative_question_id}.` + (n ? ` ${n} suggestion${n === 1 ? '' : 's'} to review.` : ''));
+    }
+    for (const q of qs) {
+      const all = await sb(`comparative_answers?comparative_question_id=eq.${q}&select=ai_model`) || [];
+      if (!MODELS.every((m) => all.some((a) => a.ai_model === m))) continue;
+      const auto = await sb(`comparative_auto_judge?question_id=eq.${q}&judge_queued_at=is.null&select=question_id`) || [];
+      await pushOnce(`all3:${q}`, 'All three answered',
+        auto.length ? `All three Jims answered Comparative Question ${q}. The Judge will start in about 10 minutes.`
+                    : `All three Jims answered Comparative Question ${q}. You can start the Judge from the Comparative page.`);
+    }
+  });
 
   // the Judge finishing
-  const ev = await sb(`comparative_evaluations?evaluated_at=gte.${since}&select=id,comparative_question_id`) || [];
-  for (const e of ev) {
-    await pushOnce(`judge:${e.id}`, 'Judge finished', `The Judge finished Comparative Question ${e.comparative_question_id}.`);
-  }
+  await section('judge', async () => {
+    const ev = await sb(`comparative_evaluations?evaluated_at=gte.${since}&select=id,comparative_question_id`) || [];
+    for (const e of ev) {
+      await pushOnce(`judge:${e.id}`, 'Judge finished', `The Judge finished Comparative Question ${e.comparative_question_id}.`);
+    }
+  });
+
+  // a follow-up finished (the Jim writes finished_at last, after the updated report is in place)
+  await section('followups', async () => {
+    const fu = await sb(`followups?finished_at=gte.${since}&finished_at=lt.${settled}&select=id,request_id,ai_model`) || [];
+    for (const f of fu) {
+      await pushOnce(`followup:${f.id}`, `${NAMES[f.ai_model]} finished your follow-up`,
+        `${NAMES[f.ai_model]} finished your follow-up on Question ${f.request_id}. The updated report appears on the site in a minute or two.`);
+    }
+  });
 
   // anything that could not start
-  const failed = await sb(`jim_jobs?status=eq.failed&claimed_at=gte.${since}&select=id,model,kind,question_id,request_id`) || [];
-  for (const j of failed) {
-    const label = j.request_id ? `Question ${j.request_id}` : `Comparative Question ${j.question_id}`;
-    await pushOnce(`fail:${j.id}`, 'Something did not start',
-      `${NAMES[j.model] || j.model} could not ${j.kind === 'evaluate' ? 'run on' : 'start'} ${label}. Open the Ask page for details.`, { high: true });
-  }
+  await section('failed', async () => {
+    const failed = await sb(`jim_jobs?status=eq.failed&claimed_at=gte.${since}&select=id,model,kind,question_id,request_id,followup_id`) || [];
+    for (const j of failed) {
+      let label = j.request_id ? `Question ${j.request_id}` : `Comparative Question ${j.question_id}`;
+      if (j.followup_id) {
+        const f = await sb(`followups?id=eq.${j.followup_id}&select=request_id`) || [];
+        label = `your follow-up on Question ${f.length ? f[0].request_id : '?'}`;
+      }
+      await pushOnce(`fail:${j.id}`, 'Something did not start',
+        `${NAMES[j.model] || j.model} could not ${j.kind === 'evaluate' ? 'run on' : 'start'} ${label}. Open the Ask page for details.`, { high: true });
+    }
+  });
 }
