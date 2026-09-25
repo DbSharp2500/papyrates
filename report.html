@@ -20,18 +20,20 @@ pre{flex:1;overflow:auto;color:#cbb994;font-size:12px;line-height:1.5;padding:14
 #rv-bar span{color:#d4a96a;font-size:13px;}
 #rv-ov{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:flex-end;justify-content:center;z-index:10;}
 #rv-ov.show{display:flex;}
-.rv-sheet{background:#2a2010;border:1px solid #6a5030;border-radius:14px 14px 0 0;width:100%;max-width:700px;max-height:82vh;overflow:auto;padding:16px 16px 22px;}
-.rv-sheet h3{color:#d4a96a;font-size:14px;font-weight:normal;margin:0 0 8px;letter-spacing:.5px;}
-.rv-item{display:flex;gap:10px;align-items:flex-start;padding:9px 0;border-top:1px solid #3a2c16;font-size:13px;color:#cbb994;line-height:1.45;}
+.rv-sheet{background:#2a2010;border:1px solid #6a5030;border-radius:14px 14px 0 0;width:100%;max-width:700px;max-height:86vh;display:flex;flex-direction:column;overflow:hidden;}
+.rv-list{overflow:auto;flex:1 1 auto;padding:16px 16px 8px;}
+.rv-foot{flex:0 0 auto;padding:10px 16px 14px;border-top:1px solid #6a5030;background:#2a2010;}
+.rv-sheet h3{color:#d4a96a;font-size:14px;font-weight:normal;margin:0 0 8px;letter-spacing:.5px;line-height:1.4;}.rv-item{display:flex;gap:10px;align-items:flex-start;padding:9px 0;border-top:1px solid #3a2c16;font-size:13px;color:#cbb994;line-height:1.45;}
 .rv-item input{width:20px;height:20px;margin-top:2px;accent-color:#d4a96a;flex-shrink:0;}
 .rv-tag{font-size:11px;color:#8a7050;display:block;margin-bottom:2px;}
-.rv-btns{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;}
-.rv-btns button,.rv-comp button{flex:1;min-width:120px;padding:11px;border-radius:8px;font-size:14px;font-family:Georgia,serif;cursor:pointer;border:1px solid #6a5030;background:transparent;color:#d4a96a;}
+.rv-btns{display:flex;gap:8px;flex-wrap:nowrap;}
+.rv-btns button,.rv-comp button{flex:1;min-width:0;padding:11px;border-radius:8px;font-size:14px;font-family:Georgia,serif;cursor:pointer;border:1px solid #6a5030;background:transparent;color:#d4a96a;}
+.rv-btns button.primary{flex:2.2;}
 .rv-btns button.primary,.rv-comp button.primary{background:#d4a96a;color:#1a1408;border-color:#d4a96a;font-weight:bold;}
 .rv-comp{margin-top:18px;padding-top:14px;border-top:1px solid #6a5030;font-size:13px;color:#a08a60;line-height:1.5;}
 .rv-comp button{width:100%;margin-top:8px;}
 .rv-msg{font-size:12px;color:#d4a96a;margin-top:10px;}
-.rv-close{display:block;margin:12px auto 0;background:none;border:0;color:#8a7050;font-size:13px;text-decoration:underline;cursor:pointer;font-family:Georgia,serif;}
+.rv-close{display:block;margin:8px auto 0;background:none;border:0;color:#8a7050;font-size:13px;text-decoration:underline;cursor:pointer;font-family:Georgia,serif;}
 </style>
 </head>
 <body>
@@ -125,10 +127,11 @@ async function show() {
 show();
 
 // ---- review panel: the Jims' suggested memories etc., and "make this comparative" ----
-// Only shown when the link carries the question (?r= a research request and/or ?q= a comparative question).
+// A link from the Ask page carries the question (?r= a research request and/or ?q= a comparative question). A report
+// opened from the Reports list does not, so the site works out which question it answered from the report's name.
 const qp = new URLSearchParams(location.search);
-const RID = /^\d{1,9}$/.test(qp.get('r') || '') ? qp.get('r') : null;
-const QID = /^\d{1,9}$/.test(qp.get('q') || '') ? qp.get('q') : null;
+let RID = /^\d{1,9}$/.test(qp.get('r') || '') ? qp.get('r') : null;
+let QID = /^\d{1,9}$/.test(qp.get('q') || '') ? qp.get('q') : null;
 const JIM = { claude: 'Claude', gpt: 'GPT', gemini: 'Gemini' };
 const CAT = { memory: 'Memory', open_question: 'Open question', contradiction: 'Contradiction' };
 let rv = null;
@@ -138,10 +141,15 @@ function rvEsc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, functio
 
 async function loadReview() {
   if (!getPapyratesToken() || getPapyratesTier() !== 'admin') return;       // the review tools are admin-only
+  let url = '/api/proposals?';
+  if (RID || QID) url += (RID ? 'request=' + RID + '&' : '') + (QID ? 'question=' + QID : '');
+  else url += 'report=' + encodeURIComponent(key);
   let res;
-  try { res = await fetch('/api/proposals?' + (RID ? 'request=' + RID + '&' : '') + (QID ? 'question=' + QID : ''), { headers: rvHdrs() }); } catch (e) { return; }
+  try { res = await fetch(url, { headers: rvHdrs() }); } catch (e) { return; }
   if (!res.ok) return;
   rv = await res.json();
+  if (!RID && rv.request_id) RID = String(rv.request_id);
+  if (!QID && rv.question_id) QID = String(rv.question_id);
   const pending = (rv.proposals || []).filter(function (p) { return p.status === 'pending'; });
   const canPromote = !!RID && !rv.promoted_question_id && !QID && rv.results > 0;
   const bar = document.getElementById('rv-bar');
@@ -149,7 +157,7 @@ async function loadReview() {
   if (pending.length) bits.push(pending.length + ' suggestion' + (pending.length === 1 ? '' : 's') + ' to review');
   if (canPromote) bits.push('make comparative?');
   if (!bits.length) { bar.style.display = 'none'; return; }
-  document.getElementById('rv-text').textContent = bits.join(' · ');
+  document.getElementById('rv-text').textContent = bits.join(' \u00b7 ');
   bar.style.display = 'flex';
 }
 
@@ -162,51 +170,72 @@ function itemText(p) {
 
 function drawReview(msg) {
   const pending = (rv.proposals || []).filter(function (p) { return p.status === 'pending'; });
-  let h = '';
+  let list = '';
   if (pending.length) {
-    h += '<h3>Suggested to save</h3>' + pending.map(function (p) {
-      return '<label class="rv-item"><input type="checkbox" value="' + p.id + '"><span><span class="rv-tag">' + (JIM[p.ai_model] || p.ai_model) + ' &middot; ' + (CAT[p.category] || p.category) + (p.topic ? ' &middot; ' + rvEsc(p.topic) : '') + '</span>' + itemText(p) + '</span></label>';
+    list += '<h3>Tick the ones to save. Anything you leave unticked is discarded.</h3>' + pending.map(function (p) {
+      return '<label class="rv-item"><input type="checkbox" value="' + p.id + '" onchange="rvCount()"><span><span class="rv-tag">' + (JIM[p.ai_model] || p.ai_model) + ' &middot; ' + (CAT[p.category] || p.category) + (p.topic ? ' &middot; ' + rvEsc(p.topic) : '') + '</span>' + itemText(p) + '</span></label>';
     }).join('');
-    h += '<div class="rv-btns"><button onclick="rvAll()">Select all</button><button class="primary" onclick="rvDecide(\'accept\')">Accept selected</button><button onclick="rvDecide(\'decline\')">Decline selected</button></div>';
   }
   if (RID && !QID) {
-    h += '<div class="rv-comp">' + (rv.promoted_question_id
+    list += '<div class="rv-comp">' + (rv.promoted_question_id
       ? 'This is now Comparative Question ' + rv.promoted_question_id + '.'
       : (rv.results > 0
         ? '<b>Make this a comparative research question?</b><br>The answers already given are copied into the comparative system, and the Judge starts by itself once all three Jims have answered.<button class="primary" onclick="rvPromote()">Yes, make it comparative</button>'
         : 'A Jim has to finish before this can be made comparative.')) + '</div>';
   }
-  if (!h) h = '<h3>Nothing left to review.</h3>';
-  document.getElementById('rv-sheet').innerHTML = h + (msg ? '<div class="rv-msg">' + rvEsc(msg) + '</div>' : '') + '<button class="rv-close" onclick="closeReview()">Close</button>';
+  if (!list) list = '<h3>Nothing left to review.</h3>';
+  const foot = (pending.length ? '<div class="rv-btns"><button id="rv-all" onclick="rvToggleAll()">Select all</button><button class="primary" id="rv-save" onclick="rvSave()">Discard all</button></div>' : '') +
+    (msg ? '<div class="rv-msg">' + rvEsc(msg) + '</div>' : '') + '<button class="rv-close" onclick="closeReview()">Close</button>';
+  document.getElementById('rv-sheet').innerHTML = '<div class="rv-list">' + list + '</div><div class="rv-foot">' + foot + '</div>';
+  rvCount();
 }
 
+function rvBoxes() { return Array.prototype.slice.call(document.querySelectorAll('#rv-sheet .rv-item input')); }
+// the main button always says exactly what one tap will do
+function rvCount() {
+  const btn = document.getElementById('rv-save'); if (!btn) return;
+  const boxes = rvBoxes(), ticked = boxes.filter(function (b) { return b.checked; }).length, left = boxes.length - ticked;
+  btn.textContent = ticked === 0 ? 'Discard all ' + boxes.length
+    : (left === 0 ? 'Save all ' + ticked : 'Save ' + ticked + ' \u00b7 discard ' + left);
+  document.getElementById('rv-all').textContent = ticked === boxes.length ? 'Clear all' : 'Select all';
+}
+function rvToggleAll() {
+  const boxes = rvBoxes(), all = boxes.every(function (b) { return b.checked; });
+  boxes.forEach(function (b) { b.checked = !all; });
+  rvCount();
+}
 function openReview() { drawReview(''); document.getElementById('rv-ov').classList.add('show'); }
 function closeReview() { document.getElementById('rv-ov').classList.remove('show'); }
-function rvAll() { document.querySelectorAll('#rv-sheet .rv-item input').forEach(function (c) { c.checked = true; }); }
 
 async function rvPost(body) {
   const res = await fetch('/api/proposals', { method: 'POST', headers: rvHdrs(), body: JSON.stringify(body) });
   if (res.status === 401) { clearPapyratesSession(); window.location.href = '/index.html'; return null; }
   return { ok: res.ok, data: await res.json() };
 }
-async function rvDecide(action) {
-  const ids = Array.prototype.map.call(document.querySelectorAll('#rv-sheet .rv-item input:checked'), function (c) { return Number(c.value); });
-  if (!ids.length) return drawReview('Tick at least one item first.');
+// Ticked = saved. Every listed suggestion that is NOT ticked is discarded.
+async function rvSave() {
+  const boxes = rvBoxes();
+  const accept = boxes.filter(function (b) { return b.checked; }).map(function (b) { return Number(b.value); });
+  const decline = boxes.filter(function (b) { return !b.checked; }).map(function (b) { return Number(b.value); });
+  if (!accept.length && !confirm('Nothing is ticked, so all ' + decline.length + ' suggestion' + (decline.length === 1 ? '' : 's') + ' will be discarded. Continue?')) return;
+  const btn = document.getElementById('rv-save'); if (btn) btn.disabled = true;
   let r;
-  try { r = await rvPost({ action: action, ids: ids }); } catch (e) { return drawReview('Could not reach the site. Nothing was changed.'); }
+  try { r = await rvPost({ action: 'decide', accept: accept, decline: decline }); } catch (e) { drawReview('Could not reach the site. Nothing was changed.'); return; }
   if (!r) return;
   await loadReview();
-  const n = action === 'accept' ? r.data.accepted : r.data.declined;
-  drawReview((r.ok || n ? (action === 'accept' ? 'Saved ' : 'Declined ') + (n || 0) + ' item' + (n === 1 ? '' : 's') + '.' : 'Could not save.') + (r.data.problems && r.data.problems.length ? ' ' + r.data.problems.length + ' could not be saved and are still waiting.' : ''));
+  const d = r.data || {}, bits = [];
+  if (d.accepted) bits.push('Saved ' + d.accepted);
+  if (d.declined) bits.push('discarded ' + d.declined);
+  drawReview((bits.length ? bits.join(', ') + '.' : (r.ok ? 'Nothing changed.' : (d.error || 'Could not save.'))) + (d.problems && d.problems.length ? ' ' + d.problems.length + ' could not be saved and are still waiting.' : ''));
 }
 async function rvPromote() {
   let r;
   try { r = await rvPost({ action: 'promote', request_id: Number(RID) }); } catch (e) { return drawReview('Could not reach the site. Nothing was changed.'); }
   if (!r) return;
   await loadReview();
-  drawReview(r.ok ? 'Done — it is now Comparative Question ' + r.data.question_id + '.' : (r.data.error || 'Could not make it comparative.'));
+  drawReview(r.ok ? 'Done \u2014 it is now Comparative Question ' + r.data.question_id + '.' : (r.data.error || 'Could not make it comparative.'));
 }
-if (RID || QID) loadReview();
+loadReview();
 </script>
 </body>
 </html>

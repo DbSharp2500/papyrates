@@ -2,10 +2,12 @@
 // Reviewing what an unattended Jim suggests saving, and promoting a question to comparative. ADMIN tier only.
 //
 //   GET  ?request=R and/or ?question=Q -> { proposals: [...], results, promoted_question_id }
-//   POST { action: 'accept'|'decline', ids: [n, ...] }
-//          accept  -> each still-pending item is saved to the right table (the Jim's own memory table,
-//                     open_research_questions, or contradictions) and marked accepted
-//          decline -> the items are only marked declined; nothing is written anywhere else
+//        or ?report=<report key>  (a report opened from the Reports list: works out which question it answered)
+//   POST { action: 'decide', accept: [ids], decline: [ids] }   <- what the review sheet uses
+//          the ticked items are saved to the right table (the Jim's own memory table, open_research_questions,
+//          or contradictions) and marked accepted; every listed item that was NOT ticked is deleted outright
+//          (no record kept, never written to any memory table)
+//   POST { action: 'accept'|'decline', ids: [n, ...] }   (the same two halves, separately; 'decline' also deletes)
 //   POST { action: 'promote', request_id: R }
 //          -> logs the question as a comparative research question, copies the answers already given into
 //             comparative_answers (same columns, no re-run), and sets the Judge to start automatically once
@@ -15,6 +17,7 @@
 
 import { tierFromRequest, hasTierAccess } from './_session.js';
 import { sb } from './_sb.js';
+import { KEY_RE, keyFromPath } from './_reports.js';
 
 const MEMORY_TABLES = { claude: 'claude_memory', gpt: 'gpt_memory', gemini: 'gemini_memory' };
 
@@ -51,6 +54,7 @@ export default async function handler(req, res) {
     if (req.method === 'POST') {
       const action = String((req.body || {}).action || '');
       if (action === 'accept' || action === 'decline') return await decide(req, res, action);
+      if (action === 'decide') return await decideBatch(req, res);
       if (action === 'promote') return await promote(req, res);
       return res.status(400).json({ error: 'Unknown action' });
     }
@@ -64,7 +68,26 @@ export default async function handler(req, res) {
 const posInt = (v) => { const n = Number(v); return Number.isInteger(n) && n >= 1 && n <= 1000000000 ? n : null; };
 
 async function list(req, res) {
-  const r = posInt(req.query && req.query.request), q = posInt(req.query && req.query.question);
+  let r = posInt(req.query && req.query.request), q = posInt(req.query && req.query.question);
+
+  // Opened from the Reports list (no question number in the link)? Work out which question this report answered.
+  const rep = String((req.query && req.query.report) || '');
+  if (!r && !q && KEY_RE.test(rep) && !rep.includes('..')) {
+    const name = rep.split('/')[1];
+    const [rr, ca] = [
+      await sb(`research_results?output_file_url=ilike.*${name}&select=request_id,output_file_url&limit=20`) || [],
+      await sb(`comparative_answers?output_file_url=ilike.*${name}&select=comparative_question_id,output_file_url&limit=20`) || [],
+    ];
+    const hitR = rr.find((x) => keyFromPath(x.output_file_url) === rep);
+    const hitC = ca.find((x) => keyFromPath(x.output_file_url) === rep);
+    if (hitR) r = hitR.request_id;
+    if (hitC) {
+      q = hitC.comparative_question_id;
+      const pr = await sb(`research_requests?comparative_question_id=eq.${q}&select=id&limit=1`) || [];   // a promoted question's suggestions belong to its request
+      if (pr.length && !r) r = pr[0].id;
+    }
+    if (!r && !q) return res.status(200).json({ proposals: [], results: 0, promoted_question_id: null, request_id: null, question_id: null });
+  }
   if (!r && !q) return res.status(400).json({ error: 'Give a request or question number' });
 
   let proposals = [];
@@ -79,21 +102,16 @@ async function list(req, res) {
     promoted = rq[0].comparative_question_id || null;
     results = ((await sb(`research_results?request_id=eq.${r}&select=id`)) || []).length;
   }
-  return res.status(200).json({ proposals, results, promoted_question_id: promoted });
+  return res.status(200).json({ proposals, results, promoted_question_id: promoted, request_id: r || null, question_id: q || null });
 }
 
-async function decide(req, res, action) {
-  const ids = [...new Set((Array.isArray(req.body.ids) ? req.body.ids : []).map(posInt))];
-  if (!ids.length || ids.length > 50 || ids.includes(null)) return res.status(400).json({ error: 'Choose 1 to 50 items' });
-
+// Saves the given suggestions (only those still pending) and marks them accepted. Returns { saved, problems }.
+async function acceptIds(ids) {
+  if (!ids.length) return { saved: [], problems: [] };
   // claim the still-pending ones first, so a double tap cannot save anything twice
   const claimed = await sb(`pending_proposals?id=in.(${ids.join(',')})&status=eq.pending`, {
-    method: 'PATCH',
-    body: { status: action === 'accept' ? 'accepted' : 'declined', decided_at: new Date().toISOString() },
-    prefer: 'return=representation',
+    method: 'PATCH', body: { status: 'accepted', decided_at: new Date().toISOString() }, prefer: 'return=representation',
   }) || [];
-  if (action === 'decline') return res.status(200).json({ declined: claimed.length });
-
   const saved = [], problems = [];
   for (const row of claimed) {
     const t = targetFor(row);
@@ -106,7 +124,43 @@ async function decide(req, res, action) {
       try { await sb(`pending_proposals?id=eq.${row.id}`, { method: 'PATCH', body: { status: 'pending', decided_at: null } }); } catch { /* left as is */ }
     }
   }
+  return { saved, problems };
+}
+
+// Wipes the given still-pending suggestions completely - the row is deleted, no record is kept, and nothing is
+// written to any memory table. (Only rows still 'pending' can be deleted here, so an already-saved one is never touched.)
+// Returns the count.
+async function declineIds(ids) {
+  if (!ids.length) return 0;
+  const gone = await sb(`pending_proposals?id=in.(${ids.join(',')})&status=eq.pending`, {
+    method: 'DELETE', prefer: 'return=representation',
+  }) || [];
+  return gone.length;
+}
+
+const idList = (v, max) => {
+  const a = [...new Set((Array.isArray(v) ? v : []).map(posInt))];
+  return a.includes(null) || a.length > max ? null : a;
+};
+
+async function decide(req, res, action) {
+  const ids = idList(req.body.ids, 50);
+  if (!ids || !ids.length) return res.status(400).json({ error: 'Choose 1 to 50 items' });
+  if (action === 'decline') return res.status(200).json({ declined: await declineIds(ids) });
+  const { saved, problems } = await acceptIds(ids);
   return res.status(problems.length && !saved.length ? 500 : 200).json({ accepted: saved.length, problems });
+}
+
+// One tap from the review sheet: the ticked ones are saved, and every listed one that was NOT ticked is discarded.
+async function decideBatch(req, res) {
+  const accept = idList(req.body.accept, 100), decline = idList(req.body.decline, 100);
+  if (accept === null || decline === null) return res.status(400).json({ error: 'Invalid list of items' });
+  if (!accept.length && !decline.length) return res.status(400).json({ error: 'Nothing to decide' });
+  if (accept.some((i) => decline.includes(i))) return res.status(400).json({ error: 'An item cannot be both saved and discarded' });
+  const { saved, problems } = await acceptIds(accept);
+  // an item that could not be saved stays pending (and is NOT discarded); the rest of the unticked ones are discarded
+  const declined = await declineIds(decline);
+  return res.status(problems.length && !saved.length && !declined ? 500 : 200).json({ accepted: saved.length, declined, problems });
 }
 
 async function promote(req, res) {
