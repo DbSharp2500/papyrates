@@ -102,25 +102,25 @@ body{font-family:Georgia,serif;background:#1a1408;min-height:100vh;display:flex;
   <div id="section-research" style="display:none;width:100%;align-items:center;flex-direction:column;">
     <div class="section-label"><h2>Research &amp; Analysis</h2></div>
     <div class="tile-grid">
-      <a class="tile research" href="papyrates-jim://claude">
+      <a class="tile research" href="#" onclick="openJim('claude');return false;">
         <div class="tile-icon">🤖</div>
         <div class="tile-text">
           <div class="tile-title">Claude Jim</div>
-          <div class="tile-desc">Opens Claude-Jim on this computer (local only — requires the desktop app)</div>
+          <div class="tile-desc">Opens Claude-Jim on the Desktop &mdash; then chat with it over Chrome Remote Desktop</div>
         </div>
       </a>
-      <a class="tile gpt" href="papyrates-jim://gpt">
+      <a class="tile gpt" href="#" onclick="openJim('gpt');return false;">
         <div class="tile-icon">🤖</div>
         <div class="tile-text">
           <div class="tile-title">GPT Jim</div>
-          <div class="tile-desc">Opens GPT-Jim on this computer (local only — requires the desktop app)</div>
+          <div class="tile-desc">Opens GPT-Jim on the Desktop &mdash; then chat with it over Chrome Remote Desktop</div>
         </div>
       </a>
-      <a class="tile gemini" href="papyrates-jim://gemini">
+      <a class="tile gemini" href="#" onclick="openJim('gemini');return false;">
         <div class="tile-icon">✦</div>
         <div class="tile-text">
           <div class="tile-title">Gemini Jim</div>
-          <div class="tile-desc">Opens Gemini-Jim on this computer (local only — requires the desktop app)</div>
+          <div class="tile-desc">Opens Gemini-Jim on the Desktop &mdash; then chat with it over Chrome Remote Desktop</div>
         </div>
       </a>
       <a class="tile" href="/database.html">
@@ -247,7 +247,7 @@ async function doLogin() {
       setPapyratesSession(data.tier, data.token);
       showMain(data.tier);
     } else {
-      err.textContent = "Incorrect password.";
+      err.textContent = res.status === 429 ? (data.error || "Too many attempts. Try again later.") : "Incorrect password.";
       btn.disabled = false;
       btn.textContent = "Enter the Archive";
     }
@@ -255,6 +255,25 @@ async function doLogin() {
     err.textContent = "Connection error. Please try again.";
     btn.disabled = false;
     btn.textContent = "Enter the Archive";
+  }
+}
+
+// Queue "open this Jim on the Desktop". The always-on Desktop's launcher picks it up within ~30s.
+async function openJim(model) {
+  if (getPapyratesTier() !== "admin") { alert("Only the admin login can start Jims on the Desktop."); return; }
+  try {
+    const res = await fetch("/api/jobs", {
+      method: "POST",
+      headers: { "Authorization": "Bearer " + getPapyratesToken(), "Content-Type": "application/json" },
+      body: JSON.stringify({ model: model })
+    });
+    if (res.status === 401) { clearPapyratesSession(); window.location.reload(); return; }
+    const data = await res.json();
+    if (res.status === 201) alert("Queued. The Desktop will open " + model + " Jim within about 30 seconds. Connect with Chrome Remote Desktop to use it.");
+    else if (res.status === 409) alert("That is already queued.");
+    else alert("Could not queue it: " + (data.error || res.status));
+  } catch (e) {
+    alert("Could not reach the site. Check your connection.");
   }
 }
 

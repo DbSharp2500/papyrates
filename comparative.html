@@ -30,6 +30,21 @@ body{font-family:Georgia,serif;background:#1a1408;min-height:100vh;display:flex;
 .cq-respond-btn.judge{color:#d9736c;border-color:#a8342e;background:rgba(168,52,46,0.1);}
 .cq-respond-btn:hover{opacity:0.8;}
 .cq-empty{font-size:13px;color:#6a5a40;padding:20px 4px;}
+button.cq-respond-btn{cursor:pointer;}
+button.cq-respond-btn:disabled{opacity:0.45;cursor:default;}
+
+.srv-panel{width:100%;max-width:660px;padding:14px 20px 0;}
+.srv-status{font-size:13px;color:#8a7050;display:flex;align-items:center;gap:8px;}
+.srv-dot{width:10px;height:10px;border-radius:50%;background:#6a5a40;display:inline-block;}
+.srv-dot.on{background:#5abf7a;}
+.srv-dot.off{background:#c0563f;}
+.job-list{margin-top:10px;font-size:12px;color:#8a7050;display:flex;flex-direction:column;gap:4px;}
+.job-row{display:flex;gap:8px;align-items:baseline;flex-wrap:wrap;}
+.job-st{padding:1px 7px;border-radius:9px;border:1px solid #4a3820;font-size:11px;}
+.job-st.queued{color:#d4a96a;} .job-st.claimed{color:#d4a96a;} .job-st.launched{color:#7ecfa0;border-color:#3a7a3a;}
+.job-st.failed{color:#d9736c;border-color:#a8342e;} .job-st.cancelled{color:#6a5a40;}
+.job-cancel{color:#a08050;cursor:pointer;text-decoration:underline;}
+.toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:#2a2010;border:1px solid #6a5030;color:#d4a96a;padding:10px 16px;border-radius:8px;font-size:13px;display:none;max-width:90%;}
 
 .footer{color:#4a3820;font-size:11px;letter-spacing:1px;margin-top:auto;padding:24px 0;}
 </style>
@@ -40,7 +55,12 @@ body{font-family:Georgia,serif;background:#1a1408;min-height:100vh;display:flex;
   <h1>Comparative Research Questions</h1>
   <a class="home-btn" href="/">&#8962; Home</a>
 </div>
-<div class="cq-note">Buttons below open a Jim directly on this computer and ask it to respond — only works when you're on the machine the Jims are installed on.</div>
+<div class="cq-note">Buttons below queue a job. The always-on Desktop picks it up within about half a minute and opens that Jim there &mdash; this works from any computer. To watch it or chat with it, connect to the Desktop with Chrome Remote Desktop.</div>
+<div class="srv-panel">
+  <div class="srv-status"><span class="srv-dot" id="srv-dot"></span><span id="srv-text">Checking the Desktop&hellip;</span></div>
+  <div class="job-list" id="job-list"></div>
+</div>
+<div class="toast" id="toast"></div>
 <div class="cq-list" id="cq-list">
   <div class="cq-empty">Loading…</div>
 </div>
@@ -93,7 +113,7 @@ function renderComparativeCard(q) {
   if (done) {
     judgeButton = q.judge_verdict_url
       ? `<a class="cq-respond-btn judge" href="papyrates-jim://viewfile?path=${encodeURIComponent(q.judge_verdict_url)}">View Analysis</a>`
-      : `<a class="cq-respond-btn judge" href="papyrates-jim://judge?q=${q.id}">Launch Comparative Analysis</a>`;
+      : `<button type="button" class="cq-respond-btn judge" data-model="judge" data-q="${q.id}" onclick="queueJob(this)">Launch Comparative Analysis</button>`;
   }
 
   return `
@@ -107,8 +127,81 @@ function renderComparativeCard(q) {
 }
 
 function cqButton(model, label, id) {
-  return `<a class="cq-respond-btn ${model}" href="papyrates-jim://${model}?q=${id}">${label}</a>`;
+  return `<button type="button" class="cq-respond-btn ${model}" data-model="${model}" data-q="${id}" onclick="queueJob(this)">${label}</button>`;
 }
+
+// ---- job queue: buttons queue a job; the Desktop's launcher picks it up ----
+function authHeaders() {
+  return { "Authorization": "Bearer " + getPapyratesToken(), "Content-Type": "application/json" };
+}
+function toast(msg) {
+  const t = document.getElementById("toast");
+  t.textContent = msg; t.style.display = "block";
+  clearTimeout(toast._t); toast._t = setTimeout(function(){ t.style.display = "none"; }, 6000);
+}
+function goLogin() { clearPapyratesSession(); window.location.href = '/index.html'; }
+
+async function queueJob(btn) {
+  const model = btn.getAttribute("data-model");
+  const q = Number(btn.getAttribute("data-q"));
+  const label = btn.textContent.trim();
+  if (model === "judge" && !confirm("Start Judge on question " + q + "? It uses your Claude usage allowance.")) return;
+  btn.disabled = true;
+  try {
+    const res = await fetch("/api/jobs", { method: "POST", headers: authHeaders(), body: JSON.stringify({ model: model, question_id: q }) });
+    if (res.status === 401) return goLogin();
+    const data = await res.json();
+    if (res.status === 201) toast("Queued: " + label + " (question " + q + "). The Desktop will start it shortly.");
+    else if (res.status === 409) toast("That job is already queued.");
+    else toast("Could not queue it: " + (data.error || res.status));
+  } catch (e) {
+    toast("Could not reach the site. Check your connection.");
+  }
+  setTimeout(function(){ btn.disabled = false; }, 4000);
+  refreshJobs();
+}
+
+async function cancelJob(id) {
+  try {
+    const res = await fetch("/api/jobs?id=" + id, { method: "DELETE", headers: authHeaders() });
+    if (res.status === 401) return goLogin();
+  } catch (e) {}
+  refreshJobs();
+}
+
+function ago(iso) {
+  if (!iso) return "never";
+  const s = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 1000));
+  if (s < 90) return s + "s ago";
+  if (s < 5400) return Math.round(s / 60) + " min ago";
+  if (s < 172800) return Math.round(s / 3600) + " h ago";
+  return Math.round(s / 86400) + " days ago";
+}
+const MODEL_NAME = { claude: "Claude", gpt: "GPT", gemini: "Gemini", judge: "Judge" };
+
+async function refreshJobs() {
+  try {
+    const res = await fetch("/api/jobs", { headers: authHeaders() });
+    if (res.status === 401) return goLogin();
+    const data = await res.json();
+    const s = data.server || {};
+    document.getElementById("srv-dot").className = "srv-dot " + (s.online ? "on" : "off");
+    document.getElementById("srv-text").textContent = s.online
+      ? "Desktop online (checked in " + ago(s.last_seen) + ")"
+      : "Desktop offline" + (s.last_seen ? " (last seen " + ago(s.last_seen) + ")" : "") + " — jobs wait in the queue until it is back";
+    const rows = (data.jobs || []).slice(0, 8).map(function(j) {
+      const what = (MODEL_NAME[j.model] || j.model) + (j.kind === "open" ? " — open" : j.kind === "evaluate" ? " — evaluate Q" + j.question_id : " — Q" + j.question_id);
+      const cancel = j.status === "queued" ? ' <span class="job-cancel" onclick="cancelJob(' + j.id + ')">cancel</span>' : "";
+      const err = j.status === "failed" && j.error_text ? " &mdash; " + escapeHtml(j.error_text) : "";
+      return '<div class="job-row"><span class="job-st ' + j.status + '">' + j.status + '</span><span>' + escapeHtml(what) + '</span><span>' + ago(j.created_at) + '</span>' + cancel + err + '</div>';
+    });
+    document.getElementById("job-list").innerHTML = rows.join("");
+  } catch (e) {
+    document.getElementById("srv-text").textContent = "Could not check the Desktop's status.";
+  }
+}
+refreshJobs();
+setInterval(refreshJobs, 10000);
 
 function escapeHtml(s) {
   return String(s || "").replace(/[&<>"']/g, function(c) {
