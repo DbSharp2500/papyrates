@@ -2,14 +2,22 @@
 // The Desktop's launcher reports what happened to a job it claimed:
 //   { id, status: 'launched' }                      the Jim window was opened
 //   { id, status: 'failed', error: 'short reason' } it could not be
+//   { action: 'replaced' }                          lists Jim windows a follow-up has replaced, so the launcher can close them
 // Worker token required. Only a job currently in the 'claimed' state can be updated.
 
 import { sb } from '../_sb.js';
 import { workerAuthorized } from '../_worker.js';
+import { replacedWindows } from '../_replaced.js';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
   if (!workerAuthorized(req)) return res.status(401).json({ error: 'Unauthorized' });
+
+  // { action: 'replaced' } -> which finished Jim windows a follow-up has replaced (the launcher closes them)
+  if (req.body && req.body.action === 'replaced') {
+    try { return res.status(200).json({ items: await replacedWindows() }); }
+    catch (err) { console.error('api/worker/report (replaced) error:', err && err.message); return res.status(500).json({ error: 'Server error' }); }
+  }
 
   const { id, status, error } = req.body || {};
   const jobId = Number(id);

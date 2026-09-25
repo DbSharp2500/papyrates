@@ -9,12 +9,14 @@
 //     Either way the Desktop launcher picks the jobs up and each Jim reads the question text from the database
 //     itself - no question text ever goes on a command line.
 //
+//   POST { test_alert: true } -> sends a real test alert to the phone and says why if it cannot (the ntfy setting, etc.)
 //   GET  -> the most recent questions of both kinds, with each chosen Jim's state (waiting / working / done +
 //           report / failed / cancelled), the Judge's state for comparative ones, and whether the Desktop is online.
 
 import { tierFromRequest, hasTierAccess } from './_session.js';
 import { sb } from './_sb.js';
 import { keyFromPath } from './_reports.js';
+import { pushDiagnose } from './_push.js';
 
 const MODELS = ['claude', 'gpt', 'gemini'];
 const MAX_WAITING = 20;
@@ -37,6 +39,10 @@ export default async function handler(req, res) {
 
 async function create(req, res, tier) {
   const b = req.body || {};
+
+  // { test_alert: true } -> sends a real test alert to the phone and reports exactly what happened (never returns the topic)
+  if (b.test_alert === true) return res.status(200).json(await pushDiagnose());
+
   const question = String(b.question || '').replace(/\r\n/g, '\n').trim();
   if (question.length < MIN_Q) return res.status(400).json({ error: 'Please write the question out (at least a sentence).' });
   if (question.length > MAX_Q) return res.status(400).json({ error: 'That question is too long (limit ' + MAX_Q + ' characters).' });

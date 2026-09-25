@@ -164,7 +164,7 @@ async function send(comparative) {
 async function testAlert() {
   const m = document.getElementById('alertmsg'); m.className = 'msg'; m.textContent = 'Sending…';
   try {
-    const res = await fetch('/api/push-test', { method: 'POST', headers: hdrs() });
+    const res = await fetch('/api/ask', { method: 'POST', headers: hdrs(), body: JSON.stringify({ test_alert: true }) });
     if (res.status === 401) return goLogin();
     const d = await res.json();
     if (d.sent) { m.textContent = 'Sent. It should reach your phone in a few seconds.'; }
