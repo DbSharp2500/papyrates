@@ -8,7 +8,9 @@
 *{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:Georgia,serif;background:#1a1408;min-height:100vh;display:flex;flex-direction:column;align-items:center;}
 
-.header{width:100%;max-width:660px;padding:24px 20px 0;display:flex;align-items:baseline;justify-content:space-between;}
+.header{width:100%;max-width:660px;padding:24px 20px 0;display:flex;align-items:baseline;justify-content:space-between;gap:10px;}
+.header > span{display:flex;gap:6px;flex-shrink:0;}
+.home-btn{white-space:nowrap;}
 .header h1{color:#d4a96a;font-size:20px;font-weight:normal;letter-spacing:1px;}
 .home-btn{background:rgba(255,255,255,0.08);color:#a08050;border:1px solid #4a3820;padding:6px 14px;border-radius:6px;cursor:pointer;font-size:13px;font-family:Georgia,serif;text-decoration:none;}
 .home-btn:hover{background:rgba(255,255,255,0.14);color:#d4a96a;}
@@ -44,6 +46,16 @@ button.cq-respond-btn:disabled{opacity:0.45;cursor:default;}
 .job-st.queued{color:#d4a96a;} .job-st.claimed{color:#d4a96a;} .job-st.launched{color:#7ecfa0;border-color:#3a7a3a;}
 .job-st.failed{color:#d9736c;border-color:#a8342e;} .job-st.cancelled{color:#6a5a40;}
 .job-cancel{color:#a08050;cursor:pointer;text-decoration:underline;}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 10px;}
+.chip{display:inline-flex;align-items:center;gap:6px;font-size:12px;padding:3px 9px;border:1px solid #4a3820;border-radius:12px;color:#8a7050;text-decoration:none;}
+.chip i{width:7px;height:7px;border-radius:50%;background:#6a5a40;display:inline-block;}
+.chip.working{color:#d4a96a;border-color:#8a6a3a;} .chip.working i{background:#d4a96a;animation:pulse 1.4s infinite;}
+.chip.done{color:#7ecfa0;border-color:#3a7a3a;} .chip.done i{background:#5abf7a;}
+.chip.failed{color:#d9736c;border-color:#a8342e;} .chip.failed i{background:#c0563f;}
+.chip.sched{color:#a08050;}
+.chip.limit{color:#e0a060;border-color:#a8742e;} .chip.limit i{background:#e0a060;}
+@keyframes pulse{50%{opacity:.3;}}
+.chip-err{font-size:11px;color:#c0806a;margin:-4px 0 8px;line-height:1.4;}
 .toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:#2a2010;border:1px solid #6a5030;color:#d4a96a;padding:10px 16px;border-radius:8px;font-size:13px;display:none;max-width:90%;}
 
 .footer{color:#4a3820;font-size:11px;letter-spacing:1px;margin-top:auto;padding:24px 0;}
@@ -91,6 +103,8 @@ async function loadComparativeQuestions() {
       return;
     }
     list.innerHTML = questions.map(renderComparativeCard).join("");
+    clearTimeout(loadComparativeQuestions._t);
+    loadComparativeQuestions._t = setTimeout(loadComparativeQuestions, anyActive(questions) ? 15000 : 60000);
   } catch (e) {
     list.innerHTML = '<div class="cq-empty">Could not load comparative research questions.</div>';
   }
@@ -101,10 +115,12 @@ function renderComparativeCard(q) {
   const statusClass = done ? "done" : "pending";
   const statusText = done ? "Fully answered" : ("Needs a response from " + q.still_needs);
 
+  // where each Jim stands right now - the same markers as the Ask page (waiting / working N min / done / failed)
+  const busy = function (m) { const s = q.models && q.models[m]; return !!s && (s.state === "waiting" || s.state === "working" || s.state === "limit"); };
   const buttons = [];
-  if (!q.claude_answered) buttons.push(cqButton("claude", "Respond as Claude Jim", q.id));
-  if (!q.gpt_answered) buttons.push(cqButton("gpt", "Respond as GPT Jim", q.id));
-  if (!q.gemini_answered) buttons.push(cqButton("gemini", "Respond as Gemini Jim", q.id));
+  if (!q.claude_answered && !busy("claude")) buttons.push(cqButton("claude", "Respond as Claude Jim", q.id));
+  if (!q.gpt_answered && !busy("gpt")) buttons.push(cqButton("gpt", "Respond as GPT Jim", q.id));
+  if (!q.gemini_answered && !busy("gemini")) buttons.push(cqButton("gemini", "Respond as Gemini Jim", q.id));
 
   // Judge only ever makes sense once all three models have answered. Once
   // a verdict exists, swap the launch button for a link straight to the
@@ -121,6 +137,7 @@ function renderComparativeCard(q) {
       <div class="cq-title">Comparative Research Question ${q.id}${q.topic ? " — " + escapeHtml(q.topic) : ""}</div>
       <div class="cq-question">${escapeHtml(q.question_text)}</div>
       <div class="cq-status ${statusClass}">${statusText}</div>
+      ${chipsHtml(q)}
       ${buttons.length ? `<div class="cq-respond-row">${buttons.join("")}</div>` : ""}
       ${judgeButton ? `<div class="cq-respond-row">${judgeButton}</div>` : ""}
     </div>`;
@@ -133,6 +150,41 @@ function reportHref(p) {
   const folder = m ? m[1].split(" ")[0].toLowerCase() : "";
   if (!m || ["claude", "gpt", "gemini", "judge"].indexOf(folder) < 0) return "/reports.html";
   return "/report.html?f=" + encodeURIComponent(folder + "/" + m[2].replace(/[^A-Za-z0-9._-]/g, "_").replace(/\.{2,}/g, ".").replace(/^\.+/, "_").slice(0, 180));
+}
+
+var JIM_NAMES = { claude: "Claude", gpt: "GPT", gemini: "Gemini" };
+function chipLabel(name, s) {
+  if (s.state === "done") return name + " \u2713";
+  if (s.state === "working") return name + " \u00b7 " + s.minutes + " min";
+  if (s.state === "limit") return name + " \u00b7 waiting for token refresh";
+  if (s.state === "waiting") return name + " \u00b7 waiting";
+  if (s.state === "failed") return name + " \u00b7 failed";
+  return name + " \u00b7 cancelled";
+}
+// chips for every Jim that has been asked, plus the Judge; a failed one also says why underneath
+function chipsHtml(q) {
+  if (!q.models) return "";
+  var parts = [], errs = [];
+  ["claude", "gpt", "gemini"].forEach(function (m) {
+    var s = q.models[m]; if (!s || s.state === "none") return;
+    var cls = "chip " + (s.state === "done" ? "done" : s.state === "working" ? "working" : s.state === "failed" ? "failed" : s.state === "limit" ? "limit" : "");
+    parts.push('<span class="' + cls + '"><i></i>' + chipLabel(JIM_NAMES[m], s) + '</span>');
+    if (s.state === "failed") errs.push(JIM_NAMES[m] + ": " + escapeHtml(s.error));
+    if (s.state === "limit") errs.push(JIM_NAMES[m] + ": its account hit a limit. Trying again in about " + s.retry_minutes + " min, then every 30 min, and it will carry on by itself.");
+  });
+  var j = q.judge;
+  if (j && j.state !== "none") {
+    var jc = "chip " + (j.state === "done" ? "done" : j.state === "working" ? "working" : j.state === "failed" ? "failed" : "");
+    parts.push('<span class="' + jc + '"><i></i>' + chipLabel("Judge", j) + '</span>');
+    if (j.state === "failed") errs.push("Judge: " + escapeHtml(j.error));
+  }
+  return (parts.length ? '<div class="chips">' + parts.join("") + '</div>' : "") + (errs.length ? '<div class="chip-err">' + errs.join("<br>") + '</div>' : "");
+}
+function anyActive(qs) {
+  return qs.some(function (q) {
+    return ["claude", "gpt", "gemini"].some(function (m) { var s = q.models && q.models[m]; return s && (s.state === "working" || s.state === "waiting" || s.state === "limit"); }) ||
+      (q.judge && (q.judge.state === "working" || q.judge.state === "waiting"));
+  });
 }
 
 function cqButton(model, label, id) {

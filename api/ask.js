@@ -18,7 +18,7 @@
 
 import { tierFromRequest, hasTierAccess } from './_session.js';
 import { sb } from './_sb.js';
-import { keyFromPath } from './_reports.js';
+import { modelState } from './_state.js';
 import { pushDiagnose } from './_push.js';
 
 const MODELS = ['claude', 'gpt', 'gemini'];
@@ -91,20 +91,6 @@ async function create(req, res, tier) {
   return res.status(failed.length === models.length ? 500 : 201).json({ id, comparative, queued, failed });
 }
 
-// One Jim's state for one question, given its answer row (if any) and its jobs (oldest first)
-function modelState(ans, jobs, now) {
-  if (ans) return { state: 'done', report: keyFromPath(ans.output_file_url) };
-  const job = jobs.length ? jobs[jobs.length - 1] : null;             // newest attempt wins
-  if (!job) return { state: 'none' };
-  if (job.status === 'queued') return { state: 'waiting', job_id: job.id };
-  if (job.status === 'claimed' || job.status === 'launched') {
-    const mins = job.launched_at ? Math.max(0, Math.round((now - new Date(job.launched_at).getTime()) / 60000)) : 0;
-    return { state: 'working', minutes: mins };
-  }
-  if (job.status === 'failed') return { state: 'failed', error: job.error_text || 'unknown problem' };
-  return { state: 'cancelled' };
-}
-
 async function list(res, tier) {
   const now = Date.now();
   const isAdmin = hasTierAccess(tier, 'admin');
@@ -121,7 +107,7 @@ async function list(res, tier) {
 
   const rids = reqs.map((r) => r.id), qids = cqs.map((q) => q.id);
   const inR = `(${rids.join(',')})`, inQ = `(${qids.join(',')})`;
-  const rJobs = rids.length ? await sb(`jim_jobs?kind=eq.ask&request_id=in.${inR}&select=id,model,request_id,status,launched_at,error_text&order=id.asc`) || [] : [];
+  const rJobs = rids.length ? await sb(`jim_jobs?kind=eq.ask&request_id=in.${inR}&select=id,model,request_id,status,launched_at,claimed_at,error_text&order=id.asc`) || [] : [];
   const rRes = rids.length ? await sb(`research_results?request_id=in.${inR}&select=request_id,ai_model,output_file_url`) || [] : [];
   // follow-ups still in progress (asked, not yet finished) on these questions
   let fRows = [], fJobs = [];
@@ -129,7 +115,7 @@ async function list(res, tier) {
     fRows = rids.length ? await sb(`followups?request_id=in.${inR}&finished_at=is.null&select=id,request_id,ai_model&order=id.asc`) || [] : [];
     fJobs = fRows.length ? await sb(`jim_jobs?followup_id=in.(${fRows.map((f) => f.id).join(',')})&select=id,followup_id,status,launched_at&order=id.asc`) || [] : [];
   } catch (e) { console.error('api/ask: follow-up lookup failed:', e && e.message); }
-  const cJobs = qids.length ? await sb(`jim_jobs?kind=in.(answer,evaluate)&question_id=in.${inQ}&select=id,kind,model,question_id,status,launched_at,error_text&order=id.asc`) || [] : [];
+  const cJobs = qids.length ? await sb(`jim_jobs?kind=in.(answer,evaluate)&question_id=in.${inQ}&select=id,kind,model,question_id,status,launched_at,claimed_at,error_text&order=id.asc`) || [] : [];
   const cAns = qids.length ? await sb(`comparative_answers?comparative_question_id=in.${inQ}&select=comparative_question_id,ai_model,output_file_url`) || [] : [];
   const cEval = qids.length ? await sb(`comparative_evaluations?comparative_question_id=in.${inQ}&select=comparative_question_id,output_file_url,evaluated_at&order=evaluated_at.desc`) || [] : [];
   const auto = qids.length ? await sb(`comparative_auto_judge?question_id=in.${inQ}&select=question_id,judge_queued_at`) || [] : [];

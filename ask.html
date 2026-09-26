@@ -50,6 +50,7 @@ h2{color:#8a7050;font-size:12px;font-weight:normal;letter-spacing:1px;margin:20p
 .chip.done{color:#7ecfa0;border-color:#3a7a3a;} .chip.done i{background:#5abf7a;}
 .chip.failed{color:#d9736c;border-color:#a8342e;} .chip.failed i{background:#c0563f;}
 .chip.sched{color:#a08050;}
+.chip.limit{color:#e0a060;border-color:#a8742e;} .chip.limit i{background:#e0a060;}
 @keyframes p{50%{opacity:.3;}}
 .detail{margin-top:9px;padding-top:9px;border-top:1px solid #3a2c16;}
 .detail .full{font-size:13px;color:#a08a60;line-height:1.5;white-space:pre-wrap;word-break:break-word;margin-bottom:8px;}
@@ -193,12 +194,13 @@ function label(m, s) {
   if (s.followup) return NAMES[m] + ' · follow-up' + (s.followup.state === 'working' ? ' · ' + s.followup.minutes + ' min' : ' · waiting');
   if (s.state === 'done') return NAMES[m] + ' ✓';
   if (s.state === 'working') return NAMES[m] + ' · ' + s.minutes + ' min';
+  if (s.state === 'limit') return NAMES[m] + ' · waiting for token refresh';
   if (s.state === 'waiting') return NAMES[m] + ' · waiting';
   if (s.state === 'failed') return NAMES[m] + ' · failed';
   return NAMES[m] + ' · cancelled';
 }
 function chip(it, m, s) {
-  const cls = 'chip ' + (s.followup ? (s.followup.state === 'working' ? 'working' : '') : (s.state === 'done' ? 'done' : s.state === 'working' ? 'working' : s.state === 'failed' ? 'failed' : ''));
+  const cls = 'chip ' + (s.followup ? (s.followup.state === 'working' ? 'working' : '') : (s.state === 'done' ? 'done' : s.state === 'working' ? 'working' : s.state === 'failed' ? 'failed' : s.state === 'limit' ? 'limit' : ''));
   if (s.state === 'done' && s.report) return '<a class="' + cls + '" href="' + reportLink(it, m, s.report) + '"><i></i>' + label(m, s) + '</a>';
   return '<span class="' + cls + '"><i></i>' + label(m, s) + '</span>';
 }
@@ -215,7 +217,8 @@ function detail(it) {
   const lines = ['claude', 'gpt', 'gemini'].map(function (m) {
     const s = it.models[m]; if (!s || s.state === 'none') return '';
     let t = '';
-    if (s.state === 'waiting') t = 'waiting in line <a onclick="cancelJob(' + s.job_id + ')">cancel</a>';
+    if (s.state === 'limit') t = 'the account hit its limit. Trying again in about ' + s.retry_minutes + ' min, and every 30 min after that, until it works — it will carry on by itself. <a onclick="cancelJob(' + s.job_id + ')">cancel</a>';
+    else if (s.state === 'waiting') t = 'waiting in line <a onclick="cancelJob(' + s.job_id + ')">cancel</a>';
     else if (s.state === 'working') t = 'working, started ' + s.minutes + ' min ago' + (s.minutes > 90 ? ' — taking long; a usage limit may have stopped it' : '');
     else if (s.state === 'failed') t = 'failed: ' + esc(s.error) + ' <a onclick="retryBy(\'' + m + '\',\'' + it.type + '\',' + it.id + ')">try again</a>';
     else if (s.state === 'cancelled') t = 'cancelled <a onclick="retryBy(\'' + m + '\',\'' + it.type + '\',' + it.id + ')">queue again</a>';
@@ -246,7 +249,7 @@ async function load() {
     items = data.items || [];
     draw();
     const active = items.some(function (it) {
-      return ['claude', 'gpt', 'gemini'].some(function (m) { const s = it.models[m].state; return s === 'working' || s === 'waiting' || !!it.models[m].followup; }) ||
+      return ['claude', 'gpt', 'gemini'].some(function (m) { const s = it.models[m].state; return s === 'working' || s === 'waiting' || s === 'limit' || !!it.models[m].followup; }) ||
         (it.judge && (it.judge.state === 'working' || it.judge.state === 'waiting' || it.judge.state === 'scheduled'));
     });
     timer = setTimeout(load, active ? 15000 : 60000);

@@ -1,4 +1,8 @@
 import { tierFromRequest, hasTierAccess } from './_session.js';
+import { sb } from './_sb.js';
+import { modelState } from './_state.js';
+
+const MODELS = ['claude', 'gpt', 'gemini'];
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
@@ -44,11 +48,34 @@ export default async function handler(req, res) {
       }
     }
 
-    const questions = (Array.isArray(rows) ? rows : []).map((q) => ({
-      ...q,
-      judge_verdict_url: latestVerdict[q.id] ? latestVerdict[q.id].output_file_url : null,
-      judge_evaluated_at: latestVerdict[q.id] ? latestVerdict[q.id].evaluated_at : null,
-    }));
+    // What each Jim is doing right now for each question (waiting / working N min / done / failed), the same view the
+    // Ask page shows - so a question that has been launched never looks idle. A failure of this extra lookup must
+    // never stop the page from loading.
+    let jobs = [], answers = [];
+    try {
+      jobs = await sb('jim_jobs?kind=in.(answer,evaluate)&question_id=not.is.null&select=id,kind,model,question_id,status,launched_at,claimed_at,error_text&order=id.desc&limit=300') || [];
+      jobs.reverse();                                                     // oldest first, as modelState expects
+      answers = await sb('comparative_answers?select=comparative_question_id,ai_model,output_file_url&limit=2000') || [];
+    } catch (e) { console.error('comparative-status: job lookup failed:', e && e.message); }
+    const now = Date.now();
+
+    const questions = (Array.isArray(rows) ? rows : []).map((q) => {
+      const models = {};
+      for (const m of MODELS) {
+        models[m] = modelState(
+          answers.find((a) => a.comparative_question_id === q.id && a.ai_model === m),
+          jobs.filter((j) => j.kind === 'answer' && j.question_id === q.id && j.model === m), now);
+      }
+      const v = latestVerdict[q.id];
+      const judge = modelState(v ? { output_file_url: v.output_file_url } : null, jobs.filter((j) => j.kind === 'evaluate' && j.question_id === q.id), now);
+      return {
+        ...q,
+        judge_verdict_url: v ? v.output_file_url : null,
+        judge_evaluated_at: v ? v.evaluated_at : null,
+        models,
+        judge,
+      };
+    });
 
     return res.status(200).json({ questions });
   } catch (err) {

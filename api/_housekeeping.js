@@ -127,7 +127,7 @@ async function alerts(now) {
 
   // anything that could not start
   await section('failed', async () => {
-    const failed = await sb(`jim_jobs?status=eq.failed&claimed_at=gte.${since}&select=id,model,kind,question_id,request_id,followup_id,requested_by`) || [];
+    const failed = await sb(`jim_jobs?status=eq.failed&claimed_at=gte.${since}&select=id,model,kind,question_id,request_id,followup_id,requested_by,error_text`) || [];
     for (const j of failed) {
       if (j.requested_by === 'research') continue;                       // the assistant's jobs never alert
       if (j.kind === 'evaluate' && await assistants('q', j.question_id)) continue;
@@ -135,6 +135,12 @@ async function alerts(now) {
       if (j.followup_id) {
         const f = await sb(`followups?id=eq.${j.followup_id}&select=request_id`) || [];
         label = `your follow-up on Question ${f.length ? f[0].request_id : '?'}`;
+      }
+      const limited = /spend cap|usage limit|usage_limit|rate limit|limit reached|quota|out of credits/i.test(j.error_text || '');
+      if (limited) {
+        await pushOnce(`fail:${j.id}`, 'Out of budget',
+          `${NAMES[j.model] || j.model} stopped on ${label}: its account hit a spend or usage limit. Its waiting jobs are on hold for 30 minutes.`, { high: true });
+        continue;
       }
       await pushOnce(`fail:${j.id}`, 'Something did not start',
         `${NAMES[j.model] || j.model} could not ${j.kind === 'evaluate' ? 'run on' : 'start'} ${label}. Open the Ask page for details.`, { high: true });
