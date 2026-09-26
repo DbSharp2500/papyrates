@@ -9,31 +9,33 @@
 
 import { sb } from './_sb.js';
 import { pushOnce, NAMES } from './_push.js';
-import { LIMIT_RE } from './_state.js';
+import { LIMIT_RE, sessionOf } from './_state.js';
 
 const iso = (ms) => encodeURIComponent(new Date(ms).toISOString());
 const GIVE_UP_MS = 3 * 24 * 3600 * 1000;
 
 export async function openJobs() {
   const now = Date.now();
-  const jobs = await sb(`jim_jobs?kind=in.(answer,ask,followup)&status=eq.launched&launched_at=gte.${iso(now - 6 * 3600000)}&launched_at=lt.${iso(now - 3 * 60000)}&select=id,kind,model,question_id,request_id,followup_id,launched_at&order=id.asc&limit=40`) || [];
+  const jobs = await sb(`jim_jobs?kind=in.(answer,ask,followup)&status=eq.launched&launched_at=gte.${iso(now - 6 * 3600000)}&launched_at=lt.${iso(now - 3 * 60000)}&select=id,kind,model,question_id,request_id,followup_id,launched_at,error_text&order=id.asc&limit=40`) || [];
   const out = [];
   for (const j of jobs) {
     let finished = false;
     if (j.kind === 'answer') finished = ((await sb(`comparative_answers?comparative_question_id=eq.${j.question_id}&ai_model=eq.${j.model}&select=id&limit=1`)) || []).length > 0;
     else if (j.kind === 'ask') finished = ((await sb(`research_results?request_id=eq.${j.request_id}&ai_model=eq.${j.model}&select=id&limit=1`)) || []).length > 0;
     else finished = ((await sb(`followups?id=eq.${j.followup_id}&finished_at=not.is.null&select=id&limit=1`)) || []).length > 0;
-    if (!finished) out.push({ id: j.id, kind: j.kind, model: j.model, ref: j.question_id || j.request_id || j.followup_id, launched_at: j.launched_at });
+    if (!finished) out.push({ id: j.id, kind: j.kind, model: j.model, ref: j.question_id || j.request_id || j.followup_id, launched_at: j.launched_at, resume_session: sessionOf(j.error_text) });
   }
   return out;
 }
 
 // Returns { updated, requeued }
-export async function markJimFailed(id, error) {
-  const text = String(error || 'the Jim stopped without an answer').replace(/\s+/g, ' ').slice(0, 300);
-  const jobs = await sb(`jim_jobs?id=eq.${id}&status=eq.launched&select=id,kind,model,question_id,request_id,followup_id,created_at,requested_by`) || [];
+export async function markJimFailed(id, error, session) {
+  const jobs = await sb(`jim_jobs?id=eq.${id}&status=eq.launched&select=id,kind,model,question_id,request_id,followup_id,created_at,requested_by,error_text`) || [];
   if (!jobs.length) return { updated: false, requeued: false };
   const j = jobs[0];
+  // keep the stopped session's id with the reason, so a retry can resume it (an earlier id is kept if none is given now)
+  const sid = (typeof session === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(session)) ? session.toLowerCase() : sessionOf(j.error_text);
+  const text = String(error || 'the Jim stopped without an answer').replace(/\s+/g, ' ').slice(0, 260) + (sid ? ' [session ' + sid + ']' : '');
 
   const limited = LIMIT_RE.test(text) && Date.now() - new Date(j.created_at).getTime() < GIVE_UP_MS;
   if (limited) {

@@ -10,7 +10,7 @@
 import { sb } from '../_sb.js';
 import { workerAuthorized } from '../_worker.js';
 import { housekeeping } from '../_housekeeping.js';
-import { RETRY_MS, LIMIT_RE } from '../_state.js';
+import { RETRY_MS, LIMIT_RE, sessionOf } from '../_state.js';
 
 const BUSY_WINDOW_MS = 2 * 60 * 60 * 1000;
 const HOLD_MS = 30 * 60 * 1000;
@@ -89,13 +89,13 @@ export default async function handler(req, res) {
     // atomic claim: only succeeds if the job is STILL queued when this update lands
     const claimed = await sb(`jim_jobs?id=eq.${next[0].id}&status=eq.queued`, {
       method: 'PATCH',
-      body: { status: 'claimed', claimed_at: now.toISOString(), error_text: null },
+      body: { status: 'claimed', claimed_at: now.toISOString() },        // error_text stays: it holds the stopped session's id
       prefer: 'return=representation',
     });
     if (!claimed || claimed.length === 0) return res.status(200).json({ job: null });
 
     const j = claimed[0];
-    return res.status(200).json({ job: { id: j.id, kind: j.kind, model: j.model, question_id: j.question_id, request_id: j.request_id, followup_id: j.followup_id } });
+    return res.status(200).json({ job: { id: j.id, kind: j.kind, model: j.model, question_id: j.question_id, request_id: j.request_id, followup_id: j.followup_id, resume_session: sessionOf(j.error_text) } });
   } catch (err) {
     console.error('api/worker/claim error:', err && err.message);
     return res.status(500).json({ error: 'Server error' });

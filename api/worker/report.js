@@ -30,7 +30,7 @@ export default async function handler(req, res) {
   if (req.body && req.body.action === 'jim_failed') {
     const jid = Number(req.body.id);
     if (!Number.isInteger(jid) || jid < 1) return res.status(400).json({ error: 'Invalid job id' });
-    try { const out = await markJimFailed(jid, req.body.error); return res.status(200).json({ updated: out.updated, requeued: out.requeued }); }
+    try { const out = await markJimFailed(jid, req.body.error, req.body.session); return res.status(200).json({ updated: out.updated, requeued: out.requeued }); }
     catch (err) { console.error('api/worker/report (jim_failed) error:', err && err.message); return res.status(500).json({ error: 'Server error' }); }
   }
 

@@ -11,6 +11,10 @@ import { keyFromPath } from './_reports.js';
 
 // A Jim whose account hit a spend / usage limit is put back in the queue and retried every RETRY_MS until it works.
 export const RETRY_MS = 30 * 60 * 1000;
+// A stopped Codex session's id is kept in the job's error_text as "[session <uuid>]" so the retry can RESUME it.
+const SESSION_RE = /\s*\[session ([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\]/i;
+export const sessionOf = (text) => { const m = SESSION_RE.exec(String(text || '')); return m ? m[1].toLowerCase() : null; };
+export const withoutSession = (text) => String(text || '').replace(SESSION_RE, '');
 export const LIMIT_RE = /spend cap|usage limit|usage_limit|rate limit|limit reached|quota|out of credits/i;
 
 export function modelState(ans, jobs, now) {
@@ -29,6 +33,6 @@ export function modelState(ans, jobs, now) {
     const mins = job.launched_at ? Math.max(0, Math.round((now - new Date(job.launched_at).getTime()) / 60000)) : 0;
     return { state: 'working', minutes: mins };
   }
-  if (job.status === 'failed') return { state: 'failed', error: job.error_text || 'unknown problem' };
+  if (job.status === 'failed') return { state: 'failed', error: withoutSession(job.error_text) || 'unknown problem' };
   return { state: 'cancelled' };
 }
