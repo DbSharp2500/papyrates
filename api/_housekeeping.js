@@ -7,7 +7,7 @@
 
 import { sb } from './_sb.js';
 import { pushOnce, NAMES } from './_push.js';
-import { requestIsAssistants, questionIsAssistants, followupIsAssistants } from './_owner.js';
+import { requestIsAssistants, questionIsAssistants } from './_owner.js';
 
 export const JUDGE_DELAY_MS = 10 * 60 * 1000;
 const ALERT_LOOKBACK_MS = 60 * 60 * 1000;
@@ -17,7 +17,25 @@ const iso = (ms) => encodeURIComponent(new Date(ms).toISOString());
 
 export async function housekeeping(now) {
   try { await autoJudge(now); } catch (e) { console.error('autoJudge:', e && e.message); }
+  try { await clearAssistantSuggestions(); } catch (e) { console.error('clearAssistantSuggestions:', e && e.message); }
   try { await alerts(now); } catch (e) { console.error('alerts:', e && e.message); }
+}
+
+// The Research Assistant's questions leave NO suggestions for the owner to review (the Jims are told not to write any).
+// This is the safety net: if one is ever written anyway, it is deleted. Suggestions on an assistant question that the
+// OWNER followed up on are the owner's own and are left alone.
+async function clearAssistantSuggestions() {
+  const mine = await sb('research_requests?requested_by=eq.research&select=id&order=id.desc&limit=100') || [];
+  if (mine.length) {
+    const ids = mine.map((r) => r.id);
+    const followed = await sb(`followups?request_id=in.(${ids.join(',')})&select=request_id`) || [];
+    const skip = new Set(followed.map((f) => f.request_id));
+    const target = ids.filter((i) => !skip.has(i));
+    if (target.length) await sb(`pending_proposals?request_id=in.(${target.join(',')})&status=eq.pending`, { method: 'DELETE' });
+  }
+  const aj = await sb('jim_jobs?kind=eq.answer&requested_by=eq.research&select=question_id&order=id.desc&limit=100') || [];
+  const qids = [...new Set(aj.map((j) => j.question_id))];
+  if (qids.length) await sb(`pending_proposals?question_id=in.(${qids.join(',')})&status=eq.pending`, { method: 'DELETE' });
 }
 
 async function autoJudge(now) {
@@ -50,7 +68,7 @@ async function alerts(now) {
   const memo = new Map();
   const assistants = async (kind, id) => {
     const k = kind + ':' + id;
-    if (!memo.has(k)) memo.set(k, kind === 'r' ? await requestIsAssistants(id) : kind === 'q' ? await questionIsAssistants(id) : await followupIsAssistants(id));
+    if (!memo.has(k)) memo.set(k, kind === 'r' ? await requestIsAssistants(id) : await questionIsAssistants(id));
     return memo.get(k);
   };
   const section = async (name, fn) => { try { await fn(); } catch (e) { console.error('alerts/' + name + ':', e && e.message); } };
@@ -102,7 +120,6 @@ async function alerts(now) {
   await section('followups', async () => {
     const fu = await sb(`followups?finished_at=gte.${since}&finished_at=lt.${settled}&select=id,request_id,ai_model`) || [];
     for (const f of fu) {
-      if (await assistants('r', f.request_id)) continue;
       await pushOnce(`followup:${f.id}`, `${NAMES[f.ai_model]} finished your follow-up`,
         `${NAMES[f.ai_model]} finished your follow-up on Question ${f.request_id}. The updated report appears on the site in a minute or two.`);
     }

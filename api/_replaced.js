@@ -54,8 +54,7 @@ export async function replacedWindows() {
     const settled = encodeURIComponent(new Date(Date.now() - ASSISTANT_GRACE_MS).toISOString());
     const rr2 = await sb(`research_results?answered_at=gte.${since}&answered_at=lt.${settled}&select=request_id,ai_model&order=answered_at.desc&limit=60`) || [];
     for (const d of rr2) if (await requestIsAssistants(d.request_id)) add('ask', d.request_id, d.ai_model);
-    const fu2 = await sb(`followups?finished_at=gte.${since}&finished_at=lt.${settled}&select=id,request_id,ai_model&order=finished_at.desc&limit=60`) || [];
-    for (const f of fu2) if (await requestIsAssistants(f.request_id)) add('followup', f.id, f.ai_model);
+    // (a follow-up on an assistant's question was asked by the owner, so it follows the owner's rules, not this one)
     const ca2 = await sb(`comparative_answers?answered_at=gte.${since}&answered_at=lt.${settled}&select=comparative_question_id,ai_model&order=answered_at.desc&limit=60`) || [];
     for (const d of ca2) if (await questionIsAssistants(d.comparative_question_id)) add('answer', d.comparative_question_id, d.ai_model);
   } catch (e) {
