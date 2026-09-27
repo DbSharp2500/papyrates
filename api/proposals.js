@@ -58,24 +58,29 @@ async function applyDossierUpdate(row) {
   const f = row.fields && typeof row.fields === 'object' ? row.fields : {};
   const entity_type = f.entity_type === 'person' || f.entity_type === 'manuscript' ? f.entity_type : null;
   const entity_id = Number(f.entity_id);
-  const added_text = s(f.added_text, 4000);
+  const dossier_id = Number(f.dossier_id);          // fallback: some dossier rows have entity_id NULL in the data;
+  const added_text = s(f.added_text, 4000);          // Judge then targets the row by its own primary key instead
   const reason = s(f.reason, 2000);
   const change_type = f.change_type === 'correction' ? 'correction' : 'addition';
-  if (!entity_type || !Number.isInteger(entity_id) || entity_id < 1 || !added_text || !reason) throw new Error('incomplete dossier update');
+  const byId = Number.isInteger(dossier_id) && dossier_id >= 1;
+  if (!byId && (!entity_type || !Number.isInteger(entity_id) || entity_id < 1)) throw new Error('incomplete dossier update');
+  if (!added_text || !reason) throw new Error('incomplete dossier update');
 
-  const existing = await sb(`dossiers?entity_type=eq.${entity_type}&entity_id=eq.${entity_id}&select=content`);
+  const where = byId ? `id=eq.${dossier_id}` : `entity_type=eq.${entity_type}&entity_id=eq.${entity_id}`;
+  const existing = await sb(`dossiers?${where}&select=id,entity_type,entity_id,content`);
   if (!existing || !existing.length) throw new Error('no such dossier entity');
+  const target = existing[0];
 
   const evalRows = row.question_id
     ? await sb(`comparative_evaluations?comparative_question_id=eq.${row.question_id}&select=id&order=evaluated_at.desc&limit=1`)
     : [];
   const evalId = evalRows && evalRows.length ? evalRows[0].id : null;
 
-  const newContent = `${existing[0].content || ''}\n\n${added_text}`;
-  await sb(`dossiers?entity_type=eq.${entity_type}&entity_id=eq.${entity_id}`, { method: 'PATCH', body: { content: newContent } });
+  const newContent = `${target.content || ''}\n\n${added_text}`;
+  await sb(`dossiers?${where}`, { method: 'PATCH', body: { content: newContent } });
   await sb('judge_dossier_edits', {
     method: 'POST',
-    body: { dossier_entity_type: entity_type, dossier_entity_id: entity_id, comparative_evaluations_id: evalId, change_type, added_text, reason },
+    body: { dossier_entity_type: target.entity_type || entity_type, dossier_entity_id: target.entity_id ?? target.id, comparative_evaluations_id: evalId, change_type, added_text, reason },
   });
 }
 
