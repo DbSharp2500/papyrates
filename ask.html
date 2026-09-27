@@ -187,7 +187,8 @@ function toggle(k) { openCards[k] = !openCards[k]; draw(); }
 let items = [];
 function reportLink(it, m, key) {
   let u = '/report.html?f=' + encodeURIComponent(key);
-  if (m !== 'judge') u += '&m=' + m + (it.type === 'research' ? '&r=' + it.id : '&q=' + it.id + (it.request_id ? '&r=' + it.request_id : ''));
+  if (m === 'judge') u += '&q=' + it.id + (it.request_id ? '&r=' + it.request_id : '');
+  else u += '&m=' + m + (it.type === 'research' ? '&r=' + it.id : '&q=' + it.id + (it.request_id ? '&r=' + it.request_id : ''));
   return u;
 }
 function label(m, s) {

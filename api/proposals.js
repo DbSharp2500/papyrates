@@ -42,7 +42,41 @@ function targetFor(row) {
     const conf = s(f.confidence, 40).toLowerCase();
     return { table: 'contradictions', body: { topic, standard_account, database_shows, source_documents: s(f.source_documents) || null, confidence: conf || null } };
   }
+  if (row.category === 'verified_finding') {
+    const assertion = s(f.assertion);
+    const sid = Number(f.source_evaluation_id);
+    if (!assertion || !Number.isInteger(sid) || sid < 1) return null;
+    const conf = s(f.confidence, 40).toLowerCase();
+    return { table: 'verified_findings', body: { topic, assertion, confidence: conf || null, source_evaluation_id: sid } };
+  }
   return null;
+}
+
+// Judge's dossier edits are two writes (append to dossiers.content, log to judge_dossier_edits), never a plain
+// {table, body} insert, so they are handled on their own rather than through targetFor(). Always append, never replace.
+async function applyDossierUpdate(row) {
+  const f = row.fields && typeof row.fields === 'object' ? row.fields : {};
+  const entity_type = f.entity_type === 'person' || f.entity_type === 'manuscript' ? f.entity_type : null;
+  const entity_id = Number(f.entity_id);
+  const added_text = s(f.added_text, 4000);
+  const reason = s(f.reason, 2000);
+  const change_type = f.change_type === 'correction' ? 'correction' : 'addition';
+  if (!entity_type || !Number.isInteger(entity_id) || entity_id < 1 || !added_text || !reason) throw new Error('incomplete dossier update');
+
+  const existing = await sb(`dossiers?entity_type=eq.${entity_type}&entity_id=eq.${entity_id}&select=content`);
+  if (!existing || !existing.length) throw new Error('no such dossier entity');
+
+  const evalRows = row.question_id
+    ? await sb(`comparative_evaluations?comparative_question_id=eq.${row.question_id}&select=id&order=evaluated_at.desc&limit=1`)
+    : [];
+  const evalId = evalRows && evalRows.length ? evalRows[0].id : null;
+
+  const newContent = `${existing[0].content || ''}\n\n${added_text}`;
+  await sb(`dossiers?entity_type=eq.${entity_type}&entity_id=eq.${entity_id}`, { method: 'PATCH', body: { content: newContent } });
+  await sb('judge_dossier_edits', {
+    method: 'POST',
+    body: { dossier_entity_type: entity_type, dossier_entity_id: entity_id, comparative_evaluations_id: evalId, change_type, added_text, reason },
+  });
 }
 
 export default async function handler(req, res) {
@@ -74,15 +108,18 @@ async function list(req, res) {
   const rep = String((req.query && req.query.report) || '');
   if (!r && !q && KEY_RE.test(rep) && !rep.includes('..')) {
     const name = rep.split('/')[1];
-    const [rr, ca] = [
+    const [rr, ca, ev] = [
       await sb(`research_results?output_file_url=ilike.*${name}&select=request_id,output_file_url&limit=20`) || [],
       await sb(`comparative_answers?output_file_url=ilike.*${name}&select=comparative_question_id,output_file_url&limit=20`) || [],
+      await sb(`comparative_evaluations?output_file_url=ilike.*${name}&select=comparative_question_id,output_file_url&limit=20`) || [],
     ];
     const hitR = rr.find((x) => keyFromPath(x.output_file_url) === rep);
     const hitC = ca.find((x) => keyFromPath(x.output_file_url) === rep);
+    const hitE = ev.find((x) => keyFromPath(x.output_file_url) === rep);
     if (hitR) r = hitR.request_id;
-    if (hitC) {
-      q = hitC.comparative_question_id;
+    if (hitC) q = hitC.comparative_question_id;
+    if (hitE) q = hitE.comparative_question_id;                          // a Judge verdict's own report
+    if (q) {
       const pr = await sb(`research_requests?comparative_question_id=eq.${q}&select=id&limit=1`) || [];   // a promoted question's suggestions belong to its request
       if (pr.length && !r) r = pr[0].id;
     }
@@ -114,10 +151,14 @@ async function acceptIds(ids) {
   }) || [];
   const saved = [], problems = [];
   for (const row of claimed) {
-    const t = targetFor(row);
     try {
-      if (!t) throw new Error('incomplete suggestion');
-      await sb(t.table, { method: 'POST', body: t.body });
+      if (row.category === 'dossier_update') {
+        await applyDossierUpdate(row);
+      } else {
+        const t = targetFor(row);
+        if (!t) throw new Error('incomplete suggestion');
+        await sb(t.table, { method: 'POST', body: t.body });
+      }
       saved.push(row.id);
     } catch (e) {
       problems.push({ id: row.id, error: String((e && e.message) || e).slice(0, 200) });
@@ -143,7 +184,8 @@ async function pairsOf(ids) {
   const rows = await sb(`pending_proposals?id=in.(${ids.join(',')})&select=id,request_id,question_id,ai_model`) || [];
   const seen = new Map();
   for (const r of rows) {
-    const kind = r.request_id ? 'ask' : 'answer', ref = r.request_id || r.question_id;
+    const kind = r.ai_model === 'judge' ? 'evaluate' : (r.request_id ? 'ask' : 'answer');
+    const ref = r.request_id || r.question_id;
     seen.set(`${kind}:${ref}:${r.ai_model}`, { kind, ref, model: r.ai_model });
   }
   return [...seen.values()];
@@ -158,6 +200,10 @@ async function markReviewed(pairs) {
       const col = p.kind === 'ask' ? 'request_id' : 'question_id';
       const left = await sb(`pending_proposals?${col}=eq.${p.ref}&ai_model=eq.${p.model}&status=eq.pending&select=id&limit=1`) || [];
       if (left.length) continue;                                       // something is still waiting: not finished
+      if (p.kind === 'evaluate') {                                      // Judge: one row per question, no ai_model column there
+        await sb(`comparative_evaluations?comparative_question_id=eq.${p.ref}`, { method: 'PATCH', body: { reviewed_at: new Date().toISOString() } });
+        continue;
+      }
       const where = p.kind === 'ask' ? `research_results?request_id=eq.${p.ref}` : `comparative_answers?comparative_question_id=eq.${p.ref}`;
       await sb(`${where}&ai_model=eq.${p.model}`, { method: 'PATCH', body: { reviewed_at: new Date().toISOString() } });
     } catch (e) {

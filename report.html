@@ -141,8 +141,8 @@ show();
 const qp = new URLSearchParams(location.search);
 let RID = /^\d{1,9}$/.test(qp.get('r') || '') ? qp.get('r') : null;
 let QID = /^\d{1,9}$/.test(qp.get('q') || '') ? qp.get('q') : null;
-const JIM = { claude: 'Claude', gpt: 'GPT', gemini: 'Gemini' };
-const CAT = { memory: 'Memory', open_question: 'Open question', contradiction: 'Contradiction' };
+const JIM = { claude: 'Claude', gpt: 'GPT', gemini: 'Gemini', judge: 'Judge' };
+const CAT = { memory: 'Memory', open_question: 'Open question', contradiction: 'Contradiction', verified_finding: 'Verified finding', dossier_update: 'Dossier update' };
 let rv = null;
 
 function rvHdrs() { return { 'Authorization': 'Bearer ' + getPapyratesToken(), 'Content-Type': 'application/json' }; }
@@ -249,6 +249,8 @@ function itemText(p) {
   const f = p.fields || {};
   if (p.category === 'memory') return rvEsc(f.content);
   if (p.category === 'open_question') return rvEsc(f.question) + (f.context ? '<br><span class="rv-tag">' + rvEsc(f.context) + '</span>' : '');
+  if (p.category === 'verified_finding') return rvEsc(f.assertion) + (f.confidence ? ' <span class="rv-tag">(' + rvEsc(f.confidence) + ' confidence)</span>' : '');
+  if (p.category === 'dossier_update') return '<b>' + rvEsc(f.canonical_name || (f.entity_type + ' #' + f.entity_id)) + ':</b><br>' + rvEsc(f.added_text) + (f.reason ? '<br><span class="rv-tag">' + rvEsc(f.reason) + '</span>' : '');
   return '<b>Standard account:</b> ' + rvEsc(f.standard_account) + '<br><b>Documents show:</b> ' + rvEsc(f.database_shows) + (f.confidence ? ' <span class="rv-tag">(' + rvEsc(f.confidence) + ' confidence)</span>' : '');
 }
 

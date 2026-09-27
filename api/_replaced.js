@@ -9,7 +9,9 @@
 //                                          question and Jim is listed, including the latest follow-up's.
 // (Nothing depends on these windows: the report is a file and the suggestions live in the database. A follow-up starts a
 // brand-new session anyway.)
-//   3. the run belongs to the RESEARCH ASSISTANT: they never review, so nothing else would ever close it - it is listed a\n//      few minutes after it finishes.\n//   -> [ { kind: 'ask' | 'followup' | 'answer', id, model } ]      (the last 14 days are considered)
+//   3. the run belongs to the RESEARCH ASSISTANT: they never review, so nothing else would ever close it - it is
+//      listed a few minutes after it finishes.
+//   -> [ { kind: 'ask' | 'followup' | 'answer' | 'evaluate', id, model } ]      (the last 14 days are considered)
 
 import { sb } from './_sb.js';
 import { requestIsAssistants, questionIsAssistants } from './_owner.js';
@@ -45,6 +47,8 @@ export async function replacedWindows() {
     }
     const ca = await sb(`comparative_answers?reviewed_at=gte.${since}&select=comparative_question_id,ai_model&order=reviewed_at.desc&limit=60`) || [];
     for (const d of ca) add('answer', d.comparative_question_id, d.ai_model);
+    const ev = await sb(`comparative_evaluations?reviewed_at=gte.${since}&select=comparative_question_id&order=reviewed_at.desc&limit=60`) || [];
+    for (const d of ev) add('evaluate', d.comparative_question_id, 'judge');
   } catch (e) {
     console.error('api/_replaced: review lookup failed:', e && e.message);      // e.g. the column does not exist yet
   }
@@ -59,5 +63,6 @@ export async function replacedWindows() {
     for (const d of ca2) if (await questionIsAssistants(d.comparative_question_id)) add('answer', d.comparative_question_id, d.ai_model);
   } catch (e) {
     console.error('api/_replaced: assistant lookup failed:', e && e.message);
-  }  return items;
+  }
+  return items;
 }

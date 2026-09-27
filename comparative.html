@@ -128,7 +128,7 @@ function renderComparativeCard(q) {
   let judgeButton = "";
   if (done) {
     judgeButton = q.judge_verdict_url
-      ? `<a class="cq-respond-btn judge" href="${reportHref(q.judge_verdict_url)}">View Analysis</a>`
+      ? `<a class="cq-respond-btn judge" href="${reportHref(q.judge_verdict_url, q.id)}">View Analysis</a>`
       : `<button type="button" class="cq-respond-btn judge" data-model="judge" data-q="${q.id}" onclick="queueJob(this)">Launch Comparative Analysis</button>`;
   }
 
@@ -145,11 +145,12 @@ function renderComparativeCard(q) {
 
 // The database stores a report's original local path (C:\...\Papyrates AI summaries\Judge Discussions\x.html).
 // The Desktop copies each report into the cloud under folder/name, so the same path gives the viewer address.
-function reportHref(p) {
+function reportHref(p, qid) {
   const m = /Papyrates AI summaries[\\\/]+([^\\\/]+)[\\\/]+([^\\\/]+)$/i.exec(p || "");
   const folder = m ? m[1].split(" ")[0].toLowerCase() : "";
   if (!m || ["claude", "gpt", "gemini", "judge"].indexOf(folder) < 0) return "/reports.html";
-  return "/report.html?f=" + encodeURIComponent(folder + "/" + m[2].replace(/[^A-Za-z0-9._-]/g, "_").replace(/\.{2,}/g, ".").replace(/^\.+/, "_").slice(0, 180));
+  const key = folder + "/" + m[2].replace(/[^A-Za-z0-9._-]/g, "_").replace(/\.{2,}/g, ".").replace(/^\.+/, "_").slice(0, 180);
+  return "/report.html?f=" + encodeURIComponent(key) + (folder === "judge" && qid ? "&q=" + qid : "");
 }
 
 var JIM_NAMES = { claude: "Claude", gpt: "GPT", gemini: "Gemini" };
