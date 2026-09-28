@@ -127,15 +127,16 @@ async function alerts(now) {
 
   // anything that could not start
   await section('failed', async () => {
-    const failed = await sb(`jim_jobs?status=eq.failed&claimed_at=gte.${since}&select=id,model,kind,question_id,request_id,followup_id,requested_by,error_text`) || [];
+    const failed = await sb(`jim_jobs?status=eq.failed&claimed_at=gte.${since}&select=id,model,kind,question_id,request_id,followup_id,judge_followup_id,requested_by,error_text`) || [];
     for (const j of failed) {
       if (j.requested_by === 'research') continue;                       // the assistant's jobs never alert
-      if (j.kind === 'evaluate' && await assistants('q', j.question_id)) continue;
+      if ((j.kind === 'evaluate' || j.kind === 'judge_followup') && await assistants('q', j.question_id)) continue;
       let label = j.request_id ? `Question ${j.request_id}` : `Comparative Question ${j.question_id}`;
       if (j.followup_id) {
         const f = await sb(`followups?id=eq.${j.followup_id}&select=request_id`) || [];
         label = `your follow-up on Question ${f.length ? f[0].request_id : '?'}`;
       }
+      if (j.judge_followup_id) label = `your follow-up on Judge's Comparative Question ${j.question_id}`;
       const limited = /spend cap|usage limit|usage_limit|rate limit|limit reached|quota|out of credits/i.test(j.error_text || '');
       if (limited) {
         await pushOnce(`fail:${j.id}`, 'Out of budget',

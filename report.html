@@ -164,15 +164,25 @@ async function loadReview() {
   refreshBar();
 }
 // ---- follow-up questions: the Jim that wrote this report rereads it, researches more, and rewrites the whole report ----
+// Judge follow-ups are the same idea and the same UI, but keyed on the comparative question (never a request id) and
+// served by a separate route (/api/judge-followups) - Judge is never available through the everyday /api/followups
+// path, and that route is admin-only server-side regardless of who loads this page.
 const MODEL = key.split('/')[0] || '';
 let fu = null, fuTimer = null, fuWasActive = false, fuJustFinished = false;
-function fuAllowed() { return !!RID && !QID && ['claude', 'gpt', 'gemini'].indexOf(MODEL) >= 0 && !(rv && rv.promoted_question_id); }
+function fuAllowed() {
+  if (MODEL === 'judge') return !!QID;
+  return !!RID && !QID && ['claude', 'gpt', 'gemini'].indexOf(MODEL) >= 0 && !(rv && rv.promoted_question_id);
+}
 function fuActive() { return fu ? (fu.followups || []).find(function (f) { return f.state === 'working' || f.state === 'waiting'; }) : null; }
 
 async function loadFollowups() {
   if (!fuAllowed()) { fu = null; return; }
   let res;
-  try { res = await fetch('/api/followups?request=' + RID + '&model=' + MODEL, { headers: rvHdrs() }); } catch (e) { return; }
+  try {
+    res = MODEL === 'judge'
+      ? await fetch('/api/judge-followups?question=' + QID, { headers: rvHdrs() })
+      : await fetch('/api/followups?request=' + RID + '&model=' + MODEL, { headers: rvHdrs() });
+  } catch (e) { return; }
   if (!res.ok) return;
   fu = await res.json();
   const active = fuActive();
@@ -216,7 +226,10 @@ function drawFollowup(msg) {
     else a = '<div class="fu-a"><span class="rv-tag">Cancelled</span></div>';
     return q + a;
   }).join('');
-  const intro = '<h3>Ask ' + name + ' a follow-up</h3><div class="fu-note">' + name + ' rereads its report and research log, does the extra research you ask for, and rewrites the whole report \u2014 everything in it now, plus what you add. Nothing is saved to memory until you review it. You will get an alert when it is done.</div>';
+  const intro = '<h3>Ask ' + name + ' a follow-up</h3><div class="fu-note">' + (MODEL === 'judge'
+    ? name + ' does the extra verification you ask for and updates the verdict and report to match \u2014 the earlier version is kept alongside the new one.'
+    : name + ' rereads its report and research log, does the extra research you ask for, and rewrites the whole report \u2014 everything in it now, plus what you add.')
+    + ' Nothing is saved to memory until you review it. You will get an alert when it is done.</div>';
   const active = fuActive();
   const box = fu.can_ask
     ? '<textarea id="fu-text" placeholder="e.g. You missed Docs 2541\u20132545 \u2014 please check them and update the report."></textarea><div class="rv-btns" style="margin-top:8px;"><button class="primary" id="fu-send" onclick="fuSend()">Send follow-up</button></div>'
@@ -232,7 +245,9 @@ async function fuSend() {
   document.getElementById('fu-send').disabled = true;
   let res, data;
   try {
-    res = await fetch('/api/followups', { method: 'POST', headers: rvHdrs(), body: JSON.stringify({ request_id: Number(RID), model: MODEL, message: text }) });
+    res = MODEL === 'judge'
+      ? await fetch('/api/judge-followups', { method: 'POST', headers: rvHdrs(), body: JSON.stringify({ question_id: Number(QID), message: text }) })
+      : await fetch('/api/followups', { method: 'POST', headers: rvHdrs(), body: JSON.stringify({ request_id: Number(RID), model: MODEL, message: text }) });
     if (res.status === 401) { clearPapyratesSession(); window.location.href = '/index.html'; return; }
     data = await res.json();
   } catch (e) { fu.can_ask = true; return drawFollowup('Could not reach the site. Nothing was sent.'); }
@@ -241,7 +256,7 @@ async function fuSend() {
   drawFollowup(res.status === 201 ? 'Sent. You will get an alert when it is done.' : (data.error || 'Could not send it.'));
 }
 async function fuWithdraw(id) {
-  try { await fetch('/api/followups?id=' + id, { method: 'DELETE', headers: rvHdrs() }); } catch (e) { }
+  try { await fetch((MODEL === 'judge' ? '/api/judge-followups' : '/api/followups') + '?id=' + id, { method: 'DELETE', headers: rvHdrs() }); } catch (e) { }
   await loadFollowups(); refreshBar(); drawFollowup('');
 }
 

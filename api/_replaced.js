@@ -11,7 +11,7 @@
 // brand-new session anyway.)
 //   3. the run belongs to the RESEARCH ASSISTANT: they never review, so nothing else would ever close it - it is
 //      listed a few minutes after it finishes.
-//   -> [ { kind: 'ask' | 'followup' | 'answer' | 'evaluate', id, model } ]      (the last 14 days are considered)
+//   -> [ { kind: 'ask' | 'followup' | 'answer' | 'evaluate' | 'judge_followup', id, model } ]  (last 14 days considered)
 
 import { sb } from './_sb.js';
 import { requestIsAssistants, questionIsAssistants } from './_owner.js';
@@ -37,6 +37,18 @@ export async function replacedWindows() {
     }
   }
 
+  // 1b) a Judge follow-up that has started: the earlier Judge windows for that question are replaced
+  const jfStarted = await sb(`jim_jobs?kind=eq.judge_followup&status=eq.launched&launched_at=gte.${since}&select=judge_followup_id&order=id.desc&limit=40`) || [];
+  const jfIds = [...new Set(jfStarted.map((j) => j.judge_followup_id))];
+  if (jfIds.length) {
+    const jfs = await sb(`judge_followups?id=in.(${jfIds.join(',')})&select=id,comparative_question_id`) || [];
+    for (const f of jfs) {
+      add('evaluate', f.comparative_question_id, 'judge');                            // the original verdict window
+      const earlier = await sb(`judge_followups?comparative_question_id=eq.${f.comparative_question_id}&id=lt.${f.id}&select=id`) || [];
+      for (const e of earlier) add('judge_followup', e.id, 'judge');                  // earlier follow-up windows
+    }
+  }
+
   // 2) reviews that are finished (reviewed_at is set on the Jim's answer row): every window for that question and Jim can go
   try {
     const rr = await sb(`research_results?reviewed_at=gte.${since}&select=request_id,ai_model&order=reviewed_at.desc&limit=60`) || [];
@@ -48,7 +60,11 @@ export async function replacedWindows() {
     const ca = await sb(`comparative_answers?reviewed_at=gte.${since}&select=comparative_question_id,ai_model&order=reviewed_at.desc&limit=60`) || [];
     for (const d of ca) add('answer', d.comparative_question_id, d.ai_model);
     const ev = await sb(`comparative_evaluations?reviewed_at=gte.${since}&select=comparative_question_id&order=reviewed_at.desc&limit=60`) || [];
-    for (const d of ev) add('evaluate', d.comparative_question_id, 'judge');
+    for (const d of ev) {
+      add('evaluate', d.comparative_question_id, 'judge');
+      const jf = await sb(`judge_followups?comparative_question_id=eq.${d.comparative_question_id}&select=id`) || [];
+      for (const f of jf) add('judge_followup', f.id, 'judge');
+    }
   } catch (e) {
     console.error('api/_replaced: review lookup failed:', e && e.message);      // e.g. the column does not exist yet
   }

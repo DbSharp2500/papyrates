@@ -78,7 +78,7 @@ export default async function handler(req, res) {
     for (const f of recentFails) if (LIMIT_RE.test(f.error_text || '')) held.add(f.model);
     for (const m of held) busy.add(m);
 
-    const waiting = await sb('jim_jobs?status=eq.queued&order=id.asc&limit=50&select=id,kind,model,error_text,claimed_at') || [];
+    const waiting = await sb('jim_jobs?status=eq.queued&order=id.asc&limit=50&select=id,kind,model,question_id,error_text,claimed_at') || [];
     // Jobs put back in the queue because their account hit a limit are retried every 30 minutes: until then they wait,
     // and so does everything else for that same Jim (it would only hit the same limit).
     const recentlyLimited = (j) => !!j.error_text && LIMIT_RE.test(j.error_text) && !!j.claimed_at && now.getTime() - new Date(j.claimed_at).getTime() < RETRY_MS;
@@ -95,7 +95,17 @@ export default async function handler(req, res) {
     if (!claimed || claimed.length === 0) return res.status(200).json({ job: null });
 
     const j = claimed[0];
-    return res.status(200).json({ job: { id: j.id, kind: j.kind, model: j.model, question_id: j.question_id, request_id: j.request_id, followup_id: j.followup_id, resume_session: sessionOf(j.error_text) } });
+    // A judge_followup resumes Judge's own recorded Claude Code session for that question, if one was captured
+    // (older verdicts, written before this existed, have none - the follow-up then starts a fresh session instead).
+    // Prefer that recorded session, but fall back to sessionOf(error_text) when there isn't one yet: a follow-up that
+    // itself started fresh, hit a spend/usage limit, and got requeued has its OWN new session id sitting there, and
+    // that one must not be thrown away in favor of a session_id that doesn't exist.
+    let resumeSession = sessionOf(j.error_text);
+    if (j.kind === 'judge_followup') {
+      const ev = await sb(`comparative_evaluations?comparative_question_id=eq.${j.question_id}&select=session_id`) || [];
+      if (ev.length && ev[0].session_id) resumeSession = ev[0].session_id;
+    }
+    return res.status(200).json({ job: { id: j.id, kind: j.kind, model: j.model, question_id: j.question_id, request_id: j.request_id, followup_id: j.followup_id, judge_followup_id: j.judge_followup_id, resume_session: resumeSession } });
   } catch (err) {
     console.error('api/worker/claim error:', err && err.message);
     return res.status(500).json({ error: 'Server error' });
