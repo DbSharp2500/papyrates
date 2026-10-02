@@ -1247,6 +1247,15 @@ function init(){
     Promise.all([loadPeople(),loadManuscripts(),loadInstitutions()]).then(function(){openAddNew();});
     return;
   }
+  // ?letter=ID opens that one record directly (used by the "Missing PDF Links" list)
+  var openId=parseInt(params.get("letter"),10);
+  if(openId>0){
+    Promise.all([loadPeople(),loadManuscripts(),loadInstitutions()])
+      .then(function(){return sqCount("letters?select=id");})
+      .then(function(count){state.totalCount=count;state.filteredCount=count;render();return Promise.all([buildAuthorOpts(),buildRecipOpts()]);})
+      .then(function(){openLetterById(openId);});
+    return;
+  }
   Promise.all([loadPeople(),loadManuscripts(),loadInstitutions()])
     .then(function(){return sqCount("letters?select=id");})
     .then(function(count){state.totalCount=count;state.filteredCount=count;render();return Promise.all([buildAuthorOpts(),buildRecipOpts()]);})
