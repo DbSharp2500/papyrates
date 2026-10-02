@@ -63,7 +63,7 @@ a.row:hover,a.row:focus{background:#3a2a10;border-color:#a06828;outline:none;}
     <div class="count-sub" id="count-sub">Loading…</div>
   </div>
 
-  <p class="hint">Click a document to open its record in a new tab. Choose <b>Edit</b> there, paste the PDF link into <b>PDF / Sharing Link</b>, and save. The document then drops off this list the next time it refreshes (this page refreshes by itself when you return to it).</p>
+  <p class="hint">Click a document to open its record. Choose <b>Edit</b>, paste the PDF link into <b>PDF / Sharing Link</b>, and save, then press <b>Back</b>: you return to this list with your filters and place kept, and the document you finished is gone from it.</p>
 
   <div class="controls">
     <input id="q" type="search" placeholder="Filter by number, title, person, type or description…" autocomplete="off">
@@ -180,7 +180,7 @@ function render(){
   list.forEach(function(x){
     var who = [x.author_name, x.recipient_name].filter(Boolean).join(" → ");
     var meta = [who, x.date_of_letter, x.document_type].filter(Boolean).join("  ·  ");
-    html += '<a class="row" href="/database.html?letter=' + x.id + '" target="_blank" rel="noopener">'
+    html += '<a class="row" href="/database.html?letter=' + x.id + '&from=missing-pdfs">'
       + '<div class="r1"><span class="rid">#' + x.id + '</span><span class="rtitle">' + esc(x.title || "(untitled)") + '</span>'
       + (hasText[x.id] ? '<span class="badge txt">has text</span>' : '<span class="badge notxt">no text</span>') + '</div>'
       + (meta ? '<div class="r2">' + esc(meta) + '</div>' : '')
@@ -190,13 +190,36 @@ function render(){
   document.getElementById("list").innerHTML = html;
 }
 
+// ---- keep the filters and scroll position across opening a record and coming back (Back button) ----
+var STATE_KEY = "missing_pdfs_state", saved = null, restoreY = null;
+try { saved = JSON.parse(sessionStorage.getItem(STATE_KEY) || "null"); } catch (e) { saved = null; }
+if (saved && Date.now() - saved.t < 6 * 3600 * 1000) {
+  document.getElementById("q").value = saved.q || "";
+  document.getElementById("txt").value = saved.txt || "";
+  document.getElementById("sort").value = saved.sort || "id";
+  restoreY = saved.y || 0;
+}
+function saveState(){
+  try {
+    sessionStorage.setItem(STATE_KEY, JSON.stringify({q: document.getElementById("q").value, type: document.getElementById("type").value, txt: document.getElementById("txt").value, sort: document.getElementById("sort").value, y: window.scrollY, t: Date.now()}));
+  } catch (e) {}
+}
+// the type menu is built after the data arrives, so its saved value is applied then
+var origBuildTypes = buildTypes;
+buildTypes = function(){ var want = (saved && Date.now() - saved.t < 6 * 3600 * 1000) ? saved.type : null; origBuildTypes(); if (want && !document.getElementById("type").value) { document.getElementById("type").value = want; } saved = null; };
+var origRender = render;
+render = function(){ origRender(); if (restoreY !== null) { var y = restoreY; restoreY = null; setTimeout(function(){ window.scrollTo(0, y); }, 0); } };
+
+document.getElementById("list").addEventListener("click", function(e){ if (e.target.closest && e.target.closest("a.row")) saveState(); });
+window.addEventListener("pagehide", saveState);
+
 var t;
 document.getElementById("q").addEventListener("input", function(){ clearTimeout(t); t = setTimeout(render, 120); });
 ["type","txt","sort"].forEach(function(id){ document.getElementById(id).addEventListener("change", render); });
-document.getElementById("refresh").addEventListener("click", load);
-// coming back to this tab after editing a record: reload so finished documents drop off the list
-document.addEventListener("visibilitychange", function(){ if (!document.hidden && Date.now() - lastLoad > 20000) load(); });
-window.addEventListener("focus", function(){ if (Date.now() - lastLoad > 20000) load(); });
+document.getElementById("refresh").addEventListener("click", function(){ restoreY = null; load(); });
+// coming back after editing a record: reload so finished documents drop off the list (also when the browser restores this page from its back/forward cache)
+window.addEventListener("pageshow", function(e){ if (e.persisted) { var y = window.scrollY; restoreY = y; load(); } });
+document.addEventListener("visibilitychange", function(){ if (!document.hidden && Date.now() - lastLoad > 20000) { restoreY = window.scrollY; load(); } });
 load();
 </script>
 </body>

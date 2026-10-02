@@ -1058,7 +1058,12 @@ function openManuscript(manuscriptId){
   });
 }
 
-function goBack(){var prev=viewStack.pop();state.view=prev||"list";render();}
+var returnTo=null;   // set when a record was opened from another page (e.g. the Missing PDF Links list)
+function goBack(){
+  var prev=viewStack.pop();
+  if(returnTo&&viewStack.length===0&&(prev||"list")==="list"){window.location.href=returnTo;return;}
+  state.view=prev||"list";render();
+}
 function toggleFT(){state.showFT=!state.showFT;render();}
 function changePage(d){
   state.page+=d;
@@ -1195,7 +1200,9 @@ async function saveLetter(){
     render();
     setTimeout(function(){
       state.view="detail";state.showFT=false;state.selectedPeople=[];state.selectedManuscripts=[];
-      state.roleAuthors=[];state.roleRecipients=[];state.roleSubjects=[];state.roleAnnotators=[];render();
+      state.roleAuthors=[];state.roleRecipients=[];state.roleSubjects=[];state.roleAnnotators=[];
+      if(returnTo&&viewStack.length>1&&viewStack[viewStack.length-1]==="detail")viewStack.pop();
+      render();
       if(state.selected){
         var lid=state.selected.id;
         Promise.all([sq("letters?id=eq."+lid+"&select="+LETTER_SELECT),loadRolePeople(lid),sq("letter_manuscripts?letter_id=eq."+lid+"&select=manuscript_id")])
@@ -1247,12 +1254,16 @@ function init(){
     Promise.all([loadPeople(),loadManuscripts(),loadInstitutions()]).then(function(){openAddNew();});
     return;
   }
-  // ?letter=ID opens that one record directly (used by the "Missing PDF Links" list)
+  // ?letter=ID opens that one record directly (used by the "Missing PDF Links" list).
+  // ?from=missing-pdfs makes the Back button return to that list instead of the filter page.
   var openId=parseInt(params.get("letter"),10);
   if(openId>0){
+    if(params.get("from")==="missing-pdfs")returnTo="/missing-pdfs.html";
+    var appEl=document.getElementById("app");
+    if(appEl)appEl.innerHTML='<div style="color:#a08050;text-align:center;padding:60px 20px;font-family:Georgia,serif;">Opening document #'+openId+'&hellip;</div>';
     Promise.all([loadPeople(),loadManuscripts(),loadInstitutions()])
       .then(function(){return sqCount("letters?select=id");})
-      .then(function(count){state.totalCount=count;state.filteredCount=count;render();return Promise.all([buildAuthorOpts(),buildRecipOpts()]);})
+      .then(function(count){state.totalCount=count;state.filteredCount=count;return Promise.all([buildAuthorOpts(),buildRecipOpts()]);})
       .then(function(){openLetterById(openId);});
     return;
   }
