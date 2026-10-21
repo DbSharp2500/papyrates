@@ -2,7 +2,8 @@
 // Called every ~20 seconds by the launcher on the always-on Desktop (worker token required).
 // One call does four things:
 //   1. heartbeat  - records "the Desktop is alive" so the dashboard can show Online/Offline
-//   2. cleanup    - a job claimed more than 10 minutes ago that was never reported on is marked failed
+//   2. cleanup    - a job claimed more than 10 minutes ago that was never reported on is marked failed;
+//                   a job launched more than 6 hours ago (Judge: 24) with no result is marked failed
 //   3. housekeeping - auto-Judge for finished comparative questions and phone alerts (see _housekeeping.js)
 //   4. claim      - hands back the oldest waiting job that is allowed to start, atomically, or { job: null }
 // Nothing here runs a command; it only returns a job (model + kind + question id).
@@ -10,6 +11,7 @@
 import { sb } from '../_sb.js';
 import { workerAuthorized } from '../_worker.js';
 import { housekeeping } from '../_housekeeping.js';
+import { expireStaleJobs } from '../_stalled.js';
 import { RETRY_MS, LIMIT_RE, sessionOf } from '../_state.js';
 
 const BUSY_WINDOW_MS = 2 * 60 * 60 * 1000;
@@ -43,6 +45,8 @@ export default async function handler(req, res) {
       method: 'PATCH',
       body: { status: 'failed', error_text: 'The launcher picked this job up but never reported back' },
     });
+
+    await expireStaleJobs();      // launched jobs that never produced a result are closed out as failed
 
     await housekeeping(now);      // auto-Judge and phone alerts; never throws
 

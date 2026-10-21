@@ -18,18 +18,22 @@ import { LIMIT_RE, sessionOf } from './_state.js';
 const iso = (ms) => encodeURIComponent(new Date(ms).toISOString());
 const GIVE_UP_MS = 3 * 24 * 3600 * 1000;
 
+// Has this launched job produced its result? (answer / ask / followup / judge_followup / evaluate each log it differently)
+async function isFinished(j) {
+  if (j.kind === 'answer') return ((await sb(`comparative_answers?comparative_question_id=eq.${j.question_id}&ai_model=eq.${j.model}&select=id&limit=1`)) || []).length > 0;
+  if (j.kind === 'ask') return ((await sb(`research_results?request_id=eq.${j.request_id}&ai_model=eq.${j.model}&select=id&limit=1`)) || []).length > 0;
+  if (j.kind === 'followup') return ((await sb(`followups?id=eq.${j.followup_id}&finished_at=not.is.null&select=id&limit=1`)) || []).length > 0;
+  if (j.kind === 'judge_followup') return ((await sb(`judge_followups?id=eq.${j.judge_followup_id}&finished_at=not.is.null&select=id&limit=1`)) || []).length > 0;
+  return ((await sb(`comparative_evaluations?comparative_question_id=eq.${j.question_id}&select=id&limit=1`)) || []).length > 0;   // evaluate
+}
+
 export async function openJobs() {
   const now = Date.now();
   const jobs = await sb(`jim_jobs?kind=in.(answer,ask,followup,evaluate,judge_followup)&status=eq.launched&launched_at=gte.${iso(now - 24 * 3600000)}&launched_at=lt.${iso(now - 3 * 60000)}&select=id,kind,model,question_id,request_id,followup_id,judge_followup_id,launched_at,error_text&order=id.asc&limit=40`) || [];
   const out = [];
   for (const j of jobs) {
     if ((j.kind === 'answer' || j.kind === 'ask' || j.kind === 'followup') && now - new Date(j.launched_at).getTime() > 6 * 3600000) continue;   // only evaluate/judge_followup may run this long
-    let finished = false;
-    if (j.kind === 'answer') finished = ((await sb(`comparative_answers?comparative_question_id=eq.${j.question_id}&ai_model=eq.${j.model}&select=id&limit=1`)) || []).length > 0;
-    else if (j.kind === 'ask') finished = ((await sb(`research_results?request_id=eq.${j.request_id}&ai_model=eq.${j.model}&select=id&limit=1`)) || []).length > 0;
-    else if (j.kind === 'followup') finished = ((await sb(`followups?id=eq.${j.followup_id}&finished_at=not.is.null&select=id&limit=1`)) || []).length > 0;
-    else if (j.kind === 'judge_followup') finished = ((await sb(`judge_followups?id=eq.${j.judge_followup_id}&finished_at=not.is.null&select=id&limit=1`)) || []).length > 0;
-    else finished = ((await sb(`comparative_evaluations?comparative_question_id=eq.${j.question_id}&select=id&limit=1`)) || []).length > 0;   // evaluate
+    const finished = await isFinished(j);
     if (!finished) out.push({ id: j.id, kind: j.kind, model: j.model, ref: j.question_id || j.request_id || j.followup_id || j.judge_followup_id, launched_at: j.launched_at, resume_session: sessionOf(j.error_text) });
   }
   return out;
@@ -62,4 +66,20 @@ export async function markJimFailed(id, error, session) {
   }
   await sb(`jim_jobs?id=eq.${id}&status=eq.launched`, { method: 'PATCH', body: { status: 'failed', error_text: text } });
   return { updated: true, requeued: false };
+}
+
+// Launched jobs past the age openJobs() watches (6 hours; evaluate/judge_followup 24 hours) that never produced a result.
+// Nothing else ever closes them, so they would show as "launched" forever. They are marked failed so they stop looking
+// active and can be retried. Jobs that did finish are left alone. Scans the last 7 days, newest first. Never throws.
+export async function expireStaleJobs() {
+  try {
+    const now = Date.now();
+    const jobs = await sb(`jim_jobs?kind=in.(answer,ask,followup,evaluate,judge_followup)&status=eq.launched&launched_at=gte.${iso(now - 7 * 24 * 3600000)}&launched_at=lt.${iso(now - 6 * 3600000)}&select=id,kind,model,question_id,request_id,followup_id,judge_followup_id,launched_at&order=id.desc&limit=60`) || [];
+    for (const j of jobs) {
+      const hours = (now - new Date(j.launched_at).getTime()) / 3600000;
+      if ((j.kind === 'evaluate' || j.kind === 'judge_followup') && hours <= 24) continue;
+      if (await isFinished(j)) continue;
+      await sb(`jim_jobs?id=eq.${j.id}&status=eq.launched`, { method: 'PATCH', body: { status: 'failed', error_text: `No result after ${Math.floor(hours)} hours - the Jim stopped or was closed without logging an answer` } });
+    }
+  } catch (e) { console.error('expireStaleJobs:', e && e.message); }
 }
