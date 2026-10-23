@@ -127,9 +127,11 @@ function renderComparativeCard(q) {
   // finished report instead of offering to re-launch Judge.
   let judgeButton = "";
   if (done) {
+    // while a Judge job is queued or running its chip (above) shows it; offering the button again would look like nothing happened
+    const judgeBusy = !!q.judge && (q.judge.state === "waiting" || q.judge.state === "working" || q.judge.state === "limit");
     judgeButton = q.judge_verdict_url
       ? `<a class="cq-respond-btn judge" href="${reportHref(q.judge_verdict_url, q.id)}">View Analysis</a>`
-      : `<button type="button" class="cq-respond-btn judge" data-model="judge" data-q="${q.id}" onclick="queueJob(this)">Launch Comparative Analysis</button>`;
+      : judgeBusy ? "" : `<button type="button" class="cq-respond-btn judge" data-model="judge" data-q="${q.id}" onclick="queueJob(this)">Launch Comparative Analysis</button>`;
   }
 
   return `
@@ -157,7 +159,7 @@ var JIM_NAMES = { claude: "Claude", gpt: "GPT", gemini: "Gemini" };
 function chipLabel(name, s) {
   if (s.state === "done") return name + " \u2713";
   if (s.state === "working") return name + " \u00b7 " + s.minutes + " min";
-  if (s.state === "limit") return name + " \u00b7 waiting for token refresh";
+  if (s.state === "limit") return name + (s.reason === "login" ? " \u00b7 waiting for login" : " \u00b7 waiting for token refresh");
   if (s.state === "waiting") return name + " \u00b7 waiting";
   if (s.state === "failed") return name + " \u00b7 failed";
   return name + " \u00b7 cancelled";
@@ -171,7 +173,8 @@ function chipsHtml(q) {
     var cls = "chip " + (s.state === "done" ? "done" : s.state === "working" ? "working" : s.state === "failed" ? "failed" : s.state === "limit" ? "limit" : "");
     parts.push('<span class="' + cls + '"><i></i>' + chipLabel(JIM_NAMES[m], s) + '</span>');
     if (s.state === "failed") errs.push(JIM_NAMES[m] + ": " + escapeHtml(s.error));
-    if (s.state === "limit") errs.push(JIM_NAMES[m] + ": its account hit a limit. Trying again in about " + s.retry_minutes + " min, then every 30 min, and it will carry on by itself.");
+    if (s.state === "limit" && s.reason === "login") errs.push(JIM_NAMES[m] + ": its sign-in on the research server has expired. Trying again in about " + s.retry_minutes + " min, then every 5 min, and it will carry on by itself once it is signed in again.");
+    else if (s.state === "limit") errs.push(JIM_NAMES[m] + ": its account hit a limit. Trying again in about " + s.retry_minutes + " min, then every 30 min, and it will carry on by itself.");
   });
   var j = q.judge;
   if (j && j.state !== "none") {
@@ -221,6 +224,7 @@ async function queueJob(btn) {
   }
   setTimeout(function(){ btn.disabled = false; }, 4000);
   refreshJobs();
+  loadComparativeQuestions();      // redraw the cards now, so the new "working" chip shows instead of waiting up to a minute
 }
 
 async function cancelJob(id) {

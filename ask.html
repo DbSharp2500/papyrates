@@ -195,7 +195,7 @@ function label(m, s) {
   if (s.followup) return NAMES[m] + ' · follow-up' + (s.followup.state === 'working' ? ' · ' + s.followup.minutes + ' min' : ' · waiting');
   if (s.state === 'done') return NAMES[m] + ' ✓';
   if (s.state === 'working') return NAMES[m] + ' · ' + s.minutes + ' min';
-  if (s.state === 'limit') return NAMES[m] + ' · waiting for token refresh';
+  if (s.state === 'limit') return NAMES[m] + (s.reason === 'login' ? ' · waiting for login' : ' · waiting for token refresh');
   if (s.state === 'waiting') return NAMES[m] + ' · waiting';
   if (s.state === 'failed') return NAMES[m] + ' · failed';
   return NAMES[m] + ' · cancelled';
@@ -210,6 +210,7 @@ function judgeChip(it) {
   if (j.state === 'done') return j.report ? '<a class="chip done" href="' + reportLink(it, 'judge', j.report) + '"><i></i>Judge ✓</a>' : '<span class="chip done"><i></i>Judge ✓</span>';
   if (j.state === 'working') return '<span class="chip working"><i></i>Judge · ' + j.minutes + ' min</span>';
   if (j.state === 'waiting') return '<span class="chip"><i></i>Judge · waiting</span>';
+  if (j.state === 'limit') return '<span class="chip limit"><i></i>Judge · ' + (j.reason === 'login' ? 'waiting for login' : 'waiting for token refresh') + '</span>';
   if (j.state === 'scheduled') return '<span class="chip sched"><i></i>Judge · starts after all three</span>';
   if (j.state === 'failed') return '<span class="chip failed"><i></i>Judge · failed</span>';
   return '';
@@ -218,9 +219,10 @@ function detail(it) {
   const lines = ['claude', 'gpt', 'gemini'].map(function (m) {
     const s = it.models[m]; if (!s || s.state === 'none') return '';
     let t = '';
-    if (s.state === 'limit') t = 'the account hit its limit. Trying again in about ' + s.retry_minutes + ' min, and every 30 min after that, until it works — it will carry on by itself. <a onclick="cancelJob(' + s.job_id + ')">cancel</a>';
+    if (s.state === 'limit' && s.reason === 'login') t = 'its sign-in on the research server has expired, so it could not start. Trying again in about ' + s.retry_minutes + ' min, and every 5 min after that — it will carry on by itself once someone signs it in again. <a onclick="cancelJob(' + s.job_id + ')">cancel</a>';
+    else if (s.state === 'limit') t = 'the account hit its limit. Trying again in about ' + s.retry_minutes + ' min, and every 30 min after that, until it works — it will carry on by itself. <a onclick="cancelJob(' + s.job_id + ')">cancel</a>';
     else if (s.state === 'waiting') t = 'waiting in line <a onclick="cancelJob(' + s.job_id + ')">cancel</a>';
-    else if (s.state === 'working') t = 'working, started ' + s.minutes + ' min ago' + (s.minutes > 90 ? ' — taking long; a usage limit may have stopped it' : '');
+    else if (s.state === 'working') t = 'working, started ' + s.minutes + ' min ago' + (s.minutes > 90 ? ' — taking long; a usage limit or an expired sign-in may have stopped it' : '');
     else if (s.state === 'failed') t = 'failed: ' + esc(s.error) + ' <a onclick="retryBy(\'' + m + '\',\'' + it.type + '\',' + it.id + ')">try again</a>';
     else if (s.state === 'cancelled') t = 'cancelled <a onclick="retryBy(\'' + m + '\',\'' + it.type + '\',' + it.id + ')">queue again</a>';
     else t = s.report ? 'done <a href="' + reportLink(it, m, s.report) + '">read report</a>' : 'done (report link not available)';

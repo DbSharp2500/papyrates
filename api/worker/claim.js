@@ -10,7 +10,7 @@
 import { sb } from '../_sb.js';
 import { workerAuthorized } from '../_worker.js';
 import { housekeeping } from '../_housekeeping.js';
-import { RETRY_MS, LIMIT_RE, sessionOf } from '../_state.js';
+import { STOP_RE, retryMsOf, sessionOf } from '../_state.js';
 
 const BUSY_WINDOW_MS = 2 * 60 * 60 * 1000;
 const HOLD_MS = 30 * 60 * 1000;
@@ -71,17 +71,18 @@ export default async function handler(req, res) {
       }
     }
 
-    // A Jim that just stopped because its account hit a spend / usage limit would fail again the moment the next job
-    // starts, burning through the queue. Hold that Jim's jobs for 30 minutes instead (they stay "waiting").
+    // A Jim that just stopped because its account hit a spend / usage limit (or its login expired) would fail again the
+    // moment the next job starts, burning through the queue. Hold that Jim's jobs for 30 minutes instead (they stay "waiting").
     const held = new Set();
     const recentFails = await sb(`jim_jobs?status=eq.failed&launched_at=gte.${encodeURIComponent(new Date(now.getTime() - HOLD_MS).toISOString())}&select=model,error_text`) || [];
-    for (const f of recentFails) if (LIMIT_RE.test(f.error_text || '')) held.add(f.model);
+    for (const f of recentFails) if (STOP_RE.test(f.error_text || '')) held.add(f.model);
     for (const m of held) busy.add(m);
 
     const waiting = await sb('jim_jobs?status=eq.queued&order=id.asc&limit=50&select=id,kind,model,question_id,error_text,claimed_at') || [];
-    // Jobs put back in the queue because their account hit a limit are retried every 30 minutes: until then they wait,
-    // and so does everything else for that same Jim (it would only hit the same limit).
-    const recentlyLimited = (j) => !!j.error_text && LIMIT_RE.test(j.error_text) && !!j.claimed_at && now.getTime() - new Date(j.claimed_at).getTime() < RETRY_MS;
+    // Jobs put back in the queue because their account hit a limit are retried every 30 minutes (every 5 for an expired
+    // login, which fails instantly and so costs nothing to try): until then they wait, and so does everything else for
+    // that same Jim (it would only hit the same wall).
+    const recentlyLimited = (j) => !!j.error_text && STOP_RE.test(j.error_text) && !!j.claimed_at && now.getTime() - new Date(j.claimed_at).getTime() < retryMsOf(j.error_text);
     for (const j of waiting) if (recentlyLimited(j)) busy.add(j.model);
     const next = waiting.filter((j) => !recentlyLimited(j) && !((j.kind === 'answer' || j.kind === 'ask' || j.kind === 'followup') && busy.has(j.model)));
     if (next.length === 0) return res.status(200).json({ job: null });
