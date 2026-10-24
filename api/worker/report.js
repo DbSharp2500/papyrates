@@ -6,12 +6,15 @@
 //   { action: 'replaced' }                          lists Jim windows a follow-up has replaced, so the launcher can close them
 //   { action: 'set_judge_session', question_id, session }   records Judge's own Claude Code session id for a
 //                                                    question, once, so a later follow-up can resume it
+//   { action: 'queue_job', model, question_id, hold_until? } queues one answer/evaluate job for the owner, optionally held
+//                                                    until a time (e.g. when a usage limit resets) - see api/_queue.js
 // Worker token required. Only a job currently in the 'claimed' state can be updated.
 
 import { sb } from '../_sb.js';
 import { workerAuthorized } from '../_worker.js';
 import { replacedWindows } from '../_replaced.js';
 import { openJobs, markJimFailed } from '../_stalled.js';
+import { queueHeldJob } from '../_queue.js';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -27,6 +30,11 @@ export default async function handler(req, res) {
   if (req.body && req.body.action === 'open_jobs') {
     try { return res.status(200).json({ items: await openJobs() }); }
     catch (err) { console.error('api/worker/report (open_jobs) error:', err && err.message); return res.status(500).json({ error: 'Server error' }); }
+  }
+  // { action: 'queue_job', model, question_id, hold_until? } -> queue one job for the owner (held until hold_until if given)
+  if (req.body && req.body.action === 'queue_job') {
+    try { const r = await queueHeldJob(req.body); return res.status(r.status).json(r.body); }
+    catch (err) { console.error('api/worker/report (queue_job) error:', err && err.message); return res.status(500).json({ error: 'Server error' }); }
   }
   // { action: 'set_judge_session', question_id, session } -> record Judge's session id, only if none is recorded yet
   if (req.body && req.body.action === 'set_judge_session') {
