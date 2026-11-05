@@ -14,6 +14,9 @@ import { STOP_RE, retryMsOf, sessionOf } from '../_state.js';
 
 const BUSY_WINDOW_MS = 2 * 60 * 60 * 1000;
 const HOLD_MS = 30 * 60 * 1000;
+// How many answering jobs one Jim may have running at once. Every Jim defaults to 1; Gemini was raised to 5 on 5 Nov 2026
+// (the researcher's choice, after the Gemini account moved to Google AI Ultra 20x, to get the comparative questions done).
+const MAX_PARALLEL = { gemini: 5 };
 
 function cleanInfo(i) {
   const o = (i && typeof i === 'object') ? i : {};
@@ -46,12 +49,14 @@ export default async function handler(req, res) {
 
     await housekeeping(now);      // auto-Judge and phone alerts; never throws
 
-    // One question at a time per Jim: while a Jim's earlier "answer" job was launched less than 2 hours ago and
-    // its answer has not been logged yet, further answer jobs for that same Jim wait. (Stops six GPT windows
-    // opening at once and burning the 5-hour usage window; other Jims are not held up. The 2-hour cap means a
-    // Jim that died without logging an answer cannot block the line forever.)
+    // One question at a time per Jim (MAX_PARALLEL above says where it is more): while a Jim's earlier "answer" jobs were
+    // launched less than 2 hours ago and their answers have not been logged yet, and that is already as many as the Jim
+    // may run at once, further answer jobs for that same Jim wait. (Stops six GPT windows opening at once and burning
+    // the 5-hour usage window; other Jims are not held up. The 2-hour cap means a Jim that died without logging an
+    // answer cannot block the line forever.)
     // (Applies to both kinds of answering job: comparative "answer" jobs and everyday "ask" jobs.)
     const busy = new Set();
+    const running_now = {};      // model -> how many launched jobs have not logged their answer yet
     const since = encodeURIComponent(new Date(now.getTime() - BUSY_WINDOW_MS).toISOString());
     const running = await sb(`jim_jobs?kind=in.(answer,ask,followup)&status=eq.launched&launched_at=gte.${since}&select=model,kind,question_id,request_id,followup_id`) || [];
     if (running.length) {
@@ -67,9 +72,14 @@ export default async function handler(req, res) {
           : j.kind === 'ask'
             ? rDone.some((a) => a.request_id === j.request_id && a.ai_model === j.model)
             : fDone.some((f) => f.id === j.followup_id && f.finished_at);
-        if (!finished) busy.add(j.model);
+        if (!finished) running_now[j.model] = (running_now[j.model] || 0) + 1;
       }
     }
+    // jobs the launcher has claimed but not yet reported as launched count too, or a Jim allowed several at once would be
+    // handed more than that while its windows are still being set up
+    const claimedNow = await sb('jim_jobs?kind=in.(answer,ask,followup)&status=eq.claimed&select=model') || [];
+    for (const j of claimedNow) running_now[j.model] = (running_now[j.model] || 0) + 1;
+    for (const m of Object.keys(running_now)) if (running_now[m] >= (MAX_PARALLEL[m] || 1)) busy.add(m);
 
     // A Jim that just stopped because its account hit a spend / usage limit (or its login expired) would fail again the
     // moment the next job starts, burning through the queue. Hold that Jim's jobs for 30 minutes instead (they stay "waiting").
