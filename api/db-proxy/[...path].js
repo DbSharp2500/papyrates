@@ -13,6 +13,8 @@
 // IS the access control" model now that the key isn't client-side anymore.
 
 import { tierFromRequest, hasTierAccess } from '../_session.js';
+import { sb } from '../_sb.js';
+import { COLUMNS, buildChartData } from '../_explorer-chart-build.js';
 
 export default async function handler(req, res) {
   const tier = tierFromRequest(req);
@@ -32,6 +34,23 @@ export default async function handler(req, res) {
   const PATH_KEY = '...path';
   const pathSegments = req.query[PATH_KEY] || [];
   const pathStr = Array.isArray(pathSegments) ? pathSegments.join('/') : String(pathSegments);
+
+  // Virtual endpoint (not a Supabase table): the data for explorer-chart.html, Admin tier only, read live from
+  // explorer_fragments. It lives in this file rather than in its own api/ file because the Vercel Hobby plan allows
+  // at most 12 serverless functions per deployment and the site already has 12. Never stored in the (public) repository.
+  if (pathStr === 'explorer-chart') {
+    res.setHeader('Cache-Control', 'private, no-store');
+    res.setHeader('X-Robots-Tag', 'noindex, nofollow');
+    if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
+    if (!hasTierAccess(tier, 'admin')) return res.status(403).json({ error: 'Forbidden' });
+    try {
+      const rows = await sb(`explorer_fragments?select=${COLUMNS}&order=id.asc&limit=1000`);
+      return res.status(200).json(buildChartData(rows || []));
+    } catch (e) {
+      console.error('explorer-chart failed:', e && e.message);
+      return res.status(502).json({ error: 'Could not read the chart data' });
+    }
+  }
 
   const params = new URLSearchParams();
   for (const [key, value] of Object.entries(req.query)) {
