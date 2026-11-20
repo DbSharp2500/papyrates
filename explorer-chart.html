@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><link rel="icon" type="image/png" href="/icon-192.png"><title>Explorer Fragment Chart: provenance narratives</title>
+<style>
+:root{--bg:#fafaf7;--fg:#1c1c1a;--mut:#615f58;--card:#fff;--bd:#dcd9cf;--acc:#7a4b12;--ok:#2a6b3a;--warn:#9a5b00;--chip:#efece2}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]){--bg:#15150f;--fg:#ecebe4;--mut:#a9a79c;--card:#1d1d16;--bd:#38372c;--acc:#e0a95b;--ok:#7fcf92;--warn:#f0b35a;--chip:#2a2a20}}
+:root[data-theme=dark]{--bg:#15150f;--fg:#ecebe4;--mut:#a9a79c;--card:#1d1d16;--bd:#38372c;--acc:#e0a95b;--ok:#7fcf92;--warn:#f0b35a;--chip:#2a2a20}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.5 Georgia,'Times New Roman',serif}
+header,main,footer{max-width:1180px;margin:0 auto;padding:0 16px}
+h1{font-size:1.5rem;margin:1.2rem 0 .3rem}h2{font-size:1.05rem;margin:1rem 0 .4rem;color:var(--acc)}
+.banner{background:var(--chip);border:1px solid var(--bd);border-radius:8px;padding:.7rem .9rem;margin:.8rem 0;font-size:.92rem}
+.controls{display:flex;flex-wrap:wrap;gap:.6rem;margin:.8rem 0;align-items:center}
+input[type=search],select{font:inherit;padding:.45rem .6rem;border:1px solid var(--bd);border-radius:6px;background:var(--card);color:var(--fg);min-width:0}
+input[type=search]{flex:1 1 220px}
+details.frag{background:var(--card);border:1px solid var(--bd);border-radius:10px;margin:.6rem 0}
+details.frag>summary{cursor:pointer;padding:.7rem .9rem;list-style:none;display:flex;flex-wrap:wrap;gap:.3rem .8rem;align-items:baseline}
+details.frag>summary::-webkit-details-marker{display:none}
+.lab{font-weight:bold}.sub{color:var(--mut);font-size:.88rem}.pill{background:var(--chip);border-radius:999px;padding:.05rem .55rem;font-size:.8rem;color:var(--mut)}
+.body{padding:0 .9rem .9rem}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:.7rem;align-items:start}
+.nar{border:1px solid var(--bd);border-radius:8px;padding:.6rem .7rem;background:var(--bg)}
+.nar .who{font-weight:bold;font-size:.95rem}.nar .when{color:var(--acc);font-size:.88rem}
+.badge{display:inline-block;font-size:.72rem;border-radius:4px;padding:.02rem .4rem;margin-right:.3rem;border:1px solid var(--bd);color:var(--mut)}
+.badge.exact{color:var(--ok);border-color:var(--ok)}.badge.possible{color:var(--warn);border-color:var(--warn)}
+.story{margin:.4rem 0}.q{border-left:3px solid var(--bd);margin:.35rem 0;padding:.1rem .6rem;font-size:.88rem;color:var(--fg)}
+.q .s{display:block;color:var(--mut);font-size:.8rem}
+.diff{font-size:.85rem;color:var(--mut);font-style:italic}.caut{font-size:.82rem;color:var(--warn)}
+.none{font-style:italic;color:var(--mut);padding:.4rem 0}
+.meta{font-size:.9rem}.meta b{color:var(--acc)}
+details.sec>summary{cursor:pointer;color:var(--acc);font-size:.95rem;margin:.5rem 0 .2rem}
+.step{border-top:1px dashed var(--bd);padding:.4rem 0;font-size:.9rem}.step .sc{color:var(--mut);font-size:.8rem}
+footer{padding-bottom:3rem;color:var(--mut);font-size:.9rem}footer li{margin:.25rem 0}
+button.t{font:inherit;padding:.4rem .7rem;border:1px solid var(--bd);border-radius:6px;background:var(--card);color:var(--fg);cursor:pointer}
+@media print{details.frag{page-break-inside:avoid}}
+</style></head><body>
+<header>
+<div class="sub"><a href="/index.html">&larr; Back to the archive</a></div>
+<h1>Explorer Fragment Chart: what the documents say about where each fragment came from</h1>
+<div class="sub">Post-2002 Dead Sea Scroll-type fragments. Working draft built <span id="built"></span>.</div>
+<div class="banner"><b>Demonstration.</b> This page shows what the archive can do with the provenance research. It is visible to the Admin sign-in only and is read live from the research database. It is an unpublished working draft: please do not copy, quote or circulate it.</div>
+<div class="banner" id="banner"></div>
+<div class="controls"><input type="search" id="q" placeholder="Search label, holder, teller, text, number...">
+<select id="holder"><option value="">All current holders</option></select>
+<label class="sub"><input type="checkbox" id="multi"> only fragments with 2+ narratives</label>
+<button class="t" id="expand">Open all</button><button class="t" id="theme">Light/dark</button></div>
+<div class="sub" id="count"></div>
+</header>
+<main id="list"><div class="none" id="loadmsg">Loading the chart&hellip;</div></main>
+<footer><h2>Method and limits</h2><ul id="methods"></ul></footer>
+<script type="text/plain" id="app">
+const D=JSON.parse(document.getElementById('data').textContent);
+const $=(s)=>document.querySelector(s);
+const el=(t,a,...k)=>{const e=document.createElement(t);for(const [x,y] of Object.entries(a||{})){if(x==='class')e.className=y;else if(x==='text')e.textContent=y;else e.setAttribute(x,y);}for(const c of k.flat()){if(c==null)continue;e.append(c.nodeType?c:document.createTextNode(c));}return e;};
+const C=D.counts;$('#built').textContent=D.built;
+$('#banner').innerHTML='<b>How to read this.</b> Each fragment shows, side by side, every provenance account that the project\'s documents give for it: who told it, when (the date of the document), what it says, how firmly it is tied to <i>this</i> fragment, and the exact words of the document. The accounts are <b>not harmonized and are not judged</b>: the chart documents the developing narratives, not the real history, and many of the fragments are believed to be forgeries. A fragment with no narrative says so. <b>Working draft:</b> compiled by AI from the documents in the Papyrates collection and checked by a script (every quotation found in the document), Claude and Gemini; it has not yet been read line by line by a person.';
+const meth=[
+ C.narratives+' narratives for '+C.fragments+' fragments are shown'+(C.held?'; '+C.held+' more are held back until corrected':'')+(C.caution?'; '+C.caution+' are marked because the checkers did not fully agree':'')+'.',
+ '"Identity" says how firmly a document is tied to the fragment: exact = it names this fragment; probable = it fits and nothing contradicts it; possible = it may concern it (often a statement about a lot or group).',
+ 'A narrative records what a document claims. It does not say the claim is true. Sellers, dealers, owners, institutions, scholars and the press are quoted as the documents quote them.',
+ 'The checks test that quotations are word for word in the cited document and that the story says no more than the documents show. They cannot show that a document is truthful or complete, and they cannot find narratives that were never collected. One source per narrative is normal. Where the checkers could not read a source (a scan, an archived web page), Claude opened the source itself and checked every quotation against it; such entries are recorded as \'source read by Claude\'.',
+ 'Documents are cited by their number in the Papyrates collection (Doc n), by file, or by web address; copies are not reproduced here. Where a source could not be opened it is listed under the fragment.',
+ 'Custody steps shown are those whose documents were checked and confirmed; '+C.custody_steps+' are shown, others are held back. Dates of events are the researcher\'s reading of documents; first-appearance dates give the earliest dated document that mentions the fragment.'
+];
+for(const m of meth)$('#methods').append(el('li',{text:m}));
+const holders=[...new Set(D.rows.map(r=>r.holder).filter(Boolean))].sort();for(const h of holders)$('#holder').append(el('option',{value:h,text:h}));
+function narCard(n){const c=el('div',{class:'nar'});
+ c.append(el('div',{class:'when',text:n.date||'undated'}),el('div',{class:'who',text:n.told_by||''}));
+ const b=el('div',{});b.append(el('span',{class:'badge '+(n.identity||''),text:'identity: '+(n.identity||'?')}));if(n.role)b.append(el('span',{class:'badge',text:n.role}));c.append(b);
+ c.append(el('div',{class:'story',text:n.story||''}));
+ if(n.identity_note)c.append(el('div',{class:'diff',text:n.identity_note}));
+ const qs=el('details',{class:'sec'},el('summary',{text:'Quotations and sources ('+(n.sources||[]).length+')'}));
+ for(const s of (n.sources||[]))qs.append(el('div',{class:'q'},s.quote?('\u201c'+s.quote+'\u201d'):'(no quotation)',el('span',{class:'s',text:(s.doc||'')+(s.locator?' - '+s.locator:'')})));c.append(qs);
+ if(n.differs_from)c.append(el('div',{class:'diff',text:'Differs from the other accounts: '+n.differs_from}));
+ if(n.caution)c.append(el('div',{class:'caut',text:'Marked: the checkers did not fully agree on this entry.'}));
+ return c;}
+function fill(r,body){
+ const ids=(r.identifiers||[]).join(' · ');if(ids||r.text_id)body.append(el('div',{class:'meta'},el('b',{text:'Identifiers: '}),ids,r.text_id?('  |  Text: '+r.text_id):''));
+ if(r.holder)body.append(el('div',{class:'meta'},el('b',{text:'Current holder: '}),r.holder));
+ body.append(el('h2',{text:'Provenance narratives ('+r.narratives.length+')'}));
+ if(r.narratives.length){const g=el('div',{class:'grid'});for(const n of r.narratives)g.append(narCard(n));body.append(g);}
+ else body.append(el('div',{class:'none',text:r.no_narrative_note||'As of 19 Nov 2026, no provenance narrative discovered.'}));
+ if(r.narratives_held)body.append(el('div',{class:'caut',text:r.narratives_held+' further narrative(s) held back until corrected.'}));
+ if(r.unreadable&&r.unreadable.length){const d=el('details',{class:'sec'},el('summary',{text:'Sources that could not be opened ('+r.unreadable.length+')'}));for(const u of r.unreadable)d.append(el('div',{class:'q',text:u}));body.append(d);}
+ if(r.owner&&(r.owner.display||r.owner.quote)){body.append(el('h2',{text:"Owner's stated position"}));body.append(el('div',{class:'meta'},el('b',{text:(r.owner.display||'')+': '}),r.owner.owner||''));if(r.owner.quote)body.append(el('div',{class:'q'},'\u201c'+r.owner.quote+'\u201d',el('span',{class:'s',text:(r.owner.speaker||'')+(r.owner.scope?' - scope: '+r.owner.scope:'')})));}
+ if(r.first&&r.first.display){body.append(el('h2',{text:'First documented appearance'}));body.append(el('div',{class:'meta',text:r.first.display}));const d=el('details',{class:'sec'},el('summary',{text:'The documents behind it ('+(r.first.shown||[]).length+')'}));for(const s of (r.first.shown||[]))d.append(el('div',{class:'q'},(s.date?s.date+': ':'')+(s.what||''),el('span',{class:'s',text:(s.grade?'['+s.grade+'] ':'')+(s.source||'')})));body.append(d);}
+ if(r.scholars&&r.scholars.length){const d=el('details',{class:'sec'},el('summary',{text:'Published scholarly assessments ('+r.scholars.length+')'}));for(const s of r.scholars)d.append(el('div',{class:'q'},(s.conclusion?s.conclusion+': ':'')+'\u201c'+(s.quote||'')+'\u201d',el('span',{class:'s',text:[s.scholars,s.affiliation,s.year,s.work].filter(Boolean).join(' - ')})));body.append(d);}
+ if(r.custody&&r.custody.length){const d=el('details',{class:'sec'},el('summary',{text:'Documented custody steps ('+r.custody.length+(r.custody_omitted?'; '+r.custody_omitted+' held back':'')+')'}));for(const s of r.custody){const per=[s.from,s.to].filter(Boolean).join(' to ');d.append(el('div',{class:'step'},el('b',{text:(s.holder||'')+(per?' ('+per+')':'')+(s.holder||per?': ':'')}),s.how||'',el('div',{class:'sc',text:(s.sources||[]).join(' | ')})));}body.append(d);}
+}
+function card(r){const d=el('details',{class:'frag'});d.dataset.id=r.id;
+ const sm=el('summary',{},el('span',{class:'lab',text:r.label}),el('span',{class:'sub',text:r.holder||''}),el('span',{class:'pill',text:r.narratives.length+' narrative'+(r.narratives.length===1?'':'s')}));d.append(sm);
+ const body=el('div',{class:'body'});d.append(body);d.addEventListener('toggle',()=>{if(d.open&&!body.childElementCount)fill(r,body);});return d;}
+const list=$('#list');const cards=D.rows.map(r=>({r,d:card(r),hay:(r.label+' '+(r.holder||'')+' '+(r.identifiers||[]).join(' ')+' '+(r.text_id||'')+' '+r.narratives.map(n=>(n.told_by||'')+' '+(n.story||'')).join(' ')).toLowerCase()}));
+for(const c of cards)list.append(c.d);
+function apply(){const q=$('#q').value.trim().toLowerCase(),h=$('#holder').value,m=$('#multi').checked;let n=0;for(const c of cards){const ok=(!q||c.hay.includes(q))&&(!h||c.r.holder===h)&&(!m||c.r.narratives.length>1);c.d.style.display=ok?'':'none';if(ok)n++;}$('#count').textContent=n+' of '+cards.length+' fragments shown';}
+for(const id of ['#q','#holder','#multi'])$(id).addEventListener('input',apply);apply();
+let open=false;$('#expand').addEventListener('click',()=>{open=!open;for(const c of cards)if(c.d.style.display!=='none')c.d.open=open;$('#expand').textContent=open?'Close all':'Open all';});
+$('#theme').addEventListener('click',()=>{const r=document.documentElement;const dark=getComputedStyle(document.body).backgroundColor.replace(/\s/g,'')==='rgb(21,21,15)';r.setAttribute('data-theme',dark?'light':'dark');});
+</script><script src="/papyrates-auth.js"></script>
+<script>
+(async function () {
+  // Admin tier only. The server checks the token again; this just keeps other people out of the page.
+  if (!requireAuth('admin')) return;
+  const msg = document.getElementById('loadmsg');
+  try {
+    const r = await fetch('/api/explorer-chart', { headers: { Authorization: 'Bearer ' + getPapyratesToken() } });
+    if (r.status === 401) { clearPapyratesSession(); window.location.href = '/index.html'; return; }
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const data = await r.text();
+    const d = document.createElement('script'); d.id = 'data'; d.type = 'application/json'; d.textContent = data; document.body.append(d);
+    msg.remove();
+    const s = document.createElement('script'); s.textContent = document.getElementById('app').textContent; document.body.append(s);
+  } catch (e) { msg.textContent = 'Could not load the chart (' + e.message + '). Please try again.'; }
+})();
+</script>
+</body></html>

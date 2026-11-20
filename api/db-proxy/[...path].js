@@ -44,6 +44,13 @@ export default async function handler(req, res) {
   }
   const queryStr = params.toString();
 
+  // The explorer_* tables hold unpublished provenance research (the Explorer Fragment Chart). They are Admin-only:
+  // the chart page reads them through api/explorer-chart.js, so no other tier needs them through this proxy.
+  const touchesExplorer = /^explorer/i.test(pathStr) || /explorer/i.test(String(req.query.select || ''));
+  if (touchesExplorer && !hasTierAccess(tier, 'admin')) {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
+
   const targetUrl = `${SUPABASE_URL}/rest/v1/${pathStr}${queryStr ? '?' + queryStr : ''}`;
 
   const headers = {
