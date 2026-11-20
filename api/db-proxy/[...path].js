@@ -14,7 +14,7 @@
 
 import { tierFromRequest, hasTierAccess } from '../_session.js';
 import { sb } from '../_sb.js';
-import { COLUMNS, buildChartData } from '../_explorer-chart-build.js';
+import { COLUMNS, buildChartData, docIdsOf } from '../_explorer-chart-build.js';
 
 export default async function handler(req, res) {
   const tier = tierFromRequest(req);
@@ -45,7 +45,16 @@ export default async function handler(req, res) {
     if (!hasTierAccess(tier, 'admin')) return res.status(403).json({ error: 'Forbidden' });
     try {
       const rows = await sb(`explorer_fragments?select=${COLUMNS}&order=id.asc&limit=1000`);
-      return res.status(200).json(buildChartData(rows || []));
+      let data = buildChartData(rows || []);
+      // the Papyrates documents cited in it (title and link to the original), so the page can link them
+      const ids = docIdsOf(data);
+      let docRows = [];
+      if (ids.length) {
+        try { docRows = await sb(`letters?id=in.(${ids.join(',')})&select=id,title,sharing_link&limit=2000`) || []; }
+        catch (e) { console.error('explorer-chart: document links skipped:', e && e.message); }
+      }
+      data = buildChartData(rows || [], docRows);
+      return res.status(200).json(data);
     } catch (e) {
       console.error('explorer-chart failed:', e && e.message);
       return res.status(502).json({ error: 'Could not read the chart data' });
