@@ -5,7 +5,7 @@
 // What the page shows: narratives not held back, custody steps whose display is "show", the owner's stated position, first appearance,
 // published scholarly assessments. Rows come in Lying Pen order (the numbering of the Lying Pen list), then the rows that are not on that list.
 
-import { LP_ROWS, LP_ORDER } from './_explorer-chart-lp.js';
+import { LP_ROWS, LP_ORDER, LP_PIECES, LP_NOTES } from './_explorer-chart-lp.js';
 
 export const COLUMNS = 'id,label,text_identification,identifiers,current_holder,owner_stated_position,published_scholarly_assessments,first_documented_appearance,custody_chain,provenance_stories';
 
@@ -52,7 +52,7 @@ export function buildChartData(live, docRows = []) {
     const omitted = (r.custody_chain || []).length - steps.length;
     const lp = LP_ROWS[String(r.id)] || [];
     return {
-      id: Number(r.id), lp, label: r.label, text_id: strip(r.text_identification),
+      id: Number(r.id), lp, lp_pieces: LP_PIECES[String(r.id)] || null, lp_note: LP_NOTES[String(r.id)] || null, label: r.label, text_id: strip(r.text_identification),
       identifiers: Array.isArray(r.identifiers) ? r.identifiers : (r.identifiers ? [String(r.identifiers)] : []),
       holder: strip(r.current_holder),
       owner: { display: o.display ?? null, position: o.position ?? null, owner: o.owner ?? null, speaker: o.speaker ?? null, quote: o.quote ?? null, source: o.source ?? null, scope: o.scope ?? null, date: o.statement_date ?? null },
@@ -72,6 +72,7 @@ export function buildChartData(live, docRows = []) {
   const data = {
     built: new Date().toISOString().slice(0, 10),
     counts: { fragments: rows.length, narratives: nNarr, caution: nCaution, held: nHeld, custody_steps: nSteps, narrative_source: 'table', on_lp_list: rows.filter((r) => r.lp.length).length, lp_entries: LP_ORDER.length },
+    lp_order: LP_ORDER,
     rows,
     docs: {},
   };

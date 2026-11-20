@@ -19,7 +19,7 @@ button.t{font:inherit;padding:.38rem .7rem;border:1px solid var(--bd);border-rad
 table.lp{width:100%;border-collapse:separate;border-spacing:0;background:var(--card);border:1px solid var(--bd);border-radius:8px;table-layout:fixed}
 table.lp thead th{position:sticky;top:0;z-index:3;background:var(--head);text-align:left;font-size:.82rem;letter-spacing:.02em;padding:.5rem .6rem;border-bottom:2px solid var(--bd)}
 table.lp thead th:first-child{border-top-left-radius:8px}table.lp thead th:last-child{border-top-right-radius:8px}
-col.c-lp{width:6.5%}col.c-des{width:15%}col.c-con{width:14%}col.c-col{width:15%}col.c-pro{width:49.5%}
+col.c-lp{width:8.5%}col.c-des{width:14%}col.c-con{width:13%}col.c-col{width:14.5%}col.c-pro{width:50%}
 td,th{vertical-align:top;overflow-wrap:anywhere}
 tbody.frag>tr>td,tbody.frag>tr>th{padding:.55rem .6rem}
 tbody.frag>tr.main>td{border-top:3px solid var(--bd)}
@@ -46,6 +46,10 @@ details.sec{margin:.25rem 0}details.sec>summary{cursor:pointer;color:var(--acc);
 tr.sub>th{background:var(--chip);text-align:left;font-size:.8rem;color:var(--acc);font-weight:bold;border-top:1px solid var(--bd)}
 tr.sub>td{background:var(--card);border-top:1px solid var(--bd);font-size:.9rem}
 .step{border-top:1px dashed var(--bd);padding:.35rem 0;font-size:.86rem}.step:first-child{border-top:0}.step .sc{color:var(--mut);font-size:.78rem}
+.piece{display:block;font-weight:normal;font-size:.76rem;color:var(--mut);font-family:Georgia,'Times New Roman',serif;margin:0 0 .35rem}
+.lpmulti{margin-bottom:.15rem}
+tbody.stub td{background:var(--chip);font-size:.84rem;padding:.35rem .6rem;border-top:1px solid var(--bd);color:var(--mut)}
+tbody.stub .lpno{font-size:.95rem}
 tbody.sect td{background:var(--head);font-weight:bold;padding:.6rem;border-top:3px solid var(--bd);color:var(--acc)}
 footer{padding-bottom:3rem;color:var(--mut);font-size:.88rem}footer li{margin:.25rem 0}
 @media (max-width:900px){
@@ -173,11 +177,21 @@ function render(D) {
     return d;
   }
 
+  // ---- the LP number(s) of a fragment. One number: "LP 3". A row that gathers several Lying Pen entries (the Lying Pen list numbers them separately) lists every number up front, each with the piece it is.
+  function lpCell(r) {
+    if (!r.lp.length) return [el('div', { class: 'lpno none', text: '–' }), el('div', { class: 'sub', text: 'not on the Lying Pen list' })];
+    if (r.lp.length === 1) return el('div', { class: 'lpno', text: 'LP ' + r.lp[0] });
+    const d = el('div', {}, el('div', { class: 'sub lpmulti', text: r.lp.length + ' Lying Pen entries, one row' }));
+    for (const n of r.lp) d.append(el('div', { class: 'lpno' }, 'LP ' + n, r.lp_pieces && r.lp_pieces[n] ? el('span', { class: 'piece', text: r.lp_pieces[n] }) : null));
+    if (r.lp_note) d.append(el('div', { class: 'sub', text: r.lp_note }));
+    return d;
+  }
+
   // ---- one fragment = one tbody: the main row, then the rest of what we hold in the rows beneath
   function fragment(r) {
-    const tb = el('tbody', { class: 'frag' }); tb.dataset.id = r.id;
+    const tb = el('tbody', { class: 'frag' }); tb.dataset.id = r.id; tb.id = 'frag-' + r.id;
     const main = el('tr', { class: 'main' });
-    main.append(el('td', { class: 'c-lp', 'data-label': 'LP no.' }, r.lp.length ? el('div', { class: 'lpno', text: 'LP ' + r.lp.join(', ') }) : [el('div', { class: 'lpno none', text: '–' }), el('div', { class: 'sub', text: 'not on the Lying Pen list' })]));
+    main.append(el('td', { class: 'c-lp', 'data-label': 'LP no.' }, lpCell(r)));
     const des = el('ul', { class: 'des' }); for (const x of (r.identifiers || [])) des.append(el('li', { text: String(x) }));
     main.append(el('td', { 'data-label': 'Designations' }, des.childElementCount ? des : el('span', { class: 'none', text: 'none recorded' })));
     main.append(el('td', { class: 'con', 'data-label': 'Content' }, el('b', { text: r.label })));
@@ -212,20 +226,38 @@ function render(D) {
   const items = D.rows.map((r) => ({ r, tb: fragment(r), hay: ('lp ' + r.lp.join(' ') + ' ' + r.label + ' ' + (r.holder || '') + ' ' + (r.identifiers || []).join(' ') + ' ' + (r.text_id || '').slice(0, 300) + ' ' + r.narratives.map((n) => (n.told_by || '') + ' ' + (n.story || '')).join(' ')).toLowerCase() }));
   const nonLp = items.filter((x) => !x.r.lp.length).length;
   const sect = el('tbody', { class: 'sect' }, el('tr', {}, el('td', { colspan: 5, text: 'Not on the Lying Pen list (' + nonLp + ' fragments): other fragments the project documents' })));
-  const lpFirst = (x) => (x.r.lp.length ? D.rows.indexOf(x.r) : 1e6);
+  const lpRank = (n) => { const i = (D.lp_order || []).indexOf(n); return i < 0 ? 1e6 : i; };
+  const lpFirst = (x) => (x.r.lp.length ? lpRank(x.r.lp[0]) : 1e6);
+  // a row that gathers several Lying Pen entries also gets a short pointer at each further number, so reading down the LP numbers nothing looks skipped
+  const stubs = [];
+  for (const x of items) for (const n of x.r.lp.slice(1)) {
+    const a = el('a', { href: '#frag-' + x.r.id, text: 'LP ' + x.r.lp[0] }); a.addEventListener('click', (e) => { e.preventDefault(); x.tb.scrollIntoView({ block: 'start' }); });
+    const piece = x.r.lp_pieces && x.r.lp_pieces[n] ? '; LP ' + n + ' is ' + x.r.lp_pieces[n] : '';
+    stubs.push({ x, n, tb: el('tbody', { class: 'stub' }, el('tr', {}, el('td', { colspan: 5 }, el('span', { class: 'lpno', text: 'LP ' + n }), ' — in the same row as ', a, ' (that row holds LP ' + x.r.lp.join(', ') + piece + ')'))) });
+  }
   function place() {
-    const mode = $('#order').value; const list = items.slice();
+    const mode = $('#order').value;
+    if (mode === 'lp') {
+      const entries = items.map((x) => ({ key: lpFirst(x), id: x.r.id, tb: x.tb, main: x })).concat(stubs.map((s) => ({ key: lpRank(s.n), id: s.x.r.id, tb: s.tb, main: null })));
+      entries.sort((a, b) => a.key - b.key || a.id - b.id);
+      for (const e of entries) table.append(e.tb);
+      const firstNon = entries.find((e) => e.main && !e.main.r.lp.length);
+      if (firstNon) table.insertBefore(sect, firstNon.tb); else table.append(sect);
+      return;
+    }
+    const list = items.slice();
     if (mode === 'holder') list.sort((a, b) => (a.r.holder || '￿').localeCompare(b.r.holder || '￿') || a.r.id - b.r.id);
-    else if (mode === 'narr') list.sort((a, b) => b.r.narratives.length - a.r.narratives.length || lpFirst(a) - lpFirst(b));
-    else list.sort((a, b) => lpFirst(a) - lpFirst(b) || a.r.id - b.r.id);
+    else list.sort((a, b) => b.r.narratives.length - a.r.narratives.length || lpFirst(a) - lpFirst(b));
     for (const x of list) table.append(x.tb);
-    if (mode === 'lp' && nonLp) { const firstNon = list.find((x) => !x.r.lp.length); table.insertBefore(sect, firstNon.tb); sect.hidden = false; } else { table.append(sect); sect.hidden = true; }
+    for (const s of stubs) table.append(s.tb);
+    table.append(sect);
   }
   function apply() {
     const q = $('#q').value.trim().toLowerCase(), h = $('#holder').value, m = $('#multi').checked; let n = 0, nonShown = 0;
     const lpq = /^lp\s*([0-9]+|scraps|95–96)$/i.exec(q); // "LP 3" means LP 3, not LP 30
     for (const x of items) { const ok = (!q || (lpq ? x.r.lp.includes(lpq[1].replace(/^./, (c) => c.toUpperCase())) || x.r.lp.includes(lpq[1]) : x.hay.includes(q))) && (!h || x.r.holder === h) && (!m || x.r.narratives.length > 1); x.tb.hidden = !ok; if (ok) { n++; if (!x.r.lp.length) nonShown++; } }
     sect.hidden = $('#order').value !== 'lp' || !nonShown;
+    for (const s of stubs) s.tb.hidden = $('#order').value !== 'lp' || s.x.tb.hidden;
     $('#count').textContent = n + ' of ' + items.length + ' fragments shown';
   }
   $('#order').addEventListener('change', () => { place(); apply(); });
