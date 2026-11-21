@@ -1,9 +1,9 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><link rel="icon" type="image/png" href="/icon-192.png"><title>Explorer Fragment Chart: provenance narratives</title>
 <style>
-:root{--bg:#fafaf7;--fg:#1c1c1a;--mut:#615f58;--card:#fff;--bd:#d6d2c6;--acc:#7a4b12;--ok:#2a6b3a;--warn:#9a5b00;--chip:#efece2;--head:#e7e2d3;--lp:#7a4b12;--link:#1f4f9a}
-@media (prefers-color-scheme:dark){:root:not([data-theme=light]){--bg:#15150f;--fg:#ecebe4;--mut:#a9a79c;--card:#1d1d16;--bd:#3c3b2f;--acc:#e0a95b;--ok:#7fcf92;--warn:#f0b35a;--chip:#2a2a20;--head:#2f2e22;--lp:#e0a95b;--link:#8db8ff}}
-:root[data-theme=dark]{--bg:#15150f;--fg:#ecebe4;--mut:#a9a79c;--card:#1d1d16;--bd:#3c3b2f;--acc:#e0a95b;--ok:#7fcf92;--warn:#f0b35a;--chip:#2a2a20;--head:#2f2e22;--lp:#e0a95b;--link:#8db8ff}
+:root{--bg:#fafaf7;--fg:#1c1c1a;--mut:#615f58;--card:#fff;--bd:#d6d2c6;--acc:#7a4b12;--ok:#2a6b3a;--warn:#9a5b00;--chip:#efece2;--head:#e7e2d3;--lp:#7a4b12;--link:#1f4f9a;--lpfill:#eaf2fb;--lpstub:#eaf2fb;--lpbd:#b9d2ec}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]){--bg:#15150f;--fg:#ecebe4;--mut:#a9a79c;--card:#1d1d16;--bd:#3c3b2f;--acc:#e0a95b;--ok:#7fcf92;--warn:#f0b35a;--chip:#2a2a20;--head:#2f2e22;--lp:#e0a95b;--link:#8db8ff;--lpfill:#1d1d16;--lpstub:#2a2a20;--lpbd:#9cc4ee}}
+:root[data-theme=dark]{--bg:#15150f;--fg:#ecebe4;--mut:#a9a79c;--card:#1d1d16;--bd:#3c3b2f;--acc:#e0a95b;--ok:#7fcf92;--warn:#f0b35a;--chip:#2a2a20;--head:#2f2e22;--lp:#e0a95b;--link:#8db8ff;--lpfill:#1d1d16;--lpstub:#2a2a20;--lpbd:#9cc4ee}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.45 Georgia,'Times New Roman',serif}
 header,footer{max-width:1500px;margin:0 auto;padding:0 16px}
 main{max-width:1500px;margin:0 auto;padding:0 16px 16px}
@@ -22,9 +22,9 @@ table.lp thead th:first-child{border-top-left-radius:8px}table.lp thead th:last-
 col.c-lp{width:8%}col.c-des{width:17%}col.c-con{width:19%}col.c-col{width:36%}col.c-pro{width:20%}
 td,th{vertical-align:top;overflow-wrap:anywhere}
 tbody.frag>tr>td,tbody.frag>tr>th{padding:.55rem .6rem}
-tbody.frag>tr.main>td{border-top:3px solid var(--bd)}
+tbody.frag>tr.main>td{border-top:3px solid var(--lpbd)}   /* the strip that starts each Lying Pen number: light theme = very pale blue fill + soft blue edge; dark theme = same background as before + a light blue edge */
 tbody.frag:first-of-type>tr.main>td{border-top:0}
-tbody.frag>tr.main>td{background:var(--card)}
+tbody.frag>tr.main>td{background:var(--lpfill)}
 .stick{position:sticky;top:46px}
 .lpno{font-weight:bold;font-size:1.05rem;color:var(--lp);white-space:normal;font-family:'Segoe UI',system-ui,sans-serif}
 .lpno.none{color:var(--mut);font-weight:normal}
@@ -42,7 +42,7 @@ a.dl{overflow-wrap:anywhere}a.rec{font-size:.75rem;color:var(--mut);margin-left:
 .chains .cl{font-size:.92rem;line-height:1.55;margin:0 0 .9rem;overflow-wrap:anywhere}.chains .cl:last-child{margin-bottom:0}
 .chains sup{font-size:.72em;margin-left:.12em}.chains a.fn{text-decoration:none;font-weight:600;padding:0 .08em}.chains a.fn:hover{text-decoration:underline}.chains sup.off{color:var(--mut)}
 /* the provenance accounts open in a popup over the page; the page behind is locked until it is closed */
-button.openprov{font:inherit;font-size:.86rem;cursor:pointer;color:var(--link);background:var(--chip);border:1px solid var(--bd);border-radius:7px;padding:.4rem .6rem;text-align:left;width:100%}
+button.openprov{font:inherit;font-size:.86rem;cursor:pointer;color:var(--link);background:var(--card);border:1px solid var(--lpbd);border-radius:7px;padding:.4rem .6rem;text-align:left;width:100%}
 button.openprov:hover,button.openprov:focus-visible{border-color:var(--link);outline:none;box-shadow:0 0 0 2px var(--link)}
 html.modal-open,body.modal-open{overflow:hidden}
 .mdl-back{position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,.6);overflow-y:auto;overscroll-behavior:contain;display:flex;justify-content:center;align-items:flex-start;padding:4vh 3vw}
@@ -61,7 +61,7 @@ tr.sub>td{background:var(--card);border-top:1px solid var(--bd);font-size:.9rem}
 .step{border-top:1px dashed var(--bd);padding:.35rem 0;font-size:.86rem}.step:first-child{border-top:0}.step .sc{color:var(--mut);font-size:.78rem}
 .piece{display:block;font-weight:normal;font-size:.76rem;color:var(--mut);font-family:Georgia,'Times New Roman',serif;margin:0 0 .35rem}
 .lpmulti{margin-bottom:.15rem}
-tbody.stub td{background:var(--chip);font-size:.84rem;padding:.35rem .6rem;border-top:1px solid var(--bd);color:var(--mut)}
+tbody.stub td{background:var(--lpstub);font-size:.84rem;padding:.35rem .6rem;border-top:1px solid var(--bd);color:var(--mut)}
 tbody.stub .lpno{font-size:.95rem}
 tbody.sect td{background:var(--head);font-weight:bold;padding:.6rem;border-top:3px solid var(--bd);color:var(--acc)}
 footer{padding-bottom:3rem;color:var(--mut);font-size:.88rem}footer li{margin:.25rem 0}
@@ -71,7 +71,7 @@ footer{padding-bottom:3rem;color:var(--mut);font-size:.88rem}footer li{margin:.2
  tbody.frag>tr.main>td::before{content:attr(data-label);display:block;font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;color:var(--mut);margin-bottom:.15rem;font-family:'Segoe UI',system-ui,sans-serif}
  .stick{position:static}
  tbody.frag>tr.main>td{border-top:0;padding:.35rem .7rem}
- tbody.frag>tr.main>td.c-lp{border-top:3px solid var(--bd);padding-top:.6rem}
+ tbody.frag>tr.main>td.c-lp{border-top:3px solid var(--lpbd);padding-top:.6rem}
  tr.sub>th{border-top:1px solid var(--bd)}tr.sub>td{border-top:0}
 }
 @media print{tbody.frag{break-inside:avoid}table.lp thead th{position:static}}
