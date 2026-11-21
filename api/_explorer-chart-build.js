@@ -37,11 +37,35 @@ export function docIdsOf(data) {
     for (const s of r.first.shown || []) scan(s.source);
     scan(r.owner.source);
   }
+  for (const l of data.links || []) if (l.doc != null) ids.add(l.doc);   // a scan that is a copy of a Papyrates document links to that document
   return [...ids].sort((a, b) => a - b);
 }
 
+// Links to cited files. The table keeps them per fragment, inside provenance_stories.source_links, as
+//   { "<citation exactly as written>": { u: "https://…", t: "label", k: "od|web|kf" }  or  { doc: 3559, k: "scan" } }
+// (a "scan" is a copy of a document that already has a Doc number). Only https addresses are passed on. The page gets one
+// shared list (data.links) and each row's citation -> index into it, so the same file is not sent again for every fragment.
+function makeLinks() {
+  const list = []; const seen = new Map();
+  const add = (l) => {
+    if (!l || typeof l !== 'object') return null;
+    let item;
+    if (l.doc != null && Number.isInteger(Number(l.doc))) item = { doc: Number(l.doc), k: String(l.k || 'scan').slice(0, 8) };
+    else if (typeof l.u === 'string' && /^https:\/\//i.test(l.u.trim())) item = { u: l.u.trim(), t: String(l.t || '').slice(0, 160), k: String(l.k || '').slice(0, 8) };
+    else return null;
+    const key = JSON.stringify(item); let i = seen.get(key);
+    if (i == null) { i = list.length; list.push(item); seen.set(key, i); }
+    return i;
+  };
+  return { list, add };
+}
+
 export function buildChartData(live, docRows = []) {
+  const LK = makeLinks();
   const rows = live.map((r) => {
+    const sl = {};
+    const ps0 = r.provenance_stories;
+    if (ps0 && !Array.isArray(ps0) && ps0.source_links && typeof ps0.source_links === 'object') for (const [cite, l] of Object.entries(ps0.source_links)) { const i = LK.add(l); if (i != null) sl[cite] = i; }
     const nv = narrativesFor(r);
     const shown = nv.narratives.filter((n) => n.display !== 'hold back');
     const held = nv.narratives.length - shown.length;
@@ -61,6 +85,7 @@ export function buildChartData(live, docRows = []) {
       narratives: shown.map((n) => ({ id: n.id, told_by: n.told_by, role: n.told_by_role, date: n.date, date_basis: n.date_basis, identity: n.identity, identity_note: n.identity_note, story: n.story, sources: n.sources, differs_from: n.differs_from, status: n.verification?.status, caution: n.display === 'show with caution' })),
       narratives_held: held, no_narrative: !!nv.none && !shown.length, no_narrative_note: nv.note || null, searched: nv.searched, unreadable: nv.unreadable,
       custody: steps.map((s) => ({ holder: s.holder ?? null, from: s.from ?? null, to: s.to ?? null, how: s.how, sources: s.sources || [], level: s.evidence_level ?? null })), custody_omitted: omitted,
+      sl,
     };
   });
   // Lying Pen order first, then the rows that are not on that list (by row number)
@@ -74,6 +99,7 @@ export function buildChartData(live, docRows = []) {
     counts: { fragments: rows.length, narratives: nNarr, caution: nCaution, held: nHeld, custody_steps: nSteps, narrative_source: 'table', on_lp_list: rows.filter((r) => r.lp.length).length, lp_entries: LP_ORDER.length },
     lp_order: LP_ORDER,
     rows,
+    links: LK.list,
     docs: {},
   };
   // Cited documents: id -> {t: title, u: link to the original document (or null)}

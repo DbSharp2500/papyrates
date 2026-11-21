@@ -104,7 +104,7 @@ footer{padding-bottom:3rem;color:var(--mut);font-size:.88rem}footer li{margin:.2
 function render(D) {
   const $ = (s) => document.querySelector(s);
   const el = (t, a, ...k) => { const e = document.createElement(t); for (const [x, y] of Object.entries(a || {})) { if (y == null) continue; if (x === 'class') e.className = y; else if (x === 'text') e.textContent = y; else e.setAttribute(x, y); } for (const c of k.flat()) { if (c == null || c === false) continue; e.append(c.nodeType ? c : document.createTextNode(c)); } return e; };
-  const C = D.counts, DOCS = D.docs || {};
+  const C = D.counts, DOCS = D.docs || {}, LINKS = D.links || [];
   $('#built').textContent = D.built;
   $('#banner').innerHTML = '<b>How to read this.</b> One row per fragment, in the numbering of the Lying Pen list (<a href="https://lyingpen.com/2022/09/24/a-list-of-70-unprovenanced-post-2002-dead-sea-scrolls-like-fragments/" target="_blank" rel="noopener">lyingpen.com</a>): the first column is that list’s own number (LP n), so the two pages can be read side by side. Fragments that are not on the Lying Pen list follow at the end. Each fragment shows, side by side, every provenance account that the project’s documents give for it: who told it, when (the date of the document), what it says, how firmly it is tied to <i>this</i> fragment, and the documents behind it (click a document number to open the original). The accounts are <b>not harmonized and are not judged</b>: the chart documents the developing narratives, not the real history, and many of the fragments are believed to be forgeries. A fragment with no narrative says so. <b>Working draft:</b> compiled by AI from the documents in the Papyrates collection and checked by a script (every quotation found in the document), Claude and Gemini; it has not yet been read line by line by a person.';
   const meth = [
@@ -113,7 +113,7 @@ function render(D) {
     '“Identity” says how firmly a document is tied to the fragment: exact = it names this fragment; probable = it fits and nothing contradicts it; possible = it may concern it (often a statement about a lot or group).',
     'A narrative records what a document claims. It does not say the claim is true. Sellers, dealers, owners, institutions, scholars and the press are quoted as the documents quote them.',
     'The checks test that quotations are word for word in the cited document and that the story says no more than the documents show. They cannot show that a document is truthful or complete, and they cannot find narratives that were never collected. One source per narrative is normal. Where the checkers could not read a source (a scan, an archived web page), Claude opened the source itself and checked every quotation against it; such entries are recorded as ‘source read by Claude’.',
-    'Documents: “Doc n” opens the original document in the Papyrates collection (a scan on the university’s file store) when one is attached, otherwise the archive record; “record” opens the archive record; web addresses open the cited page (often an archived copy). “project files” are PDFs and text files kept in the project folders that are not online yet, so they are named but cannot be linked.',
+    'Documents: “Doc n” opens the original document in the Papyrates collection (a scan on the university’s file store) when one is attached, otherwise the archive record; “record” opens the archive record; web addresses open the cited page (often an archived copy). A cited file kept on the university’s OneDrive opens there (it asks for the university sign-in and opens only for people who have been given access to the folder). The published Kjeldsberg & Forberg database opens its DataverseNO record. “Not yet linked” counts cited files that have no link yet (for example unpublished working files and some published articles): they are named but cannot be opened from here.',
     'Custody steps shown are those whose documents were checked and confirmed; ' + C.custody_steps + ' are shown, others are held back. Dates of events are the researcher’s reading of documents; first-appearance dates give the earliest dated document that mentions the fragment.'
   ];
   for (const m of meth) $('#methods').append(el('li', { text: m }));
@@ -123,6 +123,24 @@ function render(D) {
   const URL_RE = /(https?:\/\/[^\s)\]]+|web\.archive\.org\/web\/[^\s)\]]+)/gi;
   const docLink = (id) => { const d = DOCS[id]; const a = el('a', { class: 'dl', href: (d && d.u) || ('/database.html?letter=' + id), target: '_blank', rel: 'noopener', title: ((d && d.t) ? d.t + ' — ' : '') + (d && d.u ? 'opens the original document' : 'opens the archive record (no scan attached)'), text: 'Doc ' + id }); return [a, el('a', { class: 'rec', href: '/database.html?letter=' + id, target: '_blank', rel: 'noopener', title: 'Open the archive record', text: '(record)' })]; };
   const urlLink = (raw) => { const clean = raw.replace(/[.,;:]+$/, ''); const href = /^https?:/i.test(clean) ? clean : 'https://' + clean; const shown = clean.replace(/^https?:\/\//i, ''); return el('a', { class: 'dl', href, target: '_blank', rel: 'noopener', title: href, text: shown.length > 58 ? shown.slice(0, 55) + '…' : shown }); };
+  // a cited file that has a link (stored with the fragment: provenance_stories.source_links; https only)
+  const SAME = /^same file\b/i;
+  const fileLink = (str, sl) => { if (!sl || !Object.prototype.hasOwnProperty.call(sl, str)) return null; const l = LINKS[sl[str]]; return l && (l.doc != null || /^https:\/\//i.test(l.u || '')) ? l : null; };
+  const keyOf = (str, prevKey) => { const t = String(str == null ? '' : str).trim(); return SAME.test(t) ? prevKey : t; };
+  const fileAnchor = (l, str) => {
+    if (l.doc != null) return docLink(l.doc);
+    const how = l.k === 'od' ? 'opens the file on the university OneDrive (sign-in; only for people given access to the folder)' : l.k === 'web' ? 'opens the cited web page' : 'opens the record of the published database';
+    const shown = l.k === 'kf' ? (str ? (String(str).length > 70 ? String(str).slice(0, 67) + '…' : String(str)) : 'Kjeldsberg & Forberg database') : (l.t || l.u);
+    return [el('a', { class: 'dl', href: l.u, target: '_blank', rel: 'noopener', title: how + (l.t ? ' — ' + l.t : ''), text: shown })];
+  };
+  // one cited source as page nodes: a link when the file has one ("same file" uses the file named just before it), otherwise Doc numbers and web addresses linked as before
+  function srcNodes(str, sl, prevKey) {
+    const raw = String(str == null ? '' : str).trim(); const same = SAME.test(raw);
+    const l = fileLink(same ? prevKey : raw, sl);
+    if (l) return same ? ['same file: ', ...fileAnchor(l, prevKey)] : fileAnchor(l, raw);
+    if (same && prevKey) return ['same file (' + String(prevKey).split(/[\\\/]/).pop().replace(/\.page-\d+\.png$/i, '').replace(/\.txt$/i, '').slice(0, 70) + ')'];
+    return linked(raw);
+  }
   // text with its Doc numbers and web addresses turned into links
   function linked(str) {
     const s = String(str == null ? '' : str); const hits = [];
@@ -133,34 +151,37 @@ function render(D) {
     if (p < s.length) out.push(s.slice(p)); return out;
   }
   // the documents and web pages behind a list of source strings: {ids, urls, files}
-  function refsOf(strs, into) {
-    const r = into || { ids: new Set(), urls: new Map(), files: new Set() };
+  function refsOf(strs, into, sl) {
+    const r = into || { ids: new Set(), urls: new Map(), links: new Map(), files: new Set() };
     for (const raw of strs) { const s = String(raw || ''); let any = false;
+      if (SAME.test(s.trim())) continue;   // "same file" = the file named just before it, already in the list
       for (const m of s.matchAll(DOC_RE)) for (const x of m[1].matchAll(/\d{2,5}/g)) { r.ids.add(Number(x[0])); any = true; }
       for (const m of s.matchAll(URL_RE)) { const clean = m[0].replace(/[.,;:]+$/, ''); r.urls.set(clean, true); any = true; }
-      if (!any && /\.(pdf|txt|docx?|png|jpe?g|csv|html?)\b|^sources[\\\/]|^Researcher |^Thompson |Kjeldsberg|K&F|database/i.test(s)) r.files.add(s.split(/[\\\/]/).pop().replace(/\.(txt|pdf)\.txt$/i, '.$1').slice(0, 90)); }
+      if (!any) { const l = fileLink(s.trim(), sl); if (l) { if (l.doc != null) r.ids.add(l.doc); else r.links.set(l.u, { l, str: l.k === 'kf' ? null : s.trim() }); any = true; } }
+      if (!any && /\.(pdf|txt|docx?|png|jpe?g|csv|html?)\b|^sources[\\\/]|^Researcher |^Thompson |Kjeldsberg|K&F|database/i.test(s)) r.files.add(s.split(/[\\\/]/).pop().replace(/\.(txt|pdf)\.txt$/i, '.$1').replace(/\.page-\d+\.png$/i, '').replace(/,?\s*(?:p{1,2}\.|pages?\b|PDF pages?|Sections?\b).*$/i, '').replace(/\s*\(.*$/, '').replace(/\.(txt|png)$/i, '').trim().slice(0, 90)); }
     return r;
   }
   function docsLine(refs, label) {
-    if (!refs.ids.size && !refs.urls.size && !refs.files.size) return null;
+    if (!refs.ids.size && !refs.urls.size && !refs.links.size && !refs.files.size) return null;
     const d = el('div', { class: 'docs' }, el('span', { class: 'k', text: (label || 'Documents') + ': ' })); let first = true; const sep = () => { if (!first) d.append(' · '); first = false; };
     for (const id of [...refs.ids].sort((a, b) => a - b)) { sep(); d.append(...docLink(id)); }
     for (const u of refs.urls.keys()) { sep(); d.append(urlLink(u)); }
-    if (refs.files.size) { sep(); d.append(el('span', { class: 'k', title: [...refs.files].join('\n'), text: refs.files.size + ' project file' + (refs.files.size === 1 ? '' : 's') + ' (not online)' })); }
+    for (const o of refs.links.values()) { sep(); d.append(...fileAnchor(o.l, o.str)); }
+    if (refs.files.size) { sep(); d.append(el('span', { class: 'k', title: [...refs.files].join('\n'), text: refs.files.size + ' file' + (refs.files.size === 1 ? '' : 's') + ' not yet linked' })); }
     return d;
   }
   const srcStrings = (n) => (n.sources || []).flatMap((s) => [s.doc, s.locator]);
 
   // ---- one narrative
-  function narCard(n) {
+  function narCard(n, sl) {
     const c = el('div', { class: 'nar' });
     c.append(el('div', { class: 'when', text: n.date || 'undated' }), el('div', { class: 'who', text: n.told_by || '' }));
     const b = el('div', {}); b.append(el('span', { class: 'badge ' + (n.identity || ''), text: 'identity: ' + (n.identity || '?') })); if (n.role) b.append(el('span', { class: 'badge', text: n.role })); c.append(b);
     c.append(el('div', { class: 'story', text: n.story || '' }));
-    const refs = refsOf((n.sources || []).map((s) => s.doc), null); const dl = docsLine(refs, 'Documents'); if (dl) c.append(dl);
+    const refs = refsOf((n.sources || []).map((s) => s.doc), null, sl); const dl = docsLine(refs, 'Documents'); if (dl) c.append(dl);
     if (n.identity_note) c.append(el('div', { class: 'diff', text: n.identity_note }));
     const qs = el('details', { class: 'sec' }, el('summary', { text: 'Exact words and where they are (' + (n.sources || []).length + ')' }));
-    qs.addEventListener('toggle', () => { if (qs.open && !qs.dataset.done) { qs.dataset.done = 1; for (const s of (n.sources || [])) qs.append(el('div', { class: 'q' }, s.quote ? '“' + s.quote + '”' : '(no quotation)', el('span', { class: 's' }, ...linked((s.doc || '') + (s.locator ? ' - ' + s.locator : ''))))); } });
+    qs.addEventListener('toggle', () => { if (qs.open && !qs.dataset.done) { qs.dataset.done = 1; let pk = ''; for (const s of (n.sources || [])) { const before = pk; pk = keyOf(s.doc, before); qs.append(el('div', { class: 'q' }, s.quote ? '“' + s.quote + '”' : '(no quotation)', el('span', { class: 's' }, ...srcNodes(s.doc, sl, before), ...(s.locator ? [' - ', ...linked(s.locator)] : [])))); } } });
     c.append(qs);
     if (n.differs_from) c.append(el('div', { class: 'diff', text: 'Differs from the other accounts: ' + n.differs_from }));
     if (n.caution) c.append(el('div', { class: 'caut', text: 'Marked: the checkers did not fully agree on this entry.' }));
@@ -199,23 +220,23 @@ function render(D) {
     // keep LP number, designations, content and collectors in view while the long provenance column is read
     for (const td of [...main.children]) { const w = el('div', { class: 'stick' }); while (td.firstChild) w.append(td.firstChild); td.append(w); }
     const pro = el('td', { 'data-label': 'Provenance accounts (' + r.narratives.length + ')' });
-    if (r.narratives.length) for (const n of r.narratives) pro.append(narCard(n)); else pro.append(el('div', { class: 'none', text: r.no_narrative_note || 'As of 19 Nov 2026, no provenance narrative discovered.' }));
+    if (r.narratives.length) for (const n of r.narratives) pro.append(narCard(n, r.sl)); else pro.append(el('div', { class: 'none', text: r.no_narrative_note || 'As of 19 Nov 2026, no provenance narrative discovered.' }));
     if (r.narratives_held) pro.append(el('div', { class: 'caut', text: r.narratives_held + ' further narrative(s) held back until corrected.' }));
     // every document behind this fragment
-    const all = { ids: new Set(), urls: new Map(), files: new Set() };
-    for (const n of r.narratives) refsOf((n.sources || []).flatMap((s) => [s.doc]), all);
-    for (const c of r.custody) refsOf((c.sources || []).map((s) => (typeof s === 'string' ? s : (s && s.doc) || '')), all);
-    for (const s of ((r.first && r.first.shown) || [])) refsOf([s.source], all);
-    if (r.owner && r.owner.source) refsOf([r.owner.source], all);
-    const total = all.ids.size + all.urls.size;
-    if (total) { const d = el('details', { class: 'sec' }, el('summary', { text: 'All documents behind this fragment (' + total + (all.files.size ? ' online + ' + all.files.size + ' project files' : '') + ')' })); const dl = docsLine(all, 'Documents'); d.append(dl); pro.append(d); }
+    const all = { ids: new Set(), urls: new Map(), links: new Map(), files: new Set() };
+    for (const n of r.narratives) refsOf((n.sources || []).flatMap((s) => [s.doc]), all, r.sl);
+    for (const c of r.custody) refsOf((c.sources || []).map((s) => (typeof s === 'string' ? s : (s && s.doc) || '')), all, r.sl);
+    for (const s of ((r.first && r.first.shown) || [])) refsOf([s.source], all, r.sl);
+    if (r.owner && r.owner.source) refsOf([r.owner.source], all, r.sl);
+    const total = all.ids.size + all.urls.size + all.links.size;
+    if (total) { const d = el('details', { class: 'sec' }, el('summary', { text: 'All documents behind this fragment (' + total + ' linked' + (all.files.size ? ' + ' + all.files.size + ' not yet linked' : '') + ')' })); const dl = docsLine(all, 'Documents'); d.append(dl); pro.append(d); }
     main.append(pro); tb.append(main);
 
     const sub = (label, ...content) => { const tr = el('tr', { class: 'sub' }, el('th', { colspan: 2, text: label }), el('td', { colspan: 3 }, ...content)); tb.append(tr); return tr; };
-    if (r.owner && (r.owner.display || r.owner.quote)) { const bits = [el('div', {}, el('b', { text: (r.owner.display || '') + (r.owner.owner ? ': ' : '') }), r.owner.owner || '')]; if (r.owner.quote) bits.push(el('div', { class: 'q' }, '“' + r.owner.quote + '”', el('span', { class: 's' }, ...linked([r.owner.speaker, r.owner.scope ? 'scope: ' + r.owner.scope : '', r.owner.source].filter(Boolean).join(' - '))))); sub("Owner's stated position", ...bits); }
-    if (r.first && r.first.display) { const d = el('details', { class: 'sec' }, el('summary', { text: 'The documents behind it (' + (r.first.shown || []).length + ')' })); for (const s of (r.first.shown || [])) d.append(el('div', { class: 'q' }, (s.date ? s.date + ': ' : '') + (s.what || ''), el('span', { class: 's' }, (s.grade ? '[' + s.grade + '] ' : ''), ...linked(s.source || '')))); sub('First documented appearance', el('div', { text: r.first.display }), (r.first.shown || []).length ? d : null); }
+    if (r.owner && (r.owner.display || r.owner.quote)) { const bits = [el('div', {}, el('b', { text: (r.owner.display || '') + (r.owner.owner ? ': ' : '') }), r.owner.owner || '')]; if (r.owner.quote) bits.push(el('div', { class: 'q' }, '“' + r.owner.quote + '”', el('span', { class: 's' }, ...(() => { const head = [r.owner.speaker, r.owner.scope ? 'scope: ' + r.owner.scope : ''].filter(Boolean).join(' - '); return [...(head ? [...linked(head), r.owner.source ? ' - ' : ''] : []), ...(r.owner.source ? srcNodes(r.owner.source, r.sl, '') : [])]; })()))); sub("Owner's stated position", ...bits); }
+    if (r.first && r.first.display) { const d = el('details', { class: 'sec' }, el('summary', { text: 'The documents behind it (' + (r.first.shown || []).length + ')' })); for (const s of (r.first.shown || [])) d.append(el('div', { class: 'q' }, (s.date ? s.date + ': ' : '') + (s.what || ''), el('span', { class: 's' }, (s.grade ? '[' + s.grade + '] ' : ''), ...srcNodes(s.source || '', r.sl, '')))); sub('First documented appearance', el('div', { text: r.first.display }), (r.first.shown || []).length ? d : null); }
     if (r.scholars && r.scholars.length) { const d = el('details', { class: 'sec' }, el('summary', { text: r.scholars.length + ' assessment' + (r.scholars.length === 1 ? '' : 's') + ' (open)' })); for (const s of r.scholars) d.append(el('div', { class: 'q' }, (s.conclusion ? s.conclusion + ': ' : '') + '“' + (s.quote || '') + '”', el('span', { class: 's', text: [s.scholars, s.affiliation, s.year, s.work].filter(Boolean).join(' - ') }))); sub('Published scholarly assessments', d); }
-    if (r.custody && r.custody.length) { const d = el('details', { class: 'sec' }, el('summary', { text: r.custody.length + ' documented step' + (r.custody.length === 1 ? '' : 's') + (r.custody_omitted ? '; ' + r.custody_omitted + ' held back' : '') + ' (open)' })); for (const s of r.custody) { const per = [s.from, s.to].filter(Boolean).join(' to '); d.append(el('div', { class: 'step' }, el('b', { text: (s.holder || '') + (per ? ' (' + per + ')' : '') + (s.holder || per ? ': ' : '') }), s.how || '', el('div', { class: 'sc' }, ...(s.sources || []).flatMap((x, i) => [i ? ' | ' : '', ...linked(typeof x === 'string' ? x : (x && x.doc) || '')])))); } sub('Documented custody steps', d); }
+    if (r.custody && r.custody.length) { const d = el('details', { class: 'sec' }, el('summary', { text: r.custody.length + ' documented step' + (r.custody.length === 1 ? '' : 's') + (r.custody_omitted ? '; ' + r.custody_omitted + ' held back' : '') + ' (open)' })); for (const s of r.custody) { const per = [s.from, s.to].filter(Boolean).join(' to '); d.append(el('div', { class: 'step' }, el('b', { text: (s.holder || '') + (per ? ' (' + per + ')' : '') + (s.holder || per ? ': ' : '') }), s.how || '', el('div', { class: 'sc' }, ...(() => { const out = []; let pk = ''; (s.sources || []).forEach((x, i) => { const str = typeof x === 'string' ? x : (x && x.doc) || ''; if (i) out.push(' | '); out.push(...srcNodes(str, r.sl, pk)); pk = keyOf(str, pk); }); return out; })()))); } sub('Documented custody steps', d); }
     if (r.unreadable && r.unreadable.length) { const d = el('details', { class: 'sec' }, el('summary', { text: r.unreadable.length + ' source' + (r.unreadable.length === 1 ? '' : 's') + ' (open)' })); for (const u of r.unreadable) d.append(el('div', { class: 'q', text: u })); sub('Sources that could not be opened', d); }
     return tb;
   }
