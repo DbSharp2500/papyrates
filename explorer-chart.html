@@ -19,7 +19,7 @@ button.t{font:inherit;padding:.38rem .7rem;border:1px solid var(--bd);border-rad
 table.lp{width:100%;border-collapse:separate;border-spacing:0;background:var(--card);border:1px solid var(--bd);border-radius:8px;table-layout:fixed}
 table.lp thead th{position:sticky;top:0;z-index:3;background:var(--head);text-align:left;font-size:.82rem;letter-spacing:.02em;padding:.5rem .6rem;border-bottom:2px solid var(--bd)}
 table.lp thead th:first-child{border-top-left-radius:8px}table.lp thead th:last-child{border-top-right-radius:8px}
-col.c-lp{width:8.5%}col.c-des{width:14%}col.c-con{width:13%}col.c-col{width:14.5%}col.c-pro{width:50%}
+col.c-lp{width:8%}col.c-des{width:13%}col.c-con{width:12%}col.c-col{width:20%}col.c-pro{width:47%}
 td,th{vertical-align:top;overflow-wrap:anywhere}
 tbody.frag>tr>td,tbody.frag>tr>th{padding:.55rem .6rem}
 tbody.frag>tr.main>td{border-top:3px solid var(--bd)}
@@ -39,6 +39,8 @@ tbody.frag>tr.main>td{background:var(--card)}
 .story{margin:.3rem 0;font-size:.92rem}
 .docs{font-size:.84rem;margin:.3rem 0;font-family:'Segoe UI',system-ui,sans-serif}.docs .k{color:var(--mut)}
 a.dl{overflow-wrap:anywhere}a.rec{font-size:.75rem;color:var(--mut);margin-left:.15rem}
+.chains .cl{font-size:.92rem;line-height:1.55;margin:0 0 .9rem;overflow-wrap:anywhere}.chains .cl:last-child{margin-bottom:0}
+.chains sup{font-size:.72em;margin-left:.12em}.chains a.fn{text-decoration:none;font-weight:600;padding:0 .08em}.chains a.fn:hover{text-decoration:underline}.chains sup.off{color:var(--mut)}
 .diff{font-size:.82rem;color:var(--mut);font-style:italic;margin:.2rem 0}.caut{font-size:.82rem;color:var(--warn);margin:.2rem 0}
 .q{border-left:3px solid var(--bd);margin:.3rem 0;padding:.05rem .55rem;font-size:.85rem}.q .s{display:block;color:var(--mut);font-size:.78rem}
 .none{font-style:italic;color:var(--mut)}
@@ -79,7 +81,7 @@ footer{padding-bottom:3rem;color:var(--mut);font-size:.88rem}footer li{margin:.2
 <main>
 <table class="lp" id="tbl">
 <colgroup><col class="c-lp"><col class="c-des"><col class="c-con"><col class="c-col"><col class="c-pro"></colgroup>
-<thead><tr><th>LP no.</th><th>Designations</th><th>Content</th><th>Collector(s)/ collection(s)</th><th>Provenance accounts: who told it, when, what it says, and the documents behind it</th></tr></thead>
+<thead><tr><th>LP no.</th><th>Designations</th><th>Content</th><th>Collector(s)/ collection(s)</th><th>Provenance according to primary source documents and the parties’ own statements: who told it, when, what it says, and the documents behind it</th></tr></thead>
 <tbody id="loadrow"><tr><td colspan="5" class="none" id="loadmsg" style="padding:1rem">Loading the chart&hellip;</td></tr></tbody>
 </table>
 </main>
@@ -106,9 +108,10 @@ function render(D) {
   const el = (t, a, ...k) => { const e = document.createElement(t); for (const [x, y] of Object.entries(a || {})) { if (y == null) continue; if (x === 'class') e.className = y; else if (x === 'text') e.textContent = y; else e.setAttribute(x, y); } for (const c of k.flat()) { if (c == null || c === false) continue; e.append(c.nodeType ? c : document.createTextNode(c)); } return e; };
   const C = D.counts, DOCS = D.docs || {}, LINKS = D.links || [];
   $('#built').textContent = D.built;
-  $('#banner').innerHTML = '<b>How to read this.</b> One row per fragment, in the numbering of the Lying Pen list (<a href="https://lyingpen.com/2022/09/24/a-list-of-70-unprovenanced-post-2002-dead-sea-scrolls-like-fragments/" target="_blank" rel="noopener">lyingpen.com</a>): the first column is that list’s own number (LP n), so the two pages can be read side by side. Fragments that are not on the Lying Pen list follow at the end. Each fragment shows, side by side, every provenance account that the project’s documents give for it: who told it, when (the date of the document), what it says, how firmly it is tied to <i>this</i> fragment, and the documents behind it (click a document number to open the original). The accounts are <b>not harmonized and are not judged</b>: the chart documents the developing narratives, not the real history, and many of the fragments are believed to be forgeries. A fragment with no narrative says so. <b>Working draft:</b> compiled by AI from the documents in the Papyrates collection and checked by a script (every quotation found in the document), Claude and Gemini; it has not yet been read line by line by a person.';
+  $('#banner').innerHTML = '<b>How to read this.</b> One row per fragment, in the numbering of the Lying Pen list (<a href="https://lyingpen.com/2022/09/24/a-list-of-70-unprovenanced-post-2002-dead-sea-scrolls-like-fragments/" target="_blank" rel="noopener">lyingpen.com</a>): the first column is that list’s own number (LP n), so the two pages can be read side by side. Fragments that are not on the Lying Pen list follow at the end. Each fragment shows, side by side, every provenance account that the project’s <b>primary source documents and the parties’ own statements</b> give for it (court testimony and filings, contracts and payment records, letters, faxes and emails, internal records and later memos of collections and institutions, interview notes, later accounts by people directly involved, and the official statements, press releases, sales materials and websites of owners, sellers and institutions; published articles, news reports, blogs, scholarly works and compiled databases are not used in this column): who told it, when (the date of the document), what it says, how firmly it is tied to <i>this</i> fragment, and the documents behind it (click a document number to open the original). The accounts are <b>not harmonized and are not judged</b>: the chart documents the developing narratives, not the real history, and many of the fragments are believed to be forgeries. A fragment with no narrative says so. <b>Working draft:</b> compiled by AI from the documents in the Papyrates collection and checked by a script (every quotation found in the document), Claude and Gemini; it has not yet been read line by line by a person.';
   const meth = [
-    C.narratives + ' narratives for ' + C.fragments + ' fragments are shown' + (C.held ? '; ' + C.held + ' more are held back until corrected' : '') + (C.caution ? '; ' + C.caution + ' are marked because the checkers did not fully agree' : '') + '.',
+    C.narratives + ' provenance narratives, each resting wholly on primary source documents and the parties’ own statements, are shown for ' + C.fragments_with_narratives + ' of the ' + C.fragments + ' fragments' + (C.not_primary ? '; ' + C.not_primary + ' more rest wholly or partly on published articles, news reports, blogs, scholarly works or compiled databases and are not shown here (they stay in the project table)' : '') + (C.held ? '; ' + C.held + ' more are held back until corrected' : '') + (C.caution ? '; ' + C.caution + ' of those shown are marked because the checkers did not fully agree' : '') + '.',
+    'Sources used in this column, primary source documents and the parties’ own statements: sworn statements and court testimony; court filings, orders and receiver reports; contracts, purchase agreements, invoices and payment records; letters, faxes and emails written at the time; internal records, memos and drafts of collections and institutions (some written long after the events); interview and phone-call notes; later accounts written for the researcher by people directly involved (Biondi, Stimer); official statements, press releases and institutional newsletters of owners and institutions; seller, dealer and auction materials; and the websites and catalogue pages of owners, collections and exhibitors. Published articles, news reports, blogs, scholarly works and compiled databases are not used for this column. A narrative is shown only if every source it cites is of one of these kinds. “Primary” means the source comes from the people or institutions involved; it does not mean the source is reliable. Every account here is a claim by a party, and the chart does not judge it. Later memos and recollections, press releases, sales materials and websites record what a party said or believed, not what happened.',
     '“LP n” is the number in the “No.” column of the Lying Pen list. ' + C.on_lp_list + ' of our ' + C.fragments + ' fragments carry one or more of its numbers (a fragment that gathers several entries lists them all); the others are not on that list. The Lying Pen list’s own entry “95–96” and its closing “Scraps” entry are given as they appear there.',
     '“Identity” says how firmly a document is tied to the fragment: exact = it names this fragment; probable = it fits and nothing contradicts it; possible = it may concern it (often a statement about a lot or group).',
     'A narrative records what a document claims. It does not say the claim is true. Sellers, dealers, owners, institutions, scholars and the press are quoted as the documents quote them.',
@@ -188,14 +191,24 @@ function render(D) {
     return c;
   }
 
-  // ---- collectors / collections: documented holders in order, then the current holder
+  // ---- chains of custody (column custody_claims): names with arrows, a year in brackets when a document gives one; after each chain, one numbered link per supporting document
+  const fnHref = (cite, sl) => {
+    const t = String(cite || '').trim(); const m = /^Doc\s+(\d{2,5})$/i.exec(t);
+    if (m) { const d = DOCS[m[1]]; return (d && d.u) || ('/database.html?letter=' + m[1]); }
+    if (/^https?:\/\//i.test(t)) return t;
+    const l = fileLink(t, sl); if (l) return l.doc != null ? ((DOCS[l.doc] && DOCS[l.doc].u) || ('/database.html?letter=' + l.doc)) : l.u;
+    return null;
+  };
+  const fnLink = (k, cite, sl) => { const href = fnHref(cite, sl); return href ? el('sup', {}, el('a', { class: 'fn', href, target: '_blank', rel: 'noopener', 'aria-label': 'Document ' + k, text: String(k) })) : el('sup', { class: 'off', 'aria-label': 'Document ' + k + ' (no link yet)', text: String(k) }); };
+  function chainsBlock(r) {
+    const wrap = el('div', { class: 'chains' });
+    for (const c of r.claims) { const line = el('div', { class: 'cl' }); c.nodes.forEach((x, i) => { if (i) line.append(' ➤ '); line.append(x.n + (x.y ? ' (' + x.y + ')' : '')); }); c.docs.forEach((cite, i) => line.append(' ', fnLink(i + 1, cite, r.sl))); wrap.append(line); }
+    return wrap;
+  }
+  // ---- collectors / collections: the chains of custody when the fragment has them; otherwise a plain "none yet" (Dan, 20 Nov 2026: nothing is shown without a document behind it)
   function collectors(r) {
-    const d = el('div', { class: 'col' });
-    if (r.holder) d.append(el('div', { class: 'cur', text: r.holder }));
-    const chain = []; for (const s of r.custody) { const h = s.holder && String(s.holder).trim(); if (h && chain[chain.length - 1] !== h) chain.push(h.length > 70 ? h.slice(0, 67) + '…' : h); }
-    if (chain.length) d.append(el('div', { class: 'chain', text: 'Documented holders: ' + (chain.length > 8 ? chain.slice(0, 7).join(' → ') + ' → … → ' + chain[chain.length - 1] : chain.join(' → ')) }));
-    if (!r.holder && !chain.length) d.append(el('div', { class: 'none', text: 'none recorded' }));
-    return d;
+    if (r.claims && r.claims.length) return chainsBlock(r);
+    return el('div', { class: 'col' }, el('div', { class: 'none', text: 'No chain from primary source documents yet.' }));
   }
 
   // ---- the LP number(s) of a fragment. One number: "LP 3". A row that gathers several Lying Pen entries (the Lying Pen list numbers them separately) lists every number up front, each with the piece it is.
@@ -219,17 +232,15 @@ function render(D) {
     main.append(el('td', { 'data-label': 'Collector(s)/ collection(s)' }, collectors(r)));
     // keep LP number, designations, content and collectors in view while the long provenance column is read
     for (const td of [...main.children]) { const w = el('div', { class: 'stick' }); while (td.firstChild) w.append(td.firstChild); td.append(w); }
-    const pro = el('td', { 'data-label': 'Provenance accounts (' + r.narratives.length + ')' });
-    if (r.narratives.length) for (const n of r.narratives) pro.append(narCard(n, r.sl)); else pro.append(el('div', { class: 'none', text: r.no_narrative_note || 'As of 19 Nov 2026, no provenance narrative discovered.' }));
+    const pro = el('td', { 'data-label': 'Provenance according to primary source documents and the parties’ own statements (' + r.narratives.length + ')' });
+    if (r.narratives.length) for (const n of r.narratives) pro.append(narCard(n, r.sl)); else pro.append(el('div', { class: 'none', text: r.narratives_not_primary ? 'No provenance narrative from primary source documents or the parties’ own statements yet.' : (r.no_narrative_note || 'As of 19 Nov 2026, no provenance narrative discovered.') }));
+    if (r.narratives_not_primary) pro.append(el('div', { class: 'caut', text: r.narratives_not_primary + ' further narrative' + (r.narratives_not_primary === 1 ? '' : 's') + ' rest wholly or partly on published articles, news reports, blogs, scholarly works or compiled databases and ' + (r.narratives_not_primary === 1 ? 'is' : 'are') + ' not shown here.' }));
     if (r.narratives_held) pro.append(el('div', { class: 'caut', text: r.narratives_held + ' further narrative(s) held back until corrected.' }));
     // every document behind this fragment
     const all = { ids: new Set(), urls: new Map(), links: new Map(), files: new Set() };
-    for (const n of r.narratives) refsOf((n.sources || []).flatMap((s) => [s.doc]), all, r.sl);
-    for (const c of r.custody) refsOf((c.sources || []).map((s) => (typeof s === 'string' ? s : (s && s.doc) || '')), all, r.sl);
-    for (const s of ((r.first && r.first.shown) || [])) refsOf([s.source], all, r.sl);
-    if (r.owner && r.owner.source) refsOf([r.owner.source], all, r.sl);
+    for (const n of r.narratives) refsOf((n.sources || []).flatMap((s) => [s.doc]), all, r.sl);   // only the sources of the narratives shown above (the rows beneath list their own sources)
     const total = all.ids.size + all.urls.size + all.links.size;
-    if (total) { const d = el('details', { class: 'sec' }, el('summary', { text: 'All documents behind this fragment (' + total + ' linked' + (all.files.size ? ' + ' + all.files.size + ' not yet linked' : '') + ')' })); const dl = docsLine(all, 'Documents'); d.append(dl); pro.append(d); }
+    if (total) { const d = el('details', { class: 'sec' }, el('summary', { text: 'All documents behind these accounts (' + total + ' linked' + (all.files.size ? ' + ' + all.files.size + ' not yet linked' : '') + ')' })); const dl = docsLine(all, 'Documents'); d.append(dl); pro.append(d); }
     main.append(pro); tb.append(main);
 
     const sub = (label, ...content) => { const tr = el('tr', { class: 'sub' }, el('th', { colspan: 2, text: label }), el('td', { colspan: 3 }, ...content)); tb.append(tr); return tr; };

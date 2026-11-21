@@ -14,7 +14,7 @@
 
 import { tierFromRequest, hasTierAccess } from '../_session.js';
 import { sb } from '../_sb.js';
-import { COLUMNS, buildChartData, docIdsOf } from '../_explorer-chart-build.js';
+import { COLUMNS, COLUMNS_BASE, buildChartData, docIdsOf } from '../_explorer-chart-build.js';
 
 export default async function handler(req, res) {
   const tier = tierFromRequest(req);
@@ -44,7 +44,9 @@ export default async function handler(req, res) {
     if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
     if (!hasTierAccess(tier, 'admin')) return res.status(403).json({ error: 'Forbidden' });
     try {
-      const rows = await sb(`explorer_fragments?select=${COLUMNS}&order=id.asc&limit=1000`);
+      let rows;
+      try { rows = await sb(`explorer_fragments?select=${COLUMNS}&order=id.asc&limit=1000`); }
+      catch (e) { console.error('explorer-chart: reading custody_claims failed, retrying without it:', e && e.message); rows = await sb(`explorer_fragments?select=${COLUMNS_BASE}&order=id.asc&limit=1000`); }
       let data = buildChartData(rows || []);
       // the Papyrates documents cited in it (title and link to the original), so the page can link them
       const ids = docIdsOf(data);
